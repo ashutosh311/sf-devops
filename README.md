@@ -1,29 +1,19 @@
-# README #
+# SF UK&I DevOps Centre of Excellence Resources README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+## What is this repository for? ##
 
-### What is this repository for? ###
+This repository hosts all the reusable scripts and Metadata which can be employed on our projects.
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+## Can I get an overview? ##
 
-### How do I get set up? ###
+Sure, but who needs a README when you have a snazzy Miro board...
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+![wow-gif](https://bitbucket.org/slalom-consulting/sf-uki-devops/raw/master/assets/oh-my-god-wow-GIF-downsized.gif)
 
-### Contribution guidelines ###
+Take a look here: https://miro.com/app/board/uXjVLWWeevc=/?share_link_id=54529095159
 
-* Writing tests
-* Code review
-* Other guidelines
+## Who do I talk to for help? ##
 
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+* Stuart Grieve: stuart.grieve@slalom.com
+* Lynette Lim: lynette.lim@slalom.com
+* Mark Wraith: mark.wraith@slalom.com
