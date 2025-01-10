@@ -1,0 +1,6 @@
+projectPath: ./vlocity
+postJobApex:
+  Deploy: ./apex/activate-doc-templates.cls
+queries: 
+ - VlocityDataPackType: DocumentTemplates
+   query: SELECT Id, Name FROM DocumentTemplate WHERE Status = 'Active' AND Name IN ('Template1', 'Template2')
