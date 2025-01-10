@@ -1,0 +1,2 @@
+ExternalId__c,Name,Active__c,FSL__Commit_Mode__c,FSL__Description__c,FSL__Fix_Overlaps__c,FSL__Daily_Optimization__c,FSL__Service_Clustering_Weight__c,FSL__Service_Priority_Weight__c,FSL__Travel_Mode__c
+Emergency,Emergency,true,AlwaysCommit,This policy is used in order to schedule emergencies from the emergency action,false,false,,,false

@@ -1,0 +1,2 @@
+ExternalId__c,Name,SBQQ__Active__c,SBQQ__Product__r.ExternalId__c,SBQQ__EvaluationOrder__c,SBQQ__ConditionsMet__c,SBQQ__ConfiguratorEvaluationEvent__c,SBQQ__LookupObject__c,SBQQ__TargetObject__c,SBQQ__EvaluationEvent__c,SBQQ__AdvancedCondition__c
+a9J0800000007AIEAY,Percent of Total SKU Calculation,False,01td2000003yVviAAE,1000.0,All,,,Calculator,On Calculate,(1 AND 2) OR (1 AND 3 AND 4) OR (1 AND 5 AND 6 AND 7)

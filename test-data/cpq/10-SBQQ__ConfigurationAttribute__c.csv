@@ -1,0 +1,3 @@
+ExternalId__c,Name,SBQQ__AppliedImmediately__c,SBQQ__ApplyToProductOptions__c,SBQQ__AutoSelect__c,SBQQ__Hidden__c,SBQQ__Required__c,SBQQ__HiddenValues__c,SBQQ__ShownValues__c,SBQQ__Feature__r.ExternalId__c,SBQQ__Product__r.ExternalId__c,SBQQ__DisplayOrder__c,SBQQ__ColumnOrder__c,SBQQ__DefaultObject__c,SBQQ__Position__c,SBQQ__TargetField__c,RecordType.Name,SBQQ__DefaultField__c
+a8208000001hvXXAAY,CA1,True,True,False,False,False,,Term,,,1.0,1,,Top,Discount (Amt),Global Attribute,
+a8208000001hvXYAAY,CA2,True,False,False,False,False,,Cloud,,01td2000003yVwfAAE,1.0,2,,Top,Unit Price,Configuration Attribute,

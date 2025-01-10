@@ -1,0 +1,1 @@
+ExternalId__c,Name,IsActive,Street,City,PostalCode,State,Country,Latitude,Longitude,Description,FSL__Hide_Emergency_Map__c,FSL__NumberOfServicesToDripFeed__c,FSL__Service_Cluster_Min_Size__c,FSL__Service_Cluster_Proximity__c,TypicalInTerritoryTravelTime,FSL__O2_Enabled__c

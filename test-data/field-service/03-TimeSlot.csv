@@ -1,0 +1,2 @@
+ExternalId__c,OperatingHours.ExternalId__c,DayOfWeek,StartTime,EndTime,Type,FSL__Designated_Work_Boolean_Fields__c,FSL__Slot_Color__c
+TS1,BaseCalendar,Tuesday,09:00:00.000Z,17:00:00.000Z,Normal,,

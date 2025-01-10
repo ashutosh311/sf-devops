@@ -1,0 +1,19 @@
+{
+    "objects": [
+        {
+            "query": "SELECT ExternalId__c, Name, Description, DurationType, EstimatedDuration, FSL__Due_Date_Offset__c, FSL__Exact_Appointments__c, MinimumCrewSize, RecommendedCrewSize, ShouldAutoCreateSvcAppt FROM WorkType",
+            "operation": "Upsert",
+            "externalId": "ExternalId__c"
+        },
+        {
+            "query": "SELECT MasterLabel, DeveloperName FROM Skill",
+            "operation": "Upsert",
+            "externalId": "DeveloperName"
+        },
+        {
+            "query": "SELECT SkillId, RelatedRecordId$WorkType, SkillPriority, SkillLevel FROM SkillRequirement",
+            "operation": "Upsert",
+            "externalId": "Skill.DeveloperName;RelatedRecordId"
+        }
+    ]
+}

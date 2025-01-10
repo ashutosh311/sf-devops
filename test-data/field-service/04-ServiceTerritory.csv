@@ -1,0 +1,3 @@
+ExternalId__c,ParentTerritory.ExternalId__c,OperatingHours__r.ExternalId__c
+ParentTerritory,,BaseCalendar
+ChildTerritory,ParentTerritory,BaseCalendar

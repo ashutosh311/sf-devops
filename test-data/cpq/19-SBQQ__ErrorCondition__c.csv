@@ -1,0 +1,3 @@
+ExternalId__c,SBQQ__TestedAttribute__r.ExternalId__c,SBQQ__FilterVariable__r.ExternalId__c,SBQQ__TestedVariable__r.ExternalId__c,SBQQ__Rule__r.ExternalId__c,SBQQ__Index__c,SBQQ__FilterType__c,SBQQ__Operator__c,SBQQ__TestedField__c,SBQQ__TestedObject__c,SBQQ__FilterValue__c
+a8I08000000L1E4EAK,,,a9tTY00000014snZAA,PR1,,Value,equals,SBQQ__Type__c,Quote,Quote
+a8I08000000PFsdEAG,,a9tTY00000014snYAA,,PR1,,Value,equals,SBQQ__Type__c,Quote,Amendment

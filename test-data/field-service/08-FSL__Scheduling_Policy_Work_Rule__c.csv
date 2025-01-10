@@ -1,0 +1,4 @@
+ExternalId__c,FSL__Scheduling_Policy__r.ExternalId__c,FSL__Work_Rule__r.ExternalId__c
+SPWR1,Emergency,ActiveResources
+SPWR2,Emergency,DueDate
+SPWR3,Emergency,EarliestStartPermitted

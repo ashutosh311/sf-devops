@@ -1,0 +1,3 @@
+ExternalId__c,Name,SBQQ__Price__c,SBQQ__DiscountAmount__c,SBQQ__Schedule__r.ExternalId__c,SBQQ__LowerBound__c,SBQQ__UpperBound__c,SBQQ__Number__c,SBQQ__Discount__c
+a8H080000004NKhEAM,DT1,,0.0,a8G080000004X8JEAU,1.0,201.0,1.0,
+a8H080000004NKiEAM,DT2,,-4.44,a8G080000004X8JEAU,350.0,501.0,3.0,

@@ -1,0 +1,3 @@
+ExternalId__c,Name,SBQQ__ValueElement__c,SBQQ__AggregateField__c,SBQQ__AggregateFunction__c,SBQQ__CompositeOperator__c,SBQQ__ConstraintField__c,SBQQ__FilterField__c,SBQQ__Operator__c,SBQQ__Scope__c,SBQQ__TargetObject__c,SBQQ__FilterValue__c
+a9tTY00000014snYAA,SAIP-S,,Quantity,Sum,,,Product Code,equals,Quote,Quote Line,
+a9tTY00000014snZAA,SAIP-S2,,Quantity,Sum,,,Product Code,equals,Quote,Quote Line,

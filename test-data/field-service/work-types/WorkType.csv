@@ -1,0 +1,2 @@
+Description,DurationType,EstimatedDuration,ExternalId__c,FSL__Due_Date_Offset__c,FSL__Exact_Appointments__c,Id,MinimumCrewSize,Name,RecommendedCrewSize,ShouldAutoCreateSvcAppt
+,Minutes,60,ReturnCarpenter,4320,false,08qPu0000005ke2IAA,,Return - Carpenter,,true
