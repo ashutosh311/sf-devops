@@ -1,0 +1,13 @@
+{
+  "orgName": "Slalom",
+  "snapshot": "snapshotName",
+  "release" : "current",
+  "settings": {
+    "customAddressFieldSettings": {
+      "enableCustomAddressField": true
+    },
+    "experienceBundleSettings": {
+      "enableExperienceBundleMetadata": true
+    }
+  }
+}

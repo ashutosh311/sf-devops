@@ -1,0 +1,52 @@
+{
+  "orgName": "Slalom",
+  "sourceOrg": "00D8d000003eoxy",
+  "features": [
+    "AnalyticsAdminPerms",
+    "AnalyticsAppEmbedded",
+    "Communities",
+    "ContactsToMultipleAccounts",
+    "CustomerCommunityPlusLogin",
+    "DevelopmentWave",
+    "DocGen",
+    "DocGenDesigner",
+    "DocGenInd",
+    "EinsteinAnalyticsPlus",
+    "FlowSites",
+    "HealthCloudAddOn",
+    "HealthCloudUser",
+    "InsightsPlatform",
+    "OmniStudioDesigner",
+    "OmniStudioMetadata",
+    "PersonAccounts",
+    "PublishAuraExpBuilderBasedSna",
+    "WavePlatform"
+  ],
+  "settings": {
+    "analyticsSettings": {
+      "enableInsights": true
+    },
+    "communitiesSettings": {
+      "enableNetworksEnabled": true
+    },
+    "customAddressFieldSettings": {
+      "enableCustomAddressField": true
+    },
+    "experienceBundleSettings": {
+      "enableExperienceBundleMetadata": true
+    },
+    "industriesSettings": {
+      "enableOverbookingOrgPref": true,
+      "enableVisitInventoryEnabled": true
+    },
+    "languageSettings": {
+      "enableTranslationWorkbench": true
+    },
+    "nameSettings": {
+      "enableNameSuffix": true
+    },
+    "userManagementSettings": {
+      "enableEnhancedConcealPersonalInfo": false
+    }
+  }
+}
