@@ -1,0 +1,18 @@
+{
+  "packageDirectories": [
+    {
+      "path": "force-app",
+      "default": true
+    }
+  ],
+  "namespace": "",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "62.0",
+  "replacements": [
+    {
+      "glob": "force-app/main/default/networks/*.network-meta.xml",
+      "stringToReplace": "production_user@abc.co.uk",
+      "replaceWithEnv": "SFDX_REPLACEMENT_NETWORK_USER"
+    }
+  ]
+}
