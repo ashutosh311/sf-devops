@@ -23,7 +23,7 @@ function getEnvConfigCustomSetting {
         commitId=$(jq '.result.records[0].CommitId__c' environmentConfigurationExport.json | tr -d \");
 
         # Store as env var
-        if [[ $commitId == "null" ]]; then export ENV_COMMIT_ID=""; else export ENV_COMMIT_ID=$coreCommitId; fi
+        if [[ $commitId == "null" ]]; then export ENV_COMMIT_ID=""; else export ENV_COMMIT_ID=$commitId; fi
     fi
 
 }
