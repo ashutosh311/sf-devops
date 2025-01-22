@@ -15,6 +15,8 @@ definitions:
     
     # Utility commands
     branchJiraReferenceCheck: &branchJiraReferenceCheck if [[ $BITBUCKET_BRANCH != *'<jira-project-shortcode>'* ]]; then echo "Branch name does not contain a Jira ticket reference"; exit 1; fi
+    sfValidate: &sfValidate sfdx force:source:deploy --checkonly --ignorewarnings --verbose --sourcepath force-app/main/default --testlevel RunLocalTests --target-org $SF_USERNAME --wait 110
+    sfDeploy: &sfDeploy sfdx force:source:deploy --ignorewarnings --verbose --sourcepath force-app/main/default --testlevel RunLocalTests --target-org $SF_USERNAME --wait 110
 
 pipelines:
 
@@ -24,87 +26,82 @@ pipelines:
       - step:
           name: Feature Validation
           script:
-            - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "develop" ]; then echo feature/ branches can only be merged into the develop branch; exit 1; fi
+            - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "qa" ]; then echo feature/ branches can only be merged into the qa branch; exit 1; fi
             - *branchJiraReferenceCheck
             - source utilities/set-env-variables.sh "QA"
-            - utilities/sf-authenticate.sh "$SF_QA_USERNAME" "$SF_QA_CONSUMER_KEY $SF_QA_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" "certificates/server.key.enc"
-            - utilities/sf-deploy.sh "validate" "$SF_QA_USERNAME" "true" "force-app" "" ""
+            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY $SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
+            - *sfValidate
     
     hotfix/*:
       - step:
           name: Hotfix Validation
           script:
-            - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "release" ]; then echo hotfix/ branches can only be merged into the release branch; exit 1; fi
+            - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "uat" ]; then echo hotfix/ branches can only be merged into the uat branch; exit 1; fi
             - *branchJiraReferenceCheck
-            - source utilities/set-env-variables.sh "HOTFIX"
-            - utilities/sf-authenticate.sh "$SF_HOTFIX_USERNAME" "$SF_HOTFIX_CONSUMER_KEY" "$SF_HOTFIX_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" "certificates/server.key.enc"
-            - utilities/sf-deploy.sh "validate" "$SF_HOTFIX_USERNAME" "true" "force-app" "" ""
+            - source utilities/set-env-variables.sh "UAT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
+            - *sfValidate
+
+    qa:
+      - step:
+          name: "Validate to SIT"
+          script:
+            - if [[ $BITBUCKET_PR_DESTINATION_BRANCH != "sit" ]]; then echo The qa branch can only be merged into the sit branch; exit 1; fi
+            - source utilities/set-env-variables.sh "SIT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfValidate
+
+    sit:
+      - step:
+          name: "Validate to UAT"
+          script:
+            - if [[ $BITBUCKET_PR_DESTINATION_BRANCH != "uat" ]]; then echo The sit branch can only be merged into the uat branch; exit 1; fi
+            - source utilities/set-env-variables.sh "UAT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfValidate
+
+    uat:
+      - step:
+          name: "Validate to Production"
+          script:
+            - if [[ $BITBUCKET_PR_DESTINATION_BRANCH != "main" ]]; then echo The uat branch can only be merged into the main branch; exit 1; fi
+            - source utilities/set-env-variables.sh "Production"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfValidate
   
   branches:
 
-    develop:
+    qa:
       - step:
           name: QA Sandbox Merge Deploy
           script:
-            - source utilities/set-env-variables.sh QA
-            - utilities/sf-authenticate.sh "$SF_QA_USERNAME" "$SF_QA_CONSUMER_KEY" "$SF_QA_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" "certificates/server.key.enc"
-            - utilities/sf-deploy.sh "deploy" "$SF_QA_USERNAME" "true" "force-app" "$BITBUCKET_BRANCH" ""
+            - source utilities/set-env-variables.sh "QA"
+            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
+            - *sfDeploy
 
-  custom:
-
-    sit-validate:
+    sit:
       - step:
-          name: "Validate Release to SIT"
-          script:
-            - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The sit-validate pipeline should only be run from a release/ branch; exit 1; fi
-            - source utilities/set-env-variables.sh SIT
-            - utilities/sf-authenticate.sh "$SF_SIT_USERNAME "$SF_SIT_CONSUMER_KEY "$SF_SIT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
-            - utilities/sf-deploy.sh "validate" "$SF_SIT_USERNAME" "true" "force-app" "" ""
-
-    uat-validate:
-      - step:
-          name: "Validate Release to UAT"
-          script:
-            - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The uat-validate pipeline should only be run from a release/ branch; exit 1; fi
-            - source utilities/set-env-variables.sh UAT
-            - utilities/sf-authenticate.sh "$SF_UAT_USERNAME "$SF_UAT_CONSUMER_KEY "$SF_UAT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
-            - utilities/sf-deploy.sh "validate" "$SF_UAT_USERNAME" "true" "force-app" "" ""
-
-    production-validate:
-      - step:
-          name: "Validate Release to Production"
-          script:
-            - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The production-validate pipeline should only be run from a release/ branch; exit 1; fi
-            - source utilities/set-env-variables.sh Production
-            - utilities/sf-authenticate.sh "$SF_PROD_USERNAME "$SF_PROD_CONSUMER_KEY "$SF_PROD_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
-            - utilities/sf-deploy.sh "validate" "$SF_PROD_USERNAME" "true" "force-app" "" ""
-    
-    sit-deploy:
-      - step:
-          name: "Deploy Release to SIT"
+          name: "SIT Sandbox Merge Deploy"
           deployment: SIT
           script:
-            - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The sit-deploy pipeline should only be run from a release/ branch; exit 1; fi
-            - source utilities/set-env-variables.sh SIT
-            - utilities/sf-authenticate.sh "$SF_SIT_USERNAME "$SF_SIT_CONSUMER_KEY "$SF_SIT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
-            - utilities/sf-deploy.sh "deploy" "$SF_SIT_USERNAME" "true" "force-app" "$BITBUCKET_BRANCH" "SIT"
+            - source utilities/set-env-variables.sh "SIT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfDeploy
 
-    uat-deploy:
+    uat:
       - step:
-          name: "Deploy Release to UAT"
+          name: "UAT Sandbox Merge Deploy"
           deployment: UAT
           script:
-            - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The uat-deploy pipeline should only be run from a release/ branch; exit 1; fi
-            - source utilities/set-env-variables.sh UAT
-            - utilities/sf-authenticate.sh "$SF_UAT_USERNAME "$SF_UAT_CONSUMER_KEY "$SF_UAT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
-            - utilities/sf-deploy.sh "deploy" "$SF_UAT_USERNAME" "true" "force-app" "$BITBUCKET_BRANCH" "UAT"
+            - source utilities/set-env-variables.sh "UAT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfDeploy
 
-    production-deploy:
+    main:
       - step:
-          name: "Deploy Release to Production"
+          name: "Production Merge Deploy"
           deployment: Production
           script:
-            - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The production-deploy pipeline should only be run from a release/ branch; exit 1; fi
-            - source utilities/set-env-variables.sh Production
-            - utilities/sf-authenticate.sh "$SF_PROD_USERNAME "$SF_PROD_CONSUMER_KEY "$SF_PROD_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
-            - utilities/sf-deploy.sh "deploy" "$SF_PROD_USERNAME" "true" "force-app" "$BITBUCKET_BRANCH" "Production"
+            - source utilities/set-env-variables.sh "Production"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfDeploy
