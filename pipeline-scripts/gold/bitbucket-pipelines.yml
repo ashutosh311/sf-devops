@@ -15,6 +15,11 @@ definitions:
     
     # Utility commands
     branchJiraReferenceCheck: &branchJiraReferenceCheck if [[ $BITBUCKET_BRANCH != *'<jira-project-shortcode>'* ]]; then echo "Branch name does not contain a Jira ticket reference"; exit 1; fi
+    sfAuthenticate: &sfAuthenticate utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
+    getEnvConfigCustomSetting: &getEnvConfigCustomSetting source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
+    generateDelta: &generateDelta utilities/generate-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
+    sfCodeAnalyze: &sfCodeAnalyze utilities/sf-code-analyze.sh "delta-directory"
+    sfValidate: &sfValidate utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory" "" ""
 
 pipelines:
 
@@ -27,11 +32,11 @@ pipelines:
             - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "develop" ]; then echo feature/ branches can only be merged into the develop branch; exit 1; fi
             - *branchJiraReferenceCheck
             - source utilities/set-env-variables.sh "QA"
-            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
-            - utilities/sf-code-analyze.sh "delta-directory"
-            - utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory" "" ""
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
+            - *sfCodeAnalyze
+            - *sfValidate
     
     hotfix/*:
       - step:
@@ -40,11 +45,11 @@ pipelines:
             - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "release" ]; then echo hotfix/ branches can only be merged into the release branch; exit 1; fi
             - *branchJiraReferenceCheck
             - source utilities/set-env-variables.sh "UAT"
-            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
-            - utilities/sf-code-analyze.sh "delta-directory"
-            - utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory" "" ""
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
+            - *sfCodeAnalyze
+            - *sfValidate
   
   branches:
 
@@ -53,9 +58,9 @@ pipelines:
           name: QA Sandbox Merge Deploy
           script:
             - source utilities/set-env-variables.sh QA
-            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
             - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" ""
 
   custom:
@@ -66,10 +71,10 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The sit-validate pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh SIT
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
-            - utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory" "" ""
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
+            - *sfValidate
 
     uat-validate:
       - step:
@@ -77,10 +82,10 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The uat-validate pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh UAT
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
-            - utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory" "" ""
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
+            - *sfValidate
 
     production-validate:
       - step:
@@ -88,10 +93,10 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The production-validate pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh Production
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
-            - utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory" "" ""
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
+            - *sfValidate
     
     sit-deploy:
       - step:
@@ -100,9 +105,9 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The sit-deploy pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh SIT
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
             - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" "SIT"
 
     uat-deploy:
@@ -112,9 +117,9 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The uat-deploy pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh UAT
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
             - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" "UAT"
 
     production-deploy:
@@ -124,9 +129,9 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The production-deploy pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh Production
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
-            - source utilities/get-env-config-custom-setting.sh "$SF_USERNAME"
-            - utilities/compile-delta.sh "delta-directory" "$ENV_COMMIT_ID" "$BITBUCKET_BRANCH"
+            - *sfAuthenticate
+            - *getEnvConfigCustomSetting
+            - *generateDelta
             - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" "Production"
 
     import-config-data:
@@ -145,7 +150,7 @@ pipelines:
           name: "Import Configuration Data"
           script:
             - source utilities/set-env-variables.sh $Environment
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfAuthenticate
             - utilities/import-config-data.sh $Environment $Directory
 
     import-document-templates:
@@ -163,5 +168,5 @@ pipelines:
           name: "Import Document Templates"
           script:
             - source utilities/set-env-variables.sh $Environment
-            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfAuthenticate
             - utilities/document-template-import.sh $Environment
