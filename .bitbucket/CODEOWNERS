@@ -1,0 +1,14 @@
+# The CODEOWNERS file shares the same pattern matching syntax for file/directory names with .gitignore
+
+# DevOps scripts require approval from 2 repo admins
+# slalom-consulting represents the workspace name in Bitbucket
+# Administrators represents a configured user group
+bitbucket-pipelines.yml         @slalom-consulting/Administrators:random(2)
+/utilities/*                    @slalom-consulting/Administrators:random(2)
+
+# Anonymous Apex Scripts require approval from all users in the Architect group
+/apex/*                         @slalom-consulting/Architects:all
+
+# EXAMPLE: Dummy class must be approved by specific user
+**/classes/HelloWorld.cls       hello.world@slalom.com
+**/classes/HelloWorldTest.cls   hello.world@slalom.com
