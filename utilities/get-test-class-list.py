@@ -28,6 +28,7 @@ for filename in listFiles(classes_dir):
             pass
         else:
             test_file_names.append(Path(filename).stem + 'Test')
+            test_file_names.append(Path(filename).stem + '_Test')
 
 # convert list to unique
 list_set = set(test_file_names)
