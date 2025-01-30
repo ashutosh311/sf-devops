@@ -40,11 +40,11 @@ function deploy {
     if [ "$deployType" == "validate" ]; then
         # Validation only, run local tests in Org
         echo "Validating Salesforce Metadata..."; echo ""
-        sfdx force:source:deploy --checkonly --ignorewarnings --verbose --sourcepath $deployDir/main/default/ $testParameter --target-org $username --wait 110
+        sf project deploy start --dry-run -c -g -d $deployDir/main/default $testParameter -o $username -w 110
     elif [ "$deployType" == "deploy" ]; then
         # Deploy Salesforce metadata
         echo "Deploying Salesforce Metadata..."; echo ""
-        sfdx force:source:deploy --ignorewarnings --verbose --sourcepath $deployDir/main/default/ $testParameter --target-org $username --wait 110
+        sf project deploy start -c -g -d $deployDir/main/default $testParameter -o $username -w 110 --pre-destructive-changes manifests/destructiveChangesPre.xml --post-destructive-changes manifests/destructiveChangesPost.xml
     else
         echo "DeploymentType parameter value not recognised..."; echo ""
     fi

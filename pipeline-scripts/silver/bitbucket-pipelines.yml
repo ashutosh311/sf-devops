@@ -15,8 +15,8 @@ definitions:
     
     # Utility commands
     branchJiraReferenceCheck: &branchJiraReferenceCheck if [[ $BITBUCKET_BRANCH != *'<jira-project-shortcode>'* ]]; then echo "Branch name does not contain a Jira ticket reference"; exit 1; fi
-    sfValidate: &sfValidate sfdx force:source:deploy --checkonly --ignorewarnings --verbose --sourcepath force-app/main/default --testlevel RunLocalTests --target-org $SF_USERNAME --wait 110
-    sfDeploy: &sfDeploy sfdx force:source:deploy --ignorewarnings --verbose --sourcepath force-app/main/default --testlevel RunLocalTests --target-org $SF_USERNAME --wait 110
+    sfValidate: &sfValidate sf project deploy start --dry-run -c -g -d force-app/main/default -l RunLocalTests -o $SF_USERNAME -w 110
+    sfDeploy: &sfDeploy sf project deploy start -c -g -d force-app/main/default -l RunLocalTests -o $SF_USERNAME -w 110 --pre-destructive-changes manifests/destructiveChangesPre.xml --post-destructive-changes manifests/destructiveChangesPost.xml
 
 pipelines:
 
