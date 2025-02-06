@@ -1,0 +1,107 @@
+# Author: Stuart Grieve (Slalom)
+
+# Docker image to be used
+image: 
+  name: salesforce/cli:latest-full
+  run-as-user: 0
+
+# Maximum minutes a step can execute before timing out
+options:
+  max-time: 120
+
+definitions:
+
+  scripts:
+    
+    # Utility commands
+    branchJiraReferenceCheck: &branchJiraReferenceCheck if [[ $BITBUCKET_BRANCH != *'<jira-project-shortcode>'* ]]; then echo "Branch name does not contain a Jira ticket reference"; exit 1; fi
+    sfValidate: &sfValidate sf project deploy start --dry-run -c -g -d force-app/main/default -l RunLocalTests -o $SF_USERNAME -w 110
+    sfDeploy: &sfDeploy sf project deploy start -c -g -d force-app/main/default -l RunLocalTests -o $SF_USERNAME -w 110 --pre-destructive-changes manifests/destructiveChangesPre.xml --post-destructive-changes manifests/destructiveChangesPost.xml
+
+pipelines:
+
+  pull-requests:
+
+    feature/*:
+      - step:
+          name: Feature Validation
+          script:
+            - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "qa" ]; then echo feature/ branches can only be merged into the qa branch; exit 1; fi
+            - *branchJiraReferenceCheck
+            - source utilities/set-env-variables.sh "QA"
+            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY $SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
+            - *sfValidate
+    
+    hotfix/*:
+      - step:
+          name: Hotfix Validation
+          script:
+            - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "uat" ]; then echo hotfix/ branches can only be merged into the uat branch; exit 1; fi
+            - *branchJiraReferenceCheck
+            - source utilities/set-env-variables.sh "UAT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
+            - *sfValidate
+
+    qa:
+      - step:
+          name: "Validate to SIT"
+          script:
+            - if [[ $BITBUCKET_PR_DESTINATION_BRANCH != "sit" ]]; then echo The qa branch can only be merged into the sit branch; exit 1; fi
+            - source utilities/set-env-variables.sh "SIT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfValidate
+
+    sit:
+      - step:
+          name: "Validate to UAT"
+          script:
+            - if [[ $BITBUCKET_PR_DESTINATION_BRANCH != "uat" ]]; then echo The sit branch can only be merged into the uat branch; exit 1; fi
+            - source utilities/set-env-variables.sh "UAT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfValidate
+
+    uat:
+      - step:
+          name: "Validate to Production"
+          script:
+            - if [[ $BITBUCKET_PR_DESTINATION_BRANCH != "main" ]]; then echo The uat branch can only be merged into the main branch; exit 1; fi
+            - source utilities/set-env-variables.sh "Production"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfValidate
+  
+  branches:
+
+    qa:
+      - step:
+          name: QA Sandbox Merge Deploy
+          script:
+            - source utilities/set-env-variables.sh "QA"
+            - utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
+            - *sfDeploy
+
+    sit:
+      - step:
+          name: "SIT Sandbox Merge Deploy"
+          deployment: SIT
+          script:
+            - source utilities/set-env-variables.sh "SIT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfDeploy
+
+    uat:
+      - step:
+          name: "UAT Sandbox Merge Deploy"
+          deployment: UAT
+          script:
+            - source utilities/set-env-variables.sh "UAT"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfDeploy
+
+    main:
+      - step:
+          name: "Production Merge Deploy"
+          deployment: Production
+          script:
+            - source utilities/set-env-variables.sh "Production"
+            - utilities/sf-authenticate.sh "$SF_USERNAME "$SF_CONSUMER_KEY "$SF_URL "$SF_DECRYPT_KEY "$SF_DECRYPT_IV $SF_SERVER_KEY
+            - *sfDeploy
