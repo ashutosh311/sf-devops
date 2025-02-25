@@ -40,6 +40,15 @@ function importConfigData {
         # Loop through files in data directory
         for file in ${fileList[@]}
         do
+            echo Processing $file...
+
+            # Check that the first column (which has to be the External Id field) is populated in the CSV file. If any records don't, exit with failure as this could cause duplicates
+            while IFS=',' read -r -a row; do
+                if [ -z "${row[0]}" ]; then
+                    echo "Error: Empty first column in row: ${row[*]}"
+                    exit 1
+                fi
+            done < "$file"
             
             # Get SObject Name from file name
             sobject=${file#*-}              # Strip index
@@ -53,7 +62,6 @@ function importConfigData {
             done   
 
             # Upsert records
-            echo Processing $file...
             sf data upsert bulk --sobject $sobject --file $file --external-id $externalId --target-org $username --wait 15 --json > bulk-output.json
             
             # Get status code from output (since non-zeros don't throw overall failure)
