@@ -100,7 +100,7 @@ if [[ "$1" == "-h" || "$1" == "--help" || "$#" -ne 2 ]]; then
     echo ""; echo "====================================================";
     echo "Import Configuration Data"
     echo "===================================================="; echo ""
-    echo "Usage: import-config-data.sh <envName>"; echo ""
+    echo "Usage: import-config-data.sh <username> <dataDirectory>"; echo ""
     echo "Where:"
     echo "    <username> is the username or alias of the active SF CLI authentication"
     echo "    <dataDirectory> is the path to the list of CSV files to import"; echo ""
