@@ -152,7 +152,7 @@ pipelines:
           script:
             - source utilities/set-env-variables.sh $Environment
             - *sfAuthenticate
-            - utilities/import-config-data.sh $Environment $Directory
+            - utilities/import-config-data.sh "$SF_USERNAME" "$Directory"
 
     import-single-config-data:
       - variables:
