@@ -42,6 +42,16 @@ function importConfigData {
         do
             echo Processing $file...
 
+            # Read the first line of the CSV file
+            first_line=$(head -n 1 "$file")
+
+            # Check if the first line starts with a '#' (comment)
+            if [[ "$first_line" == \#* ]]; then
+                # Remove the first line
+                tail -n +2 "$file" > temp_file
+                mv temp_file "$file"
+            fi
+
             # Check that the first column (which has to be the External Id field) is populated in the CSV file. If any records don't, exit with failure as this could cause duplicates
             while IFS=',' read -r -a row; do
                 if [ -z "${row[0]}" ]; then
@@ -63,6 +73,14 @@ function importConfigData {
 
             # Upsert records
             sf data upsert bulk --sobject $sobject --file $file --external-id $externalId --target-org $username --wait 15 --json > bulk-output.json
+
+            # If the first line of file started with a comment, add it back into the file
+            if [[ "$first_line" == \#* ]]; then
+                { echo "$first_line"; cat "$file"; } > temp_file
+                mv temp_file "$file"
+            fi
+
+            break
             
             # Get status code from output (since non-zeros don't throw overall failure)
             status=$(jq '.status' bulk-output.json)
