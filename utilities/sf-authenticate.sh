@@ -23,6 +23,9 @@ function authenticateWithOrg {
     # Login to target environment
     sf login org jwt --client-id $consumerKey --username $username -f certificates/server.key --instance-url $url
 
+    # Deleting decrypted certificate now authenticated
+    rm certificates/server.key
+    
     echo ""
 
 }
