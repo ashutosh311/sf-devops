@@ -52,9 +52,9 @@ function importConfigData {
                 mv temp_file "$file"
             fi
 
-            # Check if the second row is empty.
-            second_row=$(sed -n '2p' "$csv_file")
-            if [ -z "$second_row" ]; then
+            # Check if the second row is empty
+            secondRow=$(sed -n '2p' "$csv_file")
+            if [ -z "$secondRow" ]; then
                 echo "No data found in file. Skipping $file..."
             else
                 # Get SObject Name from file name
@@ -69,7 +69,6 @@ function importConfigData {
                 done   
 
                 # Upsert records
-                exit 0
                 sf data upsert bulk --sobject $sobject --file $file --external-id $externalId --target-org $username --wait 15 --json > bulk-output.json
             
                 # Get status code from output (since non-zeros don't throw overall failure)
