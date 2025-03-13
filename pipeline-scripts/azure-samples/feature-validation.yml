@@ -1,0 +1,37 @@
+pool:
+  vmImage: 'ubuntu-latest'
+
+container: salesforce/cli:latest-full
+
+trigger: none
+
+variables:
+- group: Salesforce
+
+steps:
+
+- checkout: self
+  clean: true
+  persistCredentials: true
+
+- script: if [[ $(System.PullRequest.sourceBranch) != *feature/* ]] || [[ $(System.PullRequest.targetBranchName) != develop ]]; then echo feature/ branches can only be merged into the develop branch; exit 1; fi
+  displayName: 'Check PR is against develop'
+
+- task: DownloadSecureFile@1
+  name: salesforceCertificate
+  displayName: 'Download Server.key'
+  inputs:
+    secureFile: 'server.key'
+  
+- script: sf login org jwt --client-id $(CONSUMER_KEY) --username $(USERNAME) -f $(salesforceCertificate.secureFilePath) --instance-url $(URL)
+  displayName: 'SF Authenticate'
+
+- bash: utilities/get-env-config-custom-setting.sh $(USERNAME)
+  displayName: 'Get Environment Custom Setting'
+
+- bash: utilities/generate-delta.sh "delta-directory" "$(ENV_COMMIT_ID)" "$(System.pullRequest.sourceCommitId)"
+  displayName: 'Generate Delta Metadata'
+
+- bash: utilities/sf-deploy.sh "validate" "$(USERNAME)" "true" "delta-directory/force-app" "" ""
+  displayName: 'Validate Metadata'
+
