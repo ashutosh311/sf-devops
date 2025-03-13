@@ -21,15 +21,15 @@ function deploy {
 
     # Set test run sf cli parameter based on runTest selection
     if [[ $environmentName =~ "PRODUCTION" || "$runTests" == "true" ]]; then
-        testParameter='--testlevel RunLocalTests'
+        testParameter='--test-level RunLocalTests'
     elif [ "$runTests" == "false" ]; then
-        testParameter='--testlevel NoTestRun'
+        testParameter='--test-level NoTestRun'
     elif [ "$runTests" == "delta" ]; then
         # Get test class names from project
         testFileNames=$(python3 utilities/get-test-class-list.py $deployDir/main/default/classes | tr ',' ' ')
         echo "Test files to run: " $testFileNames; echo ""
         mkdir -p test-results
-        testParameter='--testlevel RunSpecifiedTests --runtests '$testFileNames' "Test With Space" --junit --resultsdir ./test-results'
+        testParameter='--test-level RunSpecifiedTests --runtests '$testFileNames' "Test With Space" --junit --resultsdir ./test-results'
     elif [ "$runTests" == "" ]; then
         echo "No runTests parameter provided. Skipping..."; echo ""
     else
