@@ -20,7 +20,7 @@ definitions:
     importSingleConfigFile: &importSingleConfigFile sf data upsert bulk --sobject "$SObject" --file "$File" --external-id "$ExternalId" --target-org "$SF_USERNAME" --wait 15
     sfAuthenticate: &sfAuthenticate utilities/sf-authenticate.sh "$SF_USERNAME" "$SF_CONSUMER_KEY" "$SF_URL" "$SF_DECRYPT_KEY" "$SF_DECRYPT_IV" "$SF_SERVER_KEY"
     sfCodeAnalyze: &sfCodeAnalyze utilities/sf-code-analyze.sh "delta-directory"
-    sfValidate: &sfValidate utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory" "" ""
+    sfValidate: &sfValidate utilities/sf-deploy.sh "validate" "$SF_USERNAME" "true" "delta-directory/force-app" "" ""
 
 pipelines:
 
@@ -62,7 +62,7 @@ pipelines:
             - *sfAuthenticate
             - *getEnvConfigCustomSetting
             - *generateDelta
-            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" ""
+            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory/force-app" "$BITBUCKET_BRANCH" ""
 
   custom:
 
@@ -109,7 +109,7 @@ pipelines:
             - *sfAuthenticate
             - *getEnvConfigCustomSetting
             - *generateDelta
-            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" "SIT"
+            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory/force-app" "$BITBUCKET_BRANCH" "SIT"
 
     uat-deploy:
       - step:
@@ -121,7 +121,7 @@ pipelines:
             - *sfAuthenticate
             - *getEnvConfigCustomSetting
             - *generateDelta
-            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" "UAT"
+            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory/force-app" "$BITBUCKET_BRANCH" "UAT"
 
     production-deploy:
       - step:
@@ -133,7 +133,7 @@ pipelines:
             - *sfAuthenticate
             - *getEnvConfigCustomSetting
             - *generateDelta
-            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory" "$BITBUCKET_BRANCH" "Production"
+            - utilities/sf-deploy.sh "deploy" "$SF_USERNAME" "true" "delta-directory/force-app" "$BITBUCKET_BRANCH" "Production"
 
     import-all-config-data:
       - variables:
