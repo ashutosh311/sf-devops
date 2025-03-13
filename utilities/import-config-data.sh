@@ -53,7 +53,7 @@ function importConfigData {
             fi
 
             # Check if the second row is empty
-            secondRow=$(sed -n '2p' "$csv_file")
+            secondRow=$(sed -n '2p' "$file")
             if [ -z "$secondRow" ]; then
                 echo "No data found in file. Skipping $file..."
             else
@@ -74,20 +74,31 @@ function importConfigData {
                 # Get status code from output (since non-zeros don't throw overall failure)
                 status=$(jq '.status' bulk-output.json)
                 if [ "$status" != "0" ]; then
-                    # If object threw failure, add object name to list for logs and set overall success as false
-                    failedFileList+=($file)
-                    success=false
 
                     # Iterate through failed results to get errors messages
                     count=$(jq -r '.result.records.failedResults | length' bulk-output.json)
                     index=0
+                    fileFailed=false
                     while [ $index -lt $count ]
                     do
                         record=$(jq '.result.records.failedResults['$index'].'$externalId bulk-output.json)
                         error=$(jq '.result.records.failedResults['$index'].sf__Error' bulk-output.json)
-                        errorList+=("File: $file | Records External Id: $record | Failure: $error")
                         let "index=$index+1"
+                        
+                        # Check to make sure error wasn't caused by PricebookEntry quirk (updates with CurrencyIsoCode field cause failure even if no change is made)
+                        if [[ "$sobject" == "PricebookEntry" ]] && [[ "$error" == *"Unable to create/update fields: CurrencyIsoCode."* ]]; then
+                            echo "Acceptable failure on $file due to invalid update on CurrencyIsoCode on row $record. Continuing..."
+                        else
+                            errorList+=("File: $file | Records External Id: $record | Failure: $error")
+                            fileFailed=true
+                        fi
                     done
+
+                    # If object threw failure, add object name to list for logs and set overall success as false
+                    if [[ "$fileFailed" == true ]]; then
+                        failedFileList+=($file)
+                        success=false
+                    fi
                 fi
             fi
 
