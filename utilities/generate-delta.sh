@@ -26,7 +26,7 @@ function generateDelta {
     else
         # Generate delta based on current git ref and the commit Id retrieved from org
         sf sgd:source:delta --from $envConfigCommitId --to $currentBranch --output-dir $outputDir --generate-delta
-    
+    fi
     
 }
 
