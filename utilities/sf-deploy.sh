@@ -20,7 +20,7 @@ function deploy {
     export SF_DISABLE_SOURCE_MEMBER_POLLING=true
 
     # Set test run sf cli parameter based on runTest selection
-    if [[ $Environment =~ "PRODUCTION" || "$runTests" == "true" ]]; then
+    if [[ $environmentName =~ "PRODUCTION" || "$runTests" == "true" ]]; then
         testParameter='--testlevel RunLocalTests'
     elif [ "$runTests" == "false" ]; then
         testParameter='--testlevel NoTestRun'
