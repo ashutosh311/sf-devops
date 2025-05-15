@@ -18,6 +18,7 @@ else
 fi
 
 # Run the Salesforce CLI retrieve commands
-sf project retrieve start --target-metadata-dir manifest --unzip --package-name "$packageName" # Retrieve package and unzip into temporary folder
-sf project retrieve start --manifest manifest/unpackaged/"$packageName"/package.xml --ignore-conflicts # Returned files are in metadata api format. Use the package.xml to retrieve source formatted files.
-rm -r manifest/unpackaged/"$packageName"
+echo "Retrieving package: $changeSetName"
+sf project retrieve start --target-metadata-dir manifest --unzip --package-name "$changeSetName" # Retrieve package and unzip into temporary folder
+sf project retrieve start --manifest manifest/unpackaged/"$changeSetName"/package.xml --ignore-conflicts # Returned files are in metadata api format. Use the package.xml to retrieve source formatted files.
+rm -r manifest/unpackaged/"$changeSetName"
