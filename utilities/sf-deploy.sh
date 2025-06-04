@@ -29,7 +29,7 @@ function deploy {
         testFileNames=$(python3 utilities/get-test-class-list.py $deployDir/main/default/classes | tr ',' ' ')
         echo "Test files to run: " $testFileNames; echo ""
         mkdir -p test-results
-        testParameter='--test-level RunSpecifiedTests --runtests '$testFileNames' "Test With Space" --junit --resultsdir ./test-results'
+        testParameter='--test-level RunSpecifiedTests --tests '$testFileNames' "Test With Space" --junit --results-dir ./test-results'
     elif [ "$runTests" == "" ]; then
         echo "No runTests parameter provided. Skipping..."; echo ""
     else
