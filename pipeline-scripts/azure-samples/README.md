@@ -8,7 +8,7 @@
 
 ## Key Differences & Considerations
 
-1.  ### Pipeline Architecture
+### 1. Pipeline Architecture
 
     * **Bitbucket Pipelines:** Bitbucket Pipelines are built with a single .yml file at the root of a project. It provides three types of triggers you can build pipelines against: `branches:` (to execute a build when a commit is pushed to the specified branch), `pull-requests:` (to execute when a Pull Request is raised or changed, starting on that source branch) and `custom:` (builds that aren't triggered manually based on a change in the repo, and requires a push-to-start approach).
     
@@ -20,7 +20,7 @@
       
       Rather than a single `azure-pipelines.yml` at the root of a project, consider a `pipelines/` directory, containing various .yml files, each defined with a meaningful name.
 
-2.  ### Pull Request Validation
+### 2. Pull Request Validation
 
     * **Bitbucket Pipelines:** As discussed above, Bitbucket supports a pipeline trigger called `pull-requests`, which allows for wildcards. For example, if your Branching Model dictates that `feature/` branches merge into `develop`, you can define a job like so:
 
@@ -36,7 +36,7 @@
 
       The concept of running a build on a Pull Request as a way to assert something (such as the Salesforce-specific example of validating a feature against a QA Sandbox), is achieved within Branch Policies (see https://learn.microsoft.com/en-us/azure/devops/repos/git/branch-policies?view=azure-devops&tabs=browser); more specifically through Build Validations in those Policies (https://learn.microsoft.com/en-us/azure/devops/repos/git/branch-policies?view=azure-devops&tabs=browser#build-validation). The linked documentation outlines the process, but in summary, your Pull Request-specific .yml files should state `trigger: none`. You should then "register" that Pipeline in the UI and set Build Validations against the branch where you want to implement a check before merges occur (e.g., develop)."
 
-3.  ### Authentication/Credentials Management
+### 3. Authentication/Credentials Management
 
     * **Bitbucket Pipelines:** Has no facility to store files securely in a File Store. Instead you must encrypt JWT certificates to be committed to the repository, store decryption keys as secure text Pipeline Variables, and decrypt the certificate at runtime as part of pipeline scripts.
 
@@ -57,7 +57,7 @@
           displayName: 'SF Authenticate'
         ```
 
-4.  ### Variables and Parameterization
+### 4. Variables and Parameterization
 
     * **Bitbucket Pipelines:** Uses a standard notation for accessing and setting variables `echo $BITBUCKET_BRANCH`, `export SF_USERNAME=bitbucket@abc.com.uat`, etc.
 
@@ -92,7 +92,7 @@
 
         Ultimately, when porting scripts to an ADO project, you will need to pay particular attention to where pipelines and utility scripts are referencing and setting variables. The sample scripts in this directory demonstrate this activity; however, you should not rely solely on them as they are not actively maintained when new features are added to this accelerator.
 
-5.  ### Step/Task Conditions
+### 5. Step/Task Conditions
 
     * **Bitbucket Pipelines:** Our sample Bitbucket scripts have a single Step for each pipeline, due to nuances regarding how variables set during a run remain available between Steps. As such, setting conditions to determine the behavior of a pipeline based on inputs is simple.
 
@@ -109,11 +109,16 @@
           utilities/export-config-data.sh $(SF_USERNAME) ${{ parameters.dataPath }}
       displayName: Export Config Data
     ```
----
+
+### 5. User Licenses
+
+    * **Bitbucket Pipelines:** Bitbucket has several Product subscription tiers (Free, Basic, Premium), however, there are not differing License levels when provisioning users. Permissions are dictated through User Groups when providing access to a repository within a Workspace.
+
+    * **Azure DevOps:** ADO has access levels associated to users (see https://learn.microsoft.com/en-us/azure/devops/organizations/security/access-levels?view=azure-devops). When creating users, you must review the access type assigned (Basic, Basic + Test Plans, Stakeholder, Visual Studio Subscriber). The documentation linked refers to what features each can use, however, be warned, some do not provide access to repositories (regardless of configuring Repository Settings which imply they do).
 
 ---
 
-## Contributing
+## Contributions
 
 As explained above, the Azure sample scripts cannot be relied upon for completeness (i.e., they cannot simply be lifted-and-shifted and expected to align with the current published Silver/Gold/Platinum Tier design). They are provided for reference to illustrate how some of the translations discussed in the 'Key Differences & Considerations' section will be implemented.
 
