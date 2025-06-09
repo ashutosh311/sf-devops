@@ -110,7 +110,7 @@
       displayName: Export Config Data
     ```
 
-### 5. User Licenses
+### 6. User Licenses
 
 * **Bitbucket Pipelines:** Bitbucket has several Product subscription tiers (Free, Basic, Premium), however, there are not differing License levels when provisioning users. Permissions are dictated through User Groups when providing access to a repository within a Workspace.
 
