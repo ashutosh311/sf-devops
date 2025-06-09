@@ -28,6 +28,7 @@ function deploy {
         # Get test class names from project
         testFileNames=$(python3 utilities/get-test-class-list.py $deployDir/main/default/classes | tr ',' ' ')
         if [ "$testFileNames" == "" ]; then
+            echo "Get delta test classes found no relevant tests. Using NoTestRun..."; echo ""
             testParameter='--test-level NoTestRun'
         else
             echo "Test files to run: " $testFileNames; echo ""
