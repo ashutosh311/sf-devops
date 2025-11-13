@@ -35,3 +35,8 @@ steps:
 - bash: utilities/sf-deploy.sh "validate" "$(USERNAME)" "true" "delta-directory/force-app" "" ""
   displayName: 'Validate Metadata'
 
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/test-results/**/*.xml'
+    failTaskOnFailedTests: true

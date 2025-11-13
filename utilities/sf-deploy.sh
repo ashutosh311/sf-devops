@@ -20,16 +20,21 @@ function deploy {
     export SF_DISABLE_SOURCE_MEMBER_POLLING=true
 
     # Set test run sf cli parameter based on runTest selection
-    if [[ $environmentName =~ "PRODUCTION" || "$runTests" == "true" ]]; then
+    if [[ "$environmentName" =~ "PRODUCTION" || "$runTests" == "true" ]]; then
         testParameter='--test-level RunLocalTests'
     elif [ "$runTests" == "false" ]; then
         testParameter='--test-level NoTestRun'
     elif [ "$runTests" == "delta" ]; then
         # Get test class names from project
         testFileNames=$(python3 utilities/get-test-class-list.py $deployDir/main/default/classes | tr ',' ' ')
-        echo "Test files to run: " $testFileNames; echo ""
-        mkdir -p test-results
-        testParameter='--test-level RunSpecifiedTests --tests '$testFileNames' "Test With Space" --junit --results-dir ./test-results'
+        if [ "$testFileNames" == "" ]; then
+            echo "Get delta test classes found no relevant tests. Using NoTestRun..."; echo ""
+            testParameter='--test-level NoTestRun'
+        else
+            echo "Test files to run: " $testFileNames; echo ""
+            mkdir -p test-results
+            testParameter='--test-level RunSpecifiedTests --tests '$testFileNames' "Test With Space" --junit --results-dir ./test-results'
+        fi
     elif [ "$runTests" == "" ]; then
         echo "No runTests parameter provided. Skipping..."; echo ""
     else
