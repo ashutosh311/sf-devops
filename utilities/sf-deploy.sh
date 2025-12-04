@@ -62,8 +62,8 @@ function deploy {
         appVersion=${releaseBranch#*/}
         utilities/set-env-config-custom-setting.sh "$appVersion" "$commitHash"
 
-        # Tag commits with deployments, N/A for QA deployments as no appVersion will be provided
-        if [ "$appVersion" == "" ]; then
+        # Tag commits with deployments, N/A for QA deployments as no environment name will be provided
+        if [ "$environmentName" == "" ]; then
             echo "No application version number provided. Skipping commit tags..."; echo ""
         else
             echo "Tagging commits with deployments..."; echo ""
