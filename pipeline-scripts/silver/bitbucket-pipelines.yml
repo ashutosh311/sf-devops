@@ -27,7 +27,7 @@ pipelines:
             - if [ $BITBUCKET_PR_DESTINATION_BRANCH != "develop" ]; then echo feature/ branches can only be merged into the develop branch; exit 1; fi
             - *branchJiraReferenceCheck
             - source utilities/set-env-variables.sh "QA"
-            - utilities/sf-authenticate.sh "$SF_QA_USERNAME" "$SF_QA_CONSUMER_KEY $SF_QA_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" "certificates/server.key.enc"
+            - utilities/sf-authenticate.sh "$SF_QA_USERNAME" "$SF_QA_CONSUMER_KEY" "$SF_QA_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" "certificates/server.key.enc"
             - utilities/sf-deploy.sh "validate" "$SF_QA_USERNAME" "true" "force-app" "" ""
     
     hotfix/*:
@@ -58,7 +58,7 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The sit-validate pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh SIT
-            - utilities/sf-authenticate.sh "$SF_SIT_USERNAME "$SF_SIT_CONSUMER_KEY "$SF_SIT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
+            - utilities/sf-authenticate.sh "$SF_SIT_USERNAME" "$SF_SIT_CONSUMER_KEY" "$SF_SIT_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" certificates/server.key.enc
             - utilities/sf-deploy.sh "validate" "$SF_SIT_USERNAME" "true" "force-app" "" ""
 
     uat-validate:
@@ -67,7 +67,7 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The uat-validate pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh UAT
-            - utilities/sf-authenticate.sh "$SF_UAT_USERNAME "$SF_UAT_CONSUMER_KEY "$SF_UAT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
+            - utilities/sf-authenticate.sh "$SF_UAT_USERNAME" "$SF_UAT_CONSUMER_KEY" "$SF_UAT_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" certificates/server.key.enc
             - utilities/sf-deploy.sh "validate" "$SF_UAT_USERNAME" "true" "force-app" "" ""
 
     production-validate:
@@ -76,7 +76,7 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The production-validate pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh Production
-            - utilities/sf-authenticate.sh "$SF_PROD_USERNAME "$SF_PROD_CONSUMER_KEY "$SF_PROD_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
+            - utilities/sf-authenticate.sh "$SF_PROD_USERNAME" "$SF_PROD_CONSUMER_KEY" "$SF_PROD_URL" "$SF_DECRYPT_KEY_PRODUCTION" "$SF_DECRYPT_IV_PRODUCTION" certificates/server.key.enc
             - utilities/sf-deploy.sh "validate" "$SF_PROD_USERNAME" "true" "force-app" "" ""
     
     sit-deploy:
@@ -86,7 +86,7 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The sit-deploy pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh SIT
-            - utilities/sf-authenticate.sh "$SF_SIT_USERNAME "$SF_SIT_CONSUMER_KEY "$SF_SIT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
+            - utilities/sf-authenticate.sh "$SF_SIT_USERNAME" "$SF_SIT_CONSUMER_KEY" "$SF_SIT_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" certificates/server.key.enc
             - utilities/sf-deploy.sh "deploy" "$SF_SIT_USERNAME" "true" "force-app" "$BITBUCKET_BRANCH" "SIT"
 
     uat-deploy:
@@ -96,7 +96,7 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The uat-deploy pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh UAT
-            - utilities/sf-authenticate.sh "$SF_UAT_USERNAME "$SF_UAT_CONSUMER_KEY "$SF_UAT_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
+            - utilities/sf-authenticate.sh "$SF_UAT_USERNAME" "$SF_UAT_CONSUMER_KEY" "$SF_UAT_URL" "$SF_DECRYPT_KEY_SANDBOX" "$SF_DECRYPT_IV_SANDBOX" certificates/server.key.enc
             - utilities/sf-deploy.sh "deploy" "$SF_UAT_USERNAME" "true" "force-app" "$BITBUCKET_BRANCH" "UAT"
 
     production-deploy:
@@ -106,5 +106,5 @@ pipelines:
           script:
             - if [[ $BITBUCKET_BRANCH != release/* ]]; then echo The production-deploy pipeline should only be run from a release/ branch; exit 1; fi
             - source utilities/set-env-variables.sh Production
-            - utilities/sf-authenticate.sh "$SF_PROD_USERNAME "$SF_PROD_CONSUMER_KEY "$SF_PROD_URL "$SF_DECRYPT_KEY_SANDBOX "$SF_DECRYPT_IV_SANDBOX certificates/server.key.enc
+            - utilities/sf-authenticate.sh "$SF_PROD_USERNAME" "$SF_PROD_CONSUMER_KEY" "$SF_PROD_URL" "$SF_DECRYPT_KEY_PRODUCTION" "$SF_DECRYPT_IV_PRODUCTION" certificates/server.key.enc
             - utilities/sf-deploy.sh "deploy" "$SF_PROD_USERNAME" "true" "force-app" "$BITBUCKET_BRANCH" "Production"
