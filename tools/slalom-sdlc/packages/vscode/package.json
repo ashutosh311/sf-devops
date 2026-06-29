@@ -1,0 +1,79 @@
+{
+  "name": "slalom-sdlc",
+  "displayName": "Slalom SDLC",
+  "description": "AI-assisted SDLC agents for Salesforce projects",
+  "version": "0.2.9",
+  "publisher": "slalom",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://bitbucket.org/slalom/sf-uki-devops"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["AI", "Other"],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "slalom-sdlc",
+        "name": "slalom-sdlc",
+        "fullName": "Slalom SDLC",
+        "description": "AI-assisted SDLC agents for Salesforce — type / to see available agents",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "about",
+            "description": "What is this tool, how to use it, and all available commands"
+          },
+          {
+            "name": "init",
+            "description": "Set up and scaffold the SDLC for this project"
+          },
+          {
+            "name": "discover",
+            "description": "Start a discovery session"
+          },
+          {
+            "name": "refine",
+            "description": "Refine a JIRA story or sprint"
+          },
+          {
+            "name": "design",
+            "description": "Technical design for a JIRA story"
+          },
+          {
+            "name": "build",
+            "description": "Build a JIRA story  —  usage: /build PROJ-42"
+          },
+          {
+            "name": "test",
+            "description": "Test a JIRA story  —  usage: /test PROJ-42"
+          },
+          {
+            "name": "release",
+            "description": "Run the release agent for a set of stories"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "dev": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "package": "pnpm build && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@sdlc/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^2.26.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,8 @@
+/.illuminatedCloud/
+**/*.ts
+**/tsconfig*.json
+**/*.tsbuildinfo
+**/eslint.config.mjs
+**/graphql.config.yml
+**/jsconfig.json
+**/.eslintrc.json

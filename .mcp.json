@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "Salesforce_DX": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@salesforce/mcp",
+        "--orgs",
+        "DEFAULT_TARGET_ORG",
+        "--toolsets",
+        "orgs,metadata,data,users",
+        "--tools",
+        "run_apex_test",
+        "--allow-non-ga-tools"
+      ],
+      "disabledTools": []
+    },
+    "atlassian": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://mcp.atlassian.com/v1/mcp", "--transport", "http-first"]
+    },
+    "slalom-sdlc": {
+      "command": "node",
+      "args": ["tools/slalom-sdlc/packages/mcp/dist/server.js"]
+    }
+  }
+}
