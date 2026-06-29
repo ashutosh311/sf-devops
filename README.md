@@ -21,8 +21,9 @@ Our [development standards](https://bitbucket.org/slalom-consulting/sf-uki-devop
 ## Can I get an overview? ##
 
 Sure, but who needs a README when you have a snazzy Miro board...
+https://github.com/Slalom/salesforce-devops/
 
-![wow-gif](https://bitbucket.org/slalom-consulting/sf-uki-devops/raw/main/assets/oh-my-god-wow-GIF-downsized.gif)
+![wow-gif](https://github.com/Slalom/salesforce-devops/raw/main/assets/oh-my-god-wow-GIF-downsized.gif)
 
 Take a look here: https://miro.com/app/board/uXjVLWWeevc=/?share_link_id=54529095159
 
