@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+packages/*/dist/
+
+# Compiled CLI binaries
+packages/cli/binaries/
+
+# VS Code extension package
+packages/vscode/*.vsix
