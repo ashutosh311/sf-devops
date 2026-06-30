@@ -1,0 +1,29 @@
+{
+  "name": "@sdlc/cli",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "slalom-sdlc": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "package": "pnpm build && pkg dist/index.js --targets node20-macos-arm64,node20-macos-x64,node20-win-x64,node20-linux-x64 --output binaries/slalom-sdlc"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^5.0.0",
+    "@sdlc/core": "workspace:*",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@yao-pkg/pkg": "^5.11.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  },
+  "pkg": {
+    "assets": [],
+    "outputPath": "binaries"
+  }
+}

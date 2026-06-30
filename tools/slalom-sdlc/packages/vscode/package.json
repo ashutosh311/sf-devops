@@ -2,7 +2,7 @@
   "name": "slalom-sdlc",
   "displayName": "Slalom SDLC",
   "description": "AI-assisted SDLC agents for Salesforce projects",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "publisher": "slalom",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
