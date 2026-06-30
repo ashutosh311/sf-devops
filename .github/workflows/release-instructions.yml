@@ -1,0 +1,106 @@
+name: Release SDLC Instructions
+
+# Builds the Slalom SDLC instruction bundle and publishes it as a GitHub Release
+# asset (instructions.zip). The VS Code extension polls the repo's latest release
+# for an asset named "instructions.zip" and refreshes its instructions from it.
+#
+# Trigger options:
+#   1. Push a tag matching `instructions-v*`  (e.g. instructions-v1.2.3)
+#   2. Run manually from the Actions tab, supplying a version
+
+on:
+  push:
+    tags:
+      - "instructions-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Instruction bundle version (semver, e.g. 1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write # required to create releases and upload assets
+
+defaults:
+  run:
+    working-directory: tools/slalom-sdlc
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        working-directory: .
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            # Strip the `instructions-v` tag prefix → bare semver
+            VERSION="${GITHUB_REF_NAME#instructions-v}"
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "Could not resolve a version." >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved instruction bundle version: $VERSION"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: tools/slalom-sdlc/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Package VS Code extension (VSIX)
+        run: pnpm --filter slalom-sdlc package
+
+      - name: Package instruction bundle
+        run: node scripts/package-instructions.mjs --version "${{ steps.version.outputs.version }}"
+
+      - name: Verify assets
+        run: |
+          test -f dist/release/instructions.zip
+          test -f dist/release/manifest.json
+          ls packages/vscode/*.vsix
+          ls -lh dist/release packages/vscode/*.vsix
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # On tag pushes this defaults to the pushed tag; for manual runs we
+          # create/update an `instructions-v<version>` tag and release.
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('instructions-v{0}', steps.version.outputs.version) || github.ref_name }}
+          name: SDLC Instructions ${{ steps.version.outputs.version }}
+          body: |
+            Automated release for the Slalom SDLC VS Code extension.
+
+            - **`*.vsix`** — the VS Code extension. Download and install once via
+              the Extensions panel → `···` → *Install from VSIX…* (first-time setup).
+            - **`instructions.zip`** — the instruction bundle the installed
+              extension downloads automatically on its daily background sync.
+              Every file is checksum-validated against `manifest.json` before
+              activation.
+          prerelease: false
+          make_latest: true
+          files: |
+            tools/slalom-sdlc/dist/release/instructions.zip
+            tools/slalom-sdlc/dist/release/manifest.json
+            tools/slalom-sdlc/packages/vscode/*.vsix

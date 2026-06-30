@@ -1,8 +1,8 @@
 # Slalom SDLC Extension — Design Document
 
-**Version**: 0.1.0  
+**Version**: 0.2.0  
 **Author**: Slalom UK&I  
-**Last updated**: 2026-04-27
+**Last updated**: 2026-06-30
 
 ---
 
@@ -28,6 +28,7 @@
 11. [Greenfield vs Brownfield](#11-greenfield-vs-brownfield)
 12. [Standards vs Instructions](#12-standards-vs-instructions)
 13. [What Lives Where](#13-what-lives-where)
+14. [Instruction Sync](#14-instruction-sync)
 
 ---
 
@@ -670,4 +671,102 @@ The LLM receives the full procedure text directly in its message payload. From t
 
 ---
 
-*Built by Slalom UK&I · sf-uki-devops*
+## 14. Instruction Sync
+
+The extension ships all instruction templates compiled into its bundle as a permanent fallback. A daily background sync can pull updated instruction bundles from GitHub Releases without requiring a new VSIX install.
+
+### 14.1 Template Resolution Order
+
+Every call to `renderPrompt(phase, config, { cacheDir })` applies this precedence:
+
+1. **Remote cache** — `~/.slalom-sdlc/instructions-cache/current/{phase}.md` (downloaded from GitHub Releases)
+2. **Bundled constant** — TypeScript string baked into the extension at build time
+
+The same fallback applies to the two embedded instruction files (`deployment.md`, `org-impact-assessment.md`). Prompt rendering never fails due to a sync error.
+
+### 14.2 Authentication
+
+The VS Code extension reuses the user's existing GitHub login. Background syncs are silent; the manual sync command may prompt once for sign-in / scope:
+
+| Priority | Source | Context |
+|---|---|---|
+| 1 | `vscode.authentication.getSession('github', ['repo'], { silent: true })` — background sync (reuse existing session only, never prompts) | VS Code (Copilot users) |
+| 1 | `vscode.authentication.getSession('github', ['repo'], { createIfNone: true })` — manual **Sync Instructions** (may prompt once) | VS Code (Copilot users) |
+| 2 | `SLALOM_SDLC_GITHUB_TOKEN` env var | Headless / CI |
+| 3 | `GITHUB_TOKEN` env var | Headless / CI |
+| 4 | `GH_TOKEN` env var | Headless / CI |
+
+The GitHub token needs **read access to `Slalom/salesforce-devops` repository contents and releases** (the `repo` scope, or a fine-grained token with "Contents: Read").
+
+MCP and CLI consumers do **not** perform GitHub auth — they read from the shared local cache written by the VS Code extension.
+
+### 14.3 Sync Schedule
+
+- Triggered on extension activation (non-blocking — activation never waits for sync)
+- Throttled to at most once every 24 hours via `~/.slalom-sdlc/instructions-cache/metadata.json`
+- Can be forced at any time via the **Slalom SDLC: Sync Instructions** Command Palette command
+
+### 14.4 Cache Structure
+
+```
+~/.slalom-sdlc/instructions-cache/
+  current/                    ← active validated instruction set
+    discover.md
+    refine.md
+    design.md
+    build.md
+    test.md
+    release.md
+    deployment.md
+    org-impact-assessment.md
+    manifest.json
+  metadata.json               ← { lastCheck, lastSuccessfulSync, activeVersion, lastError }
+```
+
+The `current/` directory is updated atomically (rename from a staging dir) so a failed or partial download never corrupts the active cache.
+
+### 14.5 Manifest and Validation
+
+Every downloaded `instructions.zip` must contain a `manifest.json`:
+
+```json
+{
+  "schemaVersion": "1",
+  "version": "1.2.3",
+  "publishedAt": "2026-06-30T10:00:00Z",
+  "files": {
+    "discover.md": { "checksum": "sha256:<hex>", "size": 5213 }
+  }
+}
+```
+
+Before the cache is swapped live, every file listed in the manifest is validated against its SHA-256 checksum and byte size. A single mismatch aborts the update and leaves the previous cache intact.
+
+### 14.6 Operational Commands
+
+| Command Palette entry | What it does |
+|---|---|
+| **Slalom SDLC: Sync Instructions** | Force an immediate sync regardless of the 24 h window |
+| **Slalom SDLC: Instruction Status** | Shows active version, last sync time, last check, and any last error |
+
+### 14.7 Release Asset Build
+
+Run after `pnpm -r build`:
+
+```bash
+node scripts/package-instructions.mjs --version 1.2.3
+```
+
+Outputs to `dist/release/`:
+
+| File | Contents |
+|---|---|
+| `instructions.zip` | 8 instruction files + `manifest.json` |
+| `manifest.json` | Standalone copy of the manifest |
+| `*.vsix` | Copied from `packages/vscode/` if present |
+
+Upload all files as assets to a GitHub Release on `Slalom/salesforce-devops`. The asset named `instructions.zip` is what the extension downloads.
+
+---
+
+*Built by Slalom UK&I · [salesforce-devops](https://github.com/Slalom/salesforce-devops)*

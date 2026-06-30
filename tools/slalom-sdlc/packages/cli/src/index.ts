@@ -58,7 +58,7 @@ const regenerateCommand = new Command("regenerate")
 
     console.log("\nRegenerating prompts from existing config...");
     const rendered   = renderAllPrompts(existing);
-    const promptsDir = path.join(outputDir, existing.paths.prompts);
+    const promptsDir = path.join(outputDir, ".sdlc", "prompts");
     await fs.mkdir(promptsDir, { recursive: true });
 
     for (const [phase, content] of Object.entries(rendered)) {

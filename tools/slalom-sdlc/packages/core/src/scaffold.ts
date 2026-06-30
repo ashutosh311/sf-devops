@@ -12,7 +12,7 @@ export interface ScaffoldResult {
 export async function scaffoldRepo(
   config: SdlcConfig,
   outputDir: string,
-  bitbucketToken: string
+  bitbucketToken = ""
 ): Promise<ScaffoldResult> {
   const result: ScaffoldResult = { created: [], updated: [], preserved: [] };
 

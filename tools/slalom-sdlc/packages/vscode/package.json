@@ -7,15 +7,30 @@
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://bitbucket.org/slalom/sf-uki-devops"
+    "url": "https://github.com/Slalom/salesforce-devops"
   },
   "engines": {
     "vscode": "^1.90.0"
   },
-  "categories": ["AI", "Other"],
+  "categories": [
+    "AI",
+    "Other"
+  ],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "slalom-sdlc.syncInstructions",
+        "title": "Sync Instructions",
+        "category": "Slalom SDLC"
+      },
+      {
+        "command": "slalom-sdlc.instructionStatus",
+        "title": "Instruction Status",
+        "category": "Slalom SDLC"
+      }
+    ],
     "chatParticipants": [
       {
         "id": "slalom-sdlc",
@@ -67,9 +82,11 @@
     "package": "pnpm build && vsce package --no-dependencies"
   },
   "dependencies": {
-    "@sdlc/core": "workspace:*"
+    "@sdlc/core": "workspace:*",
+    "adm-zip": "^0.5.18"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^2.26.0",
