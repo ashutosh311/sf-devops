@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
-import { renderPrompt } from "@sdlc/core";
+import { renderPrompt, CACHE_CURRENT_DIR } from "@sdlc/core";
 import { requireConfig } from "./config.js";
 
 const STORY_KEY_SCHEMA = z.object({
@@ -58,7 +58,7 @@ function registerStoryles(server: McpServer, phase: string): void {
       if (!config.phases.includes(phase as any)) {
         return noPhaseResponse(phase, config.phases);
       }
-      const text = renderPrompt(phase, config);
+      const text = renderPrompt(phase, config, { cacheDir: CACHE_CURRENT_DIR });
       return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
     } catch (err) {
       return errorResponse(err);
@@ -77,7 +77,7 @@ function registerWithStoryKey(server: McpServer, phase: string): void {
         if (!config.phases.includes(phase as any)) {
           return noPhaseResponse(phase, config.phases);
         }
-        let text = renderPrompt(phase, config);
+        let text = renderPrompt(phase, config, { cacheDir: CACHE_CURRENT_DIR });
         if (storyKey) {
           text = text
             .replace(/\{STORY_KEY\}/g, storyKey.toUpperCase())

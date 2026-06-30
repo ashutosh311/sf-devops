@@ -641,6 +641,7 @@
 
     <div class="sidebar-section-label">Reference</div>
     <a href="#usage">Running the Agents</a>
+    <a href="#instructions">Instruction Updates</a>
     <a href="#boundaries">Agent Boundaries</a>
     <a href="#standards">Coding Standards</a>
     <a href="#artefacts">Artefacts</a>
@@ -895,6 +896,11 @@
           </div>
         </div>
       </div>
+
+      <div class="callout mt-16">
+        <span class="callout-icon">🔄</span>
+        <span><strong>Instructions stay up to date automatically.</strong> The methodology that drives each agent is compiled into the extension and refreshed daily in the background from the <code>Slalom/salesforce-devops</code> GitHub repository, using your existing VS Code GitHub login — no reinstall needed. If you have no GitHub access (e.g. a client team), the instructions bundled into your VSIX are used as-is and work fully offline. See <a href="#instructions" style="color:var(--blue);">Keeping Instructions Up to Date</a>.</span>
+      </div>
     </section>
 
     <!-- STEP 7 -->
@@ -1025,6 +1031,66 @@
       </div>
 
       <p class="text-muted">Replace <code>PROJ-42</code> with the JIRA key of the story you are working on.</p>
+    </section>
+
+    <!-- INSTRUCTION UPDATES -->
+    <section class="section" id="instructions">
+      <div class="section-title-plain">Keeping Instructions Up to Date</div>
+
+      <p>Slalom's delivery methodology improves over time. The instructions that drive each agent are <strong>never written into your project</strong> — they live inside the extension and refresh automatically, so you stay on the latest best practice without reinstalling.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>What</th>
+              <th>How it works</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Automatic refresh</strong></td>
+              <td>On startup the extension silently checks (at most once every 24 hours) for a newer instruction release on <code>Slalom/salesforce-devops</code>. If found, it downloads, verifies checksums, and activates it atomically.</td>
+            </tr>
+            <tr>
+              <td><strong>Offline fallback</strong></td>
+              <td>If there is no internet, GitHub access, or sign-in, the instructions compiled into your installed VSIX are used. Your work is never interrupted.</td>
+            </tr>
+            <tr>
+              <td><strong>Authentication</strong></td>
+              <td>Background refresh reuses your existing VS Code GitHub login silently. The first time you run <strong>Slalom SDLC: Sync Instructions</strong> manually, VS Code may prompt you once to sign in / grant repository access.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Two commands are available from the Command Palette (<code>Cmd/Ctrl+Shift+P</code>):</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Command</th>
+              <th>What it does</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Slalom SDLC: Instruction Status</strong></td>
+              <td>Shows the active instruction version, last sync time, and any errors.</td>
+            </tr>
+            <tr>
+              <td><strong>Slalom SDLC: Sync Instructions</strong></td>
+              <td>Forces an immediate refresh without waiting for the 24-hour window.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout mt-16">
+        <span class="callout-icon">📦</span>
+        <span><strong>For client / non-Slalom teams:</strong> a VSIX works fully offline. The instructions bundled into the build you were given are available immediately — no GitHub access or internet connection is required, and the sync simply does nothing.</span>
+      </div>
     </section>
 
     <!-- BOUNDARIES -->
@@ -1181,7 +1247,11 @@
             </tr>
             <tr>
               <td class="ts-symptom"><code>/init</code> fails to fetch standards</td>
-              <td>Confirm you have access to the <code>sf-uki-devops</code> Bitbucket repository. Check with your delivery lead if unsure.</td>
+              <td>Confirm you have access to the <code>Slalom/salesforce-devops</code> GitHub repository. Check with your delivery lead if unsure.</td>
+            </tr>
+            <tr>
+              <td class="ts-symptom">Instructions out of date / sync failing</td>
+              <td>Run <strong>Slalom SDLC: Instruction Status</strong> from the Command Palette. If sign-in is needed, run <strong>Slalom SDLC: Sync Instructions</strong> and approve the GitHub prompt.</td>
             </tr>
             <tr>
               <td class="ts-symptom">JIRA transitions not working</td>

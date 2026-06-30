@@ -8,13 +8,14 @@ import { testTemplate } from "./templates/test.js";
 import { releaseTemplate } from "./templates/release.js";
 import deploymentInstruction          from "../../../../../devops/instructions/deployment.md";
 import orgImpactAssessmentInstruction from "../../../../../devops/instructions/org-impact-assessment.md";
+import { readCachedTemplate, readCachedInstruction } from "./cache.js";
 
 // {{#eq a b}}...{{/eq}} helper for estimation approach conditionals
 Handlebars.registerHelper("eq", function (this: unknown, a: unknown, b: unknown, options: Handlebars.HelperOptions) {
   return a === b ? options.fn(this) : options.inverse(this);
 });
 
-const PHASE_TEMPLATES: Record<string, string> = {
+export const PHASE_TEMPLATES: Record<string, string> = {
   discover: discoverTemplate,
   refine: refineTemplate,
   design: designTemplate,
@@ -23,8 +24,13 @@ const PHASE_TEMPLATES: Record<string, string> = {
   release: releaseTemplate,
 };
 
-export function renderPrompt(phase: string, config: SdlcConfig): string {
-  const raw = PHASE_TEMPLATES[phase];
+export interface RenderOptions {
+  cacheDir?: string;
+}
+
+export function renderPrompt(phase: string, config: SdlcConfig, opts?: RenderOptions): string {
+  // Prefer cached template; fall back to bundled constant
+  const raw = (opts?.cacheDir ? readCachedTemplate(phase, opts.cacheDir) : null) ?? PHASE_TEMPLATES[phase];
   if (!raw) throw new Error(`No template found for phase: ${phase}`);
 
   // Expose phases as a boolean map so templates can use {{#if phases.release}}
@@ -32,17 +38,18 @@ export function renderPrompt(phase: string, config: SdlcConfig): string {
     Object.keys(PHASE_TEMPLATES).map((p) => [p, config.phases.includes(p as SdlcConfig["phases"][number])])
   );
 
+  // Prefer cached instruction files; fall back to bundled imports
   const instructions = {
-    deployment: deploymentInstruction,
-    orgImpactAssessment: orgImpactAssessmentInstruction,
+    deployment: (opts?.cacheDir ? readCachedInstruction("deployment", opts.cacheDir) : null) ?? deploymentInstruction,
+    orgImpactAssessment: (opts?.cacheDir ? readCachedInstruction("org-impact-assessment", opts.cacheDir) : null) ?? orgImpactAssessmentInstruction,
   };
 
   const compiled = Handlebars.compile(raw, { noEscape: true });
   return compiled({ ...config, phases: phaseFlags, instructions });
 }
 
-export function renderAllPrompts(config: SdlcConfig): Record<string, string> {
+export function renderAllPrompts(config: SdlcConfig, opts?: RenderOptions): Record<string, string> {
   return Object.fromEntries(
-    config.phases.map((phase) => [phase, renderPrompt(phase, config)])
+    config.phases.map((phase) => [phase, renderPrompt(phase, config, opts)])
   );
 }

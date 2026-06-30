@@ -1,8 +1,15 @@
 import * as vscode from "vscode";
 import { handleInit } from "./handlers/init";
 import { handleAgent } from "./handlers/agent";
+import { handleForceSync, handleSyncStatus } from "./handlers/sync";
+import { InstructionSyncService } from "./sync";
 
 export function activate(context: vscode.ExtensionContext): void {
+  const syncService = new InstructionSyncService();
+
+  // Kick off a background sync on activation — fire and forget, never blocks
+  syncService.syncIfDue(context).catch(() => { /* errors recorded in metadata.json */ });
+
   const participant = vscode.chat.createChatParticipant(
     "slalom-sdlc",
     async (
@@ -26,7 +33,16 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   participant.iconPath = new vscode.ThemeIcon("rocket");
-  context.subscriptions.push(participant);
+
+  context.subscriptions.push(
+    participant,
+    vscode.commands.registerCommand("slalom-sdlc.syncInstructions", () =>
+      handleForceSync(syncService, context)
+    ),
+    vscode.commands.registerCommand("slalom-sdlc.instructionStatus", () =>
+      handleSyncStatus(syncService)
+    )
+  );
 }
 
 export function deactivate(): void {}
@@ -92,7 +108,7 @@ Run \`/init\` again at any time to update the config — existing files are pres
 
 **JIRA is connected via OAuth.** On first use, VS Code will prompt you to authorise with Atlassian. After that, agents can read stories, transition statuses, and check Confluence without any API keys or tokens.
 
-**Prompts stay inside the tool.** The instructions that drive each agent are compiled into the extension — they are never written to your repo.
+**Instructions stay inside the tool.** The instructions that drive each agent are compiled into the extension — they are never written to your repo. They are refreshed daily from GitHub Releases using your existing VS Code GitHub login. Run **Slalom SDLC: Instruction Status** from the Command Palette to see the active version.
 
 ---
 
@@ -127,6 +143,5 @@ force-app/                  ← Salesforce metadata
 
 ---
 
-Built by Slalom UK&I · [sf-uki-devops](https://bitbucket.org/slalom/sf-uki-devops)
+Built by Slalom UK&I · [salesforce-devops](https://github.com/Slalom/salesforce-devops)
 `.trim();
-

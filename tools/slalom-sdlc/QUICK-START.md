@@ -114,6 +114,8 @@ Verify the install by opening the Copilot Chat panel and typing:
 
 You should see a help message describing the available commands.
 
+> **Instructions stay up to date automatically.** The methodology that drives each agent is compiled into the extension and refreshed daily in the background from the `Slalom/salesforce-devops` GitHub repository, using your existing VS Code GitHub login. No reinstall is needed when Slalom improves a phase. If you have no GitHub access (for example, a client team), the instructions bundled into your VSIX are used as-is and work fully offline. See [Keeping Instructions Up to Date](#keeping-instructions-up-to-date) below.
+
 ---
 
 ## Step 7 — Initialise Your Project (`/init`)
@@ -182,6 +184,27 @@ Replace `ACME-42` with the JIRA key of the story you are working on.
 
 ---
 
+## Keeping Instructions Up to Date
+
+Slalom's delivery methodology improves over time. The instructions that drive each agent are **never written into your project** — they live inside the extension and refresh automatically, so you stay on the latest best practice without reinstalling.
+
+| What | How it works |
+|---|---|
+| **Automatic refresh** | On startup the extension silently checks (at most once every 24 hours) for a newer instruction release on `Slalom/salesforce-devops`. If found, it downloads, verifies checksums, and activates it atomically. |
+| **Offline fallback** | If there is no internet, GitHub access, or sign-in, the instructions compiled into your installed VSIX are used. Your work is never interrupted. |
+| **Authentication** | Background refresh reuses your existing VS Code GitHub login silently. The first time you run **Slalom SDLC: Sync Instructions** manually, VS Code may prompt you once to sign in / grant repository access. |
+
+Two commands are available from the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`):
+
+| Command | What it does |
+|---|---|
+| **Slalom SDLC: Instruction Status** | Shows the active instruction version, last sync time, and any errors |
+| **Slalom SDLC: Sync Instructions** | Forces an immediate refresh without waiting for the 24-hour window |
+
+> **For client / non-Slalom teams:** a VSIX works fully offline. The instructions bundled into the build you were given are available immediately — no GitHub access or internet connection is required, and the sync simply does nothing.
+
+---
+
 ## Agent Boundaries
 
 Each agent has a defined remit and will not take actions outside its phase.
@@ -240,7 +263,8 @@ artifacts/
 | Symptom | Check |
 |---|---|
 | `@slalom-sdlc` not appearing in chat | Reload VS Code; confirm the extension shows as enabled in the Extensions panel |
-| `/init` fails to fetch standards | Confirm you have access to the `sf-uki-devops` Bitbucket repository |
+| `/init` fails to fetch standards | Confirm you have access to the `Slalom/salesforce-devops` GitHub repository |
+| Instructions out of date / sync failing | Run **Slalom SDLC: Instruction Status** from the Command Palette. If sign-in is needed, run **Slalom SDLC: Sync Instructions** and approve the GitHub prompt |
 | JIRA transitions not working | Re-connect the Atlassian MCP server via the Tools icon in Copilot Chat |
 | Atlassian server not in Tools list | Confirm `.vscode/mcp.json` exists and reload VS Code |
 | Sandbox deploy fails | Run `sf org list` and confirm the alias in `.sdlc/config.json` is correct |

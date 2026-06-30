@@ -83,7 +83,13 @@ importers:
       '@sdlc/core':
         specifier: workspace:*
         version: link:../core
+      adm-zip:
+        specifier: ^0.5.18
+        version: 0.5.18
     devDependencies:
+      '@types/adm-zip':
+        specifier: ^0.5.8
+        version: 0.5.8
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.17
@@ -688,6 +694,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@types/adm-zip@0.5.8':
+    resolution: {integrity: sha512-RVVH7QvZYbN+ihqZ4kX/dMiowf6o+Jk1fNwiSdx0NahBJLU787zkULhGhJM8mf/obmLGmgdMM0bXsQTmyfbR7Q==}
+
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
@@ -776,6 +785,10 @@ packages:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  adm-zip@0.5.18:
+    resolution: {integrity: sha512-ufJnssQGbxzLNS1Ho9bCtX4rQKCCvoVuDLHoJyc3F9dOGDB4BkWs2Ci0kv53lqocAEQ/Cbi+I2XCsNYGqVYqng==}
+    engines: {node: '>=12.0'}
 
   agent-base@6.0.2:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
@@ -2487,6 +2500,10 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.2':
     optional: true
 
+  '@types/adm-zip@0.5.8':
+    dependencies:
+      '@types/node': 22.19.17
+
   '@types/estree@1.0.8': {}
 
   '@types/mute-stream@0.0.4':
@@ -2617,6 +2634,8 @@ snapshots:
       negotiator: 1.0.0
 
   acorn@8.16.0: {}
+
+  adm-zip@0.5.18: {}
 
   agent-base@6.0.2:
     dependencies:

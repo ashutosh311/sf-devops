@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { renderPrompt } from "@sdlc/core";
+import { renderPrompt, CACHE_CURRENT_DIR } from "@sdlc/core";
 import { requireConfig } from "../config";
 
 const PHASE_COMMANDS = new Set(["discover", "refine", "design", "build", "test", "release"]);
@@ -21,7 +21,7 @@ export async function handleAgent(
 
   let systemPrompt: string;
   try {
-    systemPrompt = renderPrompt(command, config);
+    systemPrompt = renderPrompt(command, config, { cacheDir: CACHE_CURRENT_DIR });
   } catch (err) {
     stream.markdown(`⛔ Could not render prompt for phase \`${command}\`: ${String(err)}`);
     return;

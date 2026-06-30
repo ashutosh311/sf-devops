@@ -1,5 +1,5 @@
 {
-  "name": "slalom-sdlc",
+  "name": "slalom-sdlc-workspace",
   "private": true,
   "version": "1.0.0",
   "scripts": {
@@ -7,7 +7,8 @@
     "dev": "pnpm -r dev",
     "typecheck": "pnpm -r typecheck",
     "start": "node packages/cli/dist/index.js",
-    "package": "pnpm -r --filter @sdlc/cli package"
+    "package": "pnpm -r --filter @sdlc/cli package",
+    "package-instructions": "node scripts/package-instructions.mjs"
   },
   "devDependencies": {
     "typescript": "^5.4.0"
