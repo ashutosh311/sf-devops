@@ -7,14 +7,7 @@ settings:
 importers:
 
   .:
-    dependencies:
-      adm-zip:
-        specifier: ^0.5.18
-        version: 0.5.18
     devDependencies:
-      '@types/adm-zip':
-        specifier: ^0.5.8
-        version: 0.5.8
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
