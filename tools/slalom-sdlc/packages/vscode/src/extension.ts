@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext): void {
         if (request.command === "init") {
           await handleInit(request, chatContext, stream, context);
         } else if (request.command === "about") {
-          stream.markdown(ABOUT_TEXT);
+          stream.markdown(buildAboutText(context, syncService));
         } else {
           await handleAgent(request, chatContext, stream, token);
         }
@@ -47,10 +47,26 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {}
 
+function buildAboutText(context: vscode.ExtensionContext, syncService: InstructionSyncService): string {
+  const extensionVersion = context.extension.packageJSON.version as string;
+  const status = syncService.getStatus();
+  const instructionsLine =
+    status.usingCache && status.activeVersion
+      ? `${status.activeVersion} (synced ${status.lastSuccessfulSync ? new Date(status.lastSuccessfulSync).toLocaleDateString() : "unknown date"})`
+      : "bundled (no remote sync yet)";
+
+  return ABOUT_TEXT.replace("{EXTENSION_VERSION}", extensionVersion).replace(
+    "{INSTRUCTIONS_STATUS}",
+    instructionsLine
+  );
+}
+
 const ABOUT_TEXT = `
 # Slalom SDLC — AI-Assisted Delivery for Salesforce
 
 **\`@slalom-sdlc\`** is a GitHub Copilot Chat participant that brings Slalom's Salesforce delivery process directly into VS Code. Each command activates a purpose-built AI agent that understands a specific phase of the SDLC — from discovery through to release — and works within your project's standards, JIRA board, and Salesforce org without you having to switch context.
+
+**Extension version:** {EXTENSION_VERSION} · **Instructions:** {INSTRUCTIONS_STATUS}
 
 ---
 

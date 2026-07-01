@@ -8,6 +8,7 @@ import { testTemplate } from "./templates/test.js";
 import { releaseTemplate } from "./templates/release.js";
 import deploymentInstruction          from "../../../../../devops/instructions/deployment.md";
 import orgImpactAssessmentInstruction from "../../../../../devops/instructions/org-impact-assessment.md";
+import prerequisiteCheckInstruction   from "../../../../../devops/instructions/prerequisite-check.md";
 import { readCachedTemplate, readCachedInstruction } from "./cache.js";
 
 // {{#eq a b}}...{{/eq}} helper for estimation approach conditionals
@@ -42,6 +43,7 @@ export function renderPrompt(phase: string, config: SdlcConfig, opts?: RenderOpt
   const instructions = {
     deployment: (opts?.cacheDir ? readCachedInstruction("deployment", opts.cacheDir) : null) ?? deploymentInstruction,
     orgImpactAssessment: (opts?.cacheDir ? readCachedInstruction("org-impact-assessment", opts.cacheDir) : null) ?? orgImpactAssessmentInstruction,
+    prerequisiteCheck: (opts?.cacheDir ? readCachedInstruction("prerequisite-check", opts.cacheDir) : null) ?? prerequisiteCheckInstruction,
   };
 
   const compiled = Handlebars.compile(raw, { noEscape: true });

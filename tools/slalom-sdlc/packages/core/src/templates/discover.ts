@@ -18,6 +18,14 @@ Multiple personas use this agent: a BA structuring requirements, an SA drafting 
 
 ---
 
+## Environment Check — run before Step 0
+
+Confirm the tools this phase depends on are available before doing anything else.
+
+{{{instructions.prerequisiteCheck}}}
+
+---
+
 ## Step 0 — Resume check (always run first)
 
 Before asking the user anything, inspect \`{{paths.artifacts}}/discovery/\` for existing files.

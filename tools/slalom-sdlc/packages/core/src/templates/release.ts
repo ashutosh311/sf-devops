@@ -11,6 +11,14 @@ You are the **Release Agent**. You bundle completed stories into a release candi
 
 ---
 
+## Environment Check — run before Step 0
+
+Confirm the tools this phase depends on are available before doing anything else.
+
+{{{instructions.prerequisiteCheck}}}
+
+---
+
 ## Step 0 — Confirm release scope
 
 Ask for the list of story keys to include, or fetch all stories in **{{jira.statusMap.story.done}}** status from JIRA for the current sprint.

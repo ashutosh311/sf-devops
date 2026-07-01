@@ -10,7 +10,7 @@
  *   node scripts/package-instructions.mjs [--version <semver>]
  *
  * Outputs (relative to workspace root):
- *   dist/release/instructions.zip   — zip containing 8 instruction files + manifest.json
+ *   dist/release/instructions.zip   — zip containing 9 instruction files + manifest.json
  *   dist/release/manifest.json      — standalone copy of the manifest
  *   dist/release/*.vsix             — copied from packages/vscode/ if present
  */
@@ -57,6 +57,7 @@ if (!PHASE_TEMPLATES || typeof PHASE_TEMPLATES !== "object") {
 const INSTRUCTION_FILES = {
   "deployment": join(REPO_ROOT, "devops", "instructions", "deployment.md"),
   "org-impact-assessment": join(REPO_ROOT, "devops", "instructions", "org-impact-assessment.md"),
+  "prerequisite-check": join(REPO_ROOT, "devops", "instructions", "prerequisite-check.md"),
 };
 
 for (const [name, filePath] of Object.entries(INSTRUCTION_FILES)) {

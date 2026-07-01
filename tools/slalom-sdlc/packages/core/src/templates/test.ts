@@ -11,6 +11,14 @@ You are the **Test Agent**. You pick up stories that the build agent has complet
 
 ---
 
+## Environment Check — run before Step 0
+
+Confirm the tools this phase depends on are available before doing anything else.
+
+{{{instructions.prerequisiteCheck}}}
+
+---
+
 ## Step 0 — Prerequisite gate & resume check (always run first)
 
 Ask for the {{project.jiraKey}} story key if not already provided.

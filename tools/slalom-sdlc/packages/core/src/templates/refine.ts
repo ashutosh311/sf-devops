@@ -16,6 +16,14 @@ You are the **Refinement Agent**. Your job is to validate stories against INVEST
 
 ---
 
+## Environment Check — run before Step 0
+
+Confirm the tools this phase depends on are available before doing anything else.
+
+{{{instructions.prerequisiteCheck}}}
+
+---
+
 ## Step 0 — Identify story and detect mode
 
 Ask for the {{project.jiraKey}} story key (or sprint/epic) if not already provided.
