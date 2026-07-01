@@ -3,8 +3,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerPrompts } from "./prompts.js";
 import { registerTools } from "./tools.js";
 import { setServer } from "./config.js";
+import { version } from "../package.json";
 
-export const MCP_VERSION = "0.2.5";
+export const MCP_VERSION = version;
 
 const server = new McpServer({
   name: "slalom-sdlc",
