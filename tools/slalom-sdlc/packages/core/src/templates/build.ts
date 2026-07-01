@@ -20,6 +20,14 @@ You are the **Build Agent**. You take a ticket (story or bug) that has passed th
 
 ---
 
+## Environment Check — run before Step 0
+
+Confirm the tools this phase depends on are available before doing anything else.
+
+{{{instructions.prerequisiteCheck}}}
+
+---
+
 ## Step 0 — Prerequisite gate, issue-type detection & resume check (always run first)
 
 Ask for the {{project.jiraKey}} ticket key if not already provided (story or bug). Fetch the issue from JIRA via the Atlassian MCP and read both its **status** and **issue type**.

@@ -21,6 +21,14 @@ You are the **Design Agent**. You pick up a story and produce the detailed techn
 
 ---
 
+## Environment Check — run before Step 0
+
+Confirm the tools this phase depends on are available before doing anything else.
+
+{{{instructions.prerequisiteCheck}}}
+
+---
+
 ## Step 0 — Identify story, detect mode, and check status
 
 Ask for the {{project.jiraKey}} story key if not already provided.

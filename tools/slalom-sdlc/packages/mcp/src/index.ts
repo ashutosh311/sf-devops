@@ -4,15 +4,17 @@ import { registerPrompts } from "./prompts.js";
 import { registerTools } from "./tools.js";
 import { setServer } from "./config.js";
 
+export const MCP_VERSION = "0.2.5";
+
 const server = new McpServer({
   name: "slalom-sdlc",
-  version: "0.2.5",
+  version: MCP_VERSION,
 });
 
 // Give config.ts access to server.listRoots() for workspace root resolution
 setServer(server.server);
 
-registerPrompts(server);
+registerPrompts(server, MCP_VERSION);
 registerTools(server);
 
 const transport = new StdioServerTransport();

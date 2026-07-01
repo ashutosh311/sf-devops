@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
-import { renderPrompt, CACHE_CURRENT_DIR } from "@sdlc/core";
+import { renderPrompt, readSyncMetadata, validateCacheManifest, CACHE_CURRENT_DIR } from "@sdlc/core";
 import { requireConfig } from "./config.js";
 
 const STORY_KEY_SCHEMA = z.object({
@@ -23,8 +23,8 @@ const PHASES_WITH_KEY = ["refine", "design", "build", "test"] as const;
 // Phases with no arguments
 const PHASES_STORYLESS = ["discover", "release"] as const;
 
-export function registerPrompts(server: McpServer): void {
-  registerAbout(server);
+export function registerPrompts(server: McpServer, mcpVersion: string): void {
+  registerAbout(server, mcpVersion);
   registerInit(server);
 
   for (const phase of PHASES_STORYLESS) {
@@ -35,10 +35,22 @@ export function registerPrompts(server: McpServer): void {
   }
 }
 
-function registerAbout(server: McpServer): void {
+function registerAbout(server: McpServer, mcpVersion: string): void {
   server.prompt("about", "What is this tool, how to use it, and all available commands", async () => ({
-    messages: [{ role: "user" as const, content: { type: "text" as const, text: ABOUT_TEXT } }],
+    messages: [{ role: "user" as const, content: { type: "text" as const, text: buildAboutText(mcpVersion) } }],
   }));
+}
+
+function buildAboutText(mcpVersion: string): string {
+  const meta = readSyncMetadata(CACHE_CURRENT_DIR);
+  const usingCache = validateCacheManifest(CACHE_CURRENT_DIR);
+  const instructionsLine = usingCache && meta.activeVersion
+    ? `${meta.activeVersion} (synced ${meta.lastSuccessfulSync ? new Date(meta.lastSuccessfulSync).toLocaleDateString() : "unknown date"})`
+    : "bundled (no remote instruction sync detected — sync runs from the VS Code extension)";
+
+  return ABOUT_TEXT
+    .replace("{MCP_VERSION}", mcpVersion)
+    .replace("{INSTRUCTIONS_STATUS}", instructionsLine);
 }
 
 function registerInit(server: McpServer): void {
@@ -118,6 +130,8 @@ const ABOUT_TEXT = `
 # Slalom SDLC — AI-Assisted Delivery for Salesforce
 
 **\`@slalom-sdlc\`** is a Claude Code MCP server that brings Slalom's Salesforce delivery process directly into your agent. Each command activates a purpose-built AI agent for a specific SDLC phase — discovery, refinement, design, build, test, and release — working within your project's JIRA board, Salesforce org, and coding standards.
+
+**MCP server version:** {MCP_VERSION} · **Instructions:** {INSTRUCTIONS_STATUS}
 
 ---
 
