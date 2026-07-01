@@ -5,7 +5,8 @@
     "moduleResolution": "Node",
     "outDir": "./dist",
     "rootDir": "./src",
-    "lib": ["ES2022"]
+    "lib": ["ES2022"],
+    "resolveJsonModule": true
   },
   "include": ["src"]
 }
