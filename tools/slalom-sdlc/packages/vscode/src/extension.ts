@@ -3,6 +3,7 @@ import { handleInit } from "./handlers/init";
 import { handleAgent } from "./handlers/agent";
 import { handleDiscover } from "./handlers/discover";
 import { handleDesign } from "./handlers/design";
+import { handleRefine } from "./handlers/refine";
 import { handleForceSync, handleSyncStatus } from "./handlers/sync";
 import { InstructionSyncService } from "./sync";
 
@@ -27,6 +28,8 @@ export function activate(context: vscode.ExtensionContext): void {
           stream.markdown(buildAboutText(context, syncService));
         } else if (request.command === "discover") {
           await handleDiscover(request, chatContext, stream, token);
+        } else if (request.command === "refine") {
+          await handleRefine(request, chatContext, stream, token);
         } else if (request.command === "design") {
           await handleDesign(request, chatContext, stream, token);
         } else {
