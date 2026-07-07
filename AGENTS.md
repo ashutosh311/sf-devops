@@ -36,7 +36,7 @@ DISCOVER           DELIVER — Sprint -1                    DELIVER — Sprint  
 
 | Agent | Phase | Entry gate | Exit gate |
 |---|---|---|---|
-| `#sdlc/discover` | DISCOVER | Workshop notes / client brief | Stories in JIRA (no AC), Sprint Allocation Plan, HL Solution Design |
+| `#sdlc/discover` | DISCOVER | Workshop notes / client brief | Backlog pushed to JIRA (`push-record.md` exists), current-state synthesis complete, MVP scope approved |
 | `#sdlc/refine` | Sprint -1 (BA / FL) | Story status = **To Do** | Story has Gherkin AC, status = **Ready for Design** |
 | `#sdlc/design` | Sprint -1 (TA / TL) | Story status = **Ready for Design** | `solution-design.md` written, design posted to JIRA, sub-tasks created, status = **Ready for Build** |
 | `#sdlc/build` | Sprint | Story status = **Ready for Build**, solution-design.md exists | Code deployed, PR raised, status = **Ready for Test** |
@@ -55,12 +55,17 @@ To Do → [/refine] → Ready for Design → [/design] → Ready for Build → [
 
 ```
 artifacts/
-  discovery/                        # Programme-level artifacts (from /discover)
-    capability-map.md
-    epic-story-list.md
-    sprint-allocation-plan.md
-    hl-solution-design.md
-  {STORY-KEY}/                      # Story-level artifacts (from /refine, /build, /test)
+  discovery/                            # Discovery knowledge hub (from /discover)
+    00 - Project/                       # Project Overview.md, Phase Context.md, Timeline.md
+    00 - Inbox/                         # Raw files to process (drop here first)
+    00 - Registers/                     # Pain points, systems, stakeholders, RAID (markdown tables)
+    01 - Sessions/                      # Processed workshop notes
+    02 - Current State/                 # Synthesized narratives, process diagrams
+    03 - Future State/                  # Solution directions, focus areas, MVP scope
+    04 - Backlog/                       # Backlog Tracker.xlsx, _index.md, epics/<id>.md, open-questions.md
+      pushed/                           # Archived Excel + push-record.md (after JIRA push)
+    06 - Reference/                     # Client documents, handover materials
+  {STORY-KEY}/                          # Story-level artifacts (from /refine, /build, /test)
     sf-discovery.md
     solution-design.md
     package.xml
@@ -76,7 +81,51 @@ artifacts/
 
 ---
 
-## Before Writing Any Code
+## Discovery Phase — `/discover`
+
+The `/discover` agent runs a 4-phase structured engagement methodology (Prepare → Learn → Ideate → Plan) backed by a local knowledge hub and a JIRA push flow.
+
+### Engagement phases
+
+| Phase | Timing | Playbook |
+|-------|--------|---------|
+| Prepare | Weeks 0–1 | `.github/prompts/sdlc/discover/playbooks/01-prepare.md` |
+| Learn | Week 2 | `.github/prompts/sdlc/discover/playbooks/02-learn.md` |
+| Ideate | Weeks 3–4 | `.github/prompts/sdlc/discover/playbooks/03-ideate.md` |
+| Plan | Weeks 5–6 | `.github/prompts/sdlc/discover/playbooks/04-plan.md` |
+
+### Sub-prompts (invoke via `#sdlc/discover <skill>`)
+
+| Skill | What it does |
+|-------|-------------|
+| `setup` | Project onboarding — organise inbox, initialise registers |
+| `process-session` | Process workshop transcript → session note + queued observations |
+| `synthesize` | Registers → narrative current-state document |
+| `analyze` | Prioritisation, gap analysis, traceability matrix |
+| `manage-backlog` | Evidence-backed epic/story construction → seeds `Backlog Tracker.xlsx` |
+| `push-backlog` | Reads Excel, updates markdown, creates JIRA items, archives Excel |
+| `sync-jira` | Pulls JIRA status back as a read-only `jira-sync.md` snapshot |
+| `compose-deliverable` | Executive readout, technical handoff document |
+| `conflict-check` | Contradiction and assumption conflict detection |
+| `prep-workshop` | Pre-session briefing materials |
+| `hub-audit` | Phase-gate readiness check |
+| `whats-next` | "Where are we and what's next?" orientation |
+| `stories-refined` | Backlog → per-story `refinement-notes.md` for the design phase — no JIRA required |
+| `registers-to-stories` | Bridge from registers to story candidates |
+| `set-preferences` _(VS Code only)_ | Set authoring style for AC / FR / Solution Notes |
+| `feedback` _(VS Code only)_ | Rate the last command and append notes to authoring preferences |
+
+### Backlog push flow
+
+1. Run `manage-backlog` → `Backlog Tracker.xlsx` is seeded with evidence-backed stories
+2. User opens and reviews the Excel file
+3. Run `push-backlog` → reads Excel, updates `_index.md` + `epics/<id>.md`, creates JIRA items, archives Excel to `04 - Backlog/pushed/`
+4. JIRA is now the source of truth — Excel is archived and immutable
+5. Run `sync-jira` at any time to pull current JIRA status back to `jira-sync.md`
+
+---
+
+
 
 ### 1. Read the relevant standard
 

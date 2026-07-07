@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { handleInit } from "./handlers/init";
 import { handleAgent } from "./handlers/agent";
+import { handleDiscover } from "./handlers/discover";
+import { handleDesign } from "./handlers/design";
 import { handleForceSync, handleSyncStatus } from "./handlers/sync";
 import { InstructionSyncService } from "./sync";
 
@@ -11,7 +13,7 @@ export function activate(context: vscode.ExtensionContext): void {
   syncService.syncIfDue(context).catch(() => { /* errors recorded in metadata.json */ });
 
   const participant = vscode.chat.createChatParticipant(
-    "slalom-sdlc",
+    "slalom.slalom-sdlc",
     async (
       request: vscode.ChatRequest,
       chatContext: vscode.ChatContext,
@@ -23,6 +25,10 @@ export function activate(context: vscode.ExtensionContext): void {
           await handleInit(request, chatContext, stream, context);
         } else if (request.command === "about") {
           stream.markdown(buildAboutText(context, syncService));
+        } else if (request.command === "discover") {
+          await handleDiscover(request, chatContext, stream, token);
+        } else if (request.command === "design") {
+          await handleDesign(request, chatContext, stream, token);
         } else {
           await handleAgent(request, chatContext, stream, token);
         }
@@ -103,7 +109,7 @@ Run \`/init\` again at any time to update the config — existing files are pres
 |---|---|
 | \`/about\` | Show this help |
 | \`/init\` | Set up or reconfigure the SDLC for this project |
-| \`/discover\` | Discovery agent — maps requirements, identifies unknowns, drafts epics and stories |
+| \`/discover\` | Discovery agent — runs a 4-phase engagement (Prepare→Learn→Ideate→Plan); use \`/discover <skill>\` for targeted tasks (e.g. \`process-session\`, \`manage-backlog\`, \`push-backlog\`) |
 | \`/refine PROJ-42\` | Refines a JIRA story — acceptance criteria, open questions, effort estimate |
 | \`/design PROJ-42\` | Technical design agent — solution approach, data model, component breakdown, sub-tasks |
 | \`/build PROJ-42\` | Build agent — scaffolds Apex, LWC, config; reviews with you; deploys to your sandbox |
@@ -128,15 +134,41 @@ Run \`/init\` again at any time to update the config — existing files are pres
 
 ---
 
+## Discovery Skills (\`/discover <skill>\`)
+
+The discovery agent has targeted sub-commands. Run \`/discover\` on its own to be guided, or jump straight to a skill:
+
+| Skill | What it does |
+|---|---|
+| \`setup\` | Onboard project, organise inbox, initialise registers |
+| \`process-session\` | Turn a workshop transcript into a session note + register entries |
+| \`synthesize\` | Registers → narrative current-state document |
+| \`analyze\` | Gap analysis, prioritisation, traceability |
+| \`manage-backlog\` | Evidence → epic/story rows seeded into Excel |
+| \`stories-refined\` | Backlog → per-story \`refinement-notes.md\` (business context + AC) for the design phase — no JIRA required |
+| \`push-backlog\` | Excel → JIRA items + archive (⚠️ irreversible — JIRA becomes source of truth) |
+| \`sync-jira\` | Pull JIRA status back as a read-only snapshot |
+| \`compose-deliverable\` | Executive readout or technical handoff document |
+| \`conflict-check\` | Find contradictions across registers |
+| \`prep-workshop\` | Pre-session briefing materials |
+| \`hub-audit\` | Phase-gate readiness check |
+| \`whats-next\` | "Where are we and what's the next step?" orientation |
+
+---
+
 ## Typical Sprint Workflow
 
 \`\`\`
-@slalom-sdlc /discover          ← start of sprint: map requirements, create stories
-@slalom-sdlc /refine PROJ-42    ← refine each story before the sprint
-@slalom-sdlc /design PROJ-42    ← technical design, produces solution-design.md
-@slalom-sdlc /build PROJ-42     ← scaffold, test, deploy, raise PR
-@slalom-sdlc /test PROJ-42      ← test coverage and validation
-@slalom-sdlc /release           ← release notes and deployment checklist
+@slalom-sdlc /discover setup        ← onboard project, set up knowledge hub
+@slalom-sdlc /discover process-session  ← after each workshop
+@slalom-sdlc /discover manage-backlog   ← build evidence-backed backlog
+@slalom-sdlc /discover push-backlog     ← push to JIRA (review Excel first)
+@slalom-sdlc /discover stories-refined  ← backlog → refinement-notes.md (no JIRA needed)
+@slalom-sdlc /refine PROJ-42        ← refine each story before the sprint (JIRA)
+@slalom-sdlc /design PROJ-42        ← technical design, produces solution-design.md
+@slalom-sdlc /build PROJ-42         ← scaffold, test, deploy, raise PR
+@slalom-sdlc /test PROJ-42          ← test coverage and validation
+@slalom-sdlc /release               ← release notes and deployment checklist
 \`\`\`
 
 ---
@@ -149,6 +181,16 @@ Run \`/init\` again at any time to update the config — existing files are pres
 .sdlc/
   config.json               ← project config written by /init
 artifacts/
+  discovery/
+    00 - Project/           ← project overview, phase context, timeline
+    00 - Inbox/             ← drop raw files here first
+    00 - Registers/         ← pain points, stakeholders, systems, RAID
+    01 - Sessions/          ← processed workshop notes
+    02 - Current State/     ← synthesized narratives
+    03 - Future State/      ← solution directions, MVP scope
+    04 - Backlog/           ← Backlog Tracker.xlsx + epic-story-list.md
+      pushed/               ← archived Excel after JIRA push
+    06 - Reference/         ← client docs, handover materials
   {STORY-KEY}/
     sf-discovery.md         ← discovery notes
     solution-design.md      ← technical design

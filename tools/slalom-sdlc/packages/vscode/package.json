@@ -2,7 +2,7 @@
   "name": "slalom-sdlc",
   "displayName": "Slalom SDLC",
   "description": "AI-assisted SDLC agents for Salesforce projects",
-  "version": "0.3.0",
+  "version": "0.4.8",
   "publisher": "slalom",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -10,13 +10,15 @@
     "url": "https://github.com/Slalom/salesforce-devops"
   },
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.95.0"
   },
   "categories": [
     "AI",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onChatParticipant:slalom.slalom-sdlc"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -33,7 +35,7 @@
     ],
     "chatParticipants": [
       {
-        "id": "slalom-sdlc",
+        "id": "slalom.slalom-sdlc",
         "name": "slalom-sdlc",
         "fullName": "Slalom SDLC",
         "description": "AI-assisted SDLC agents for Salesforce — type / to see available agents",
@@ -83,12 +85,16 @@
   },
   "dependencies": {
     "@sdlc/core": "workspace:*",
-    "adm-zip": "^0.5.18"
+    "adm-zip": "^0.5.18",
+    "exceljs": "^4.4.0",
+    "mammoth": "^1.12.0",
+    "mupdf": "^1.28.0",
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",
     "@types/node": "^22.0.0",
-    "@types/vscode": "^1.90.0",
+    "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^2.26.0",
     "esbuild": "^0.20.0",
     "typescript": "^5.4.0"

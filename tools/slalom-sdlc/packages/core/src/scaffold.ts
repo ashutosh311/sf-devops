@@ -36,8 +36,19 @@ async function writeConfig(config: SdlcConfig, root: string, result: ScaffoldRes
 }
 
 async function writeArtifactDirs(config: SdlcConfig, root: string, result: ScaffoldResult): Promise<void> {
+  const discoveryBase = path.join(root, config.paths.artifacts, "discovery");
+
   const dirs = [
-    path.join(root, config.paths.artifacts, "discovery"),
+    discoveryBase,
+    path.join(discoveryBase, "00 - Project"),
+    path.join(discoveryBase, "00 - Inbox"),
+    path.join(discoveryBase, "00 - Registers"),
+    path.join(discoveryBase, "01 - Sessions"),
+    path.join(discoveryBase, "02 - Current State"),
+    path.join(discoveryBase, "03 - Future State"),
+    path.join(discoveryBase, "04 - Backlog"),
+    path.join(discoveryBase, "04 - Backlog", "pushed"),
+    path.join(discoveryBase, "06 - Reference"),
     ...(config.phases.includes("release")
       ? [path.join(root, config.paths.artifacts, "releases")]
       : []),

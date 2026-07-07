@@ -13,7 +13,7 @@ Before doing any phase-specific work, confirm the tools this phase depends on ar
 
 | Dependency | Needed by | How to detect |
 |---|---|---|
-| **Atlassian MCP** (JIRA / Confluence) | discover, refine, design, build, test, release | Look for `mcp__Atlassian__*` (or equivalently named) tools in your available tool list. |
+| **Atlassian MCP** (JIRA / Confluence) | refine, design, build, test, release; **optional** in discover (only `push-backlog` and `sync-jira` sub-commands use it) | Look for `mcp__Atlassian__*` (or equivalently named) tools in your available tool list. |
 | **Salesforce DX MCP** | design (org discovery), build (deploy/test), test (org validation), release (deploy) | Look for `mcp__Salesforce_DX__*` tools in your available tool list. |
 | **Salesforce CLI (`sf`)** | build, release — fallback for the few operations with no MCP equivalent (e.g. `sf org login web`, `sf project deploy start`) | Run `sf --version` via Bash. |
 | **Node.js & npm** | build, test — running LWC Jest tests (`npm run test:unit`) | Run `node --version` and `npm --version` via Bash. |

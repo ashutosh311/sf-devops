@@ -106,7 +106,7 @@ This project uses a structured, agent-driven delivery workflow. Each agent has a
 | # | Command | Persona | Output | Phase boundary |
 |---|---------|---------|--------|----------------|
 | 0 | `@slalom-sdlc /init` | Any | Project scaffold + `sdlc.config.json` | — |
-| 1 | `@slalom-sdlc /discover` | BA / SA / FL | Programme artifacts: capability map, epic/story backlog, sprint plan, high-level architecture approach. JIRA items created **only on explicit user request**. | High-level only — no component design, no field-level data model, no detailed architecture |
+| 1 | `@slalom-sdlc /discover` | BA / SA / FL | Structured 4-phase engagement (Prepare→Learn→Ideate→Plan): session notes, synthesized current state, evidence-backed backlog, JIRA push via `push-backlog`. JIRA items **only** via explicit `push-backlog` command. | High-level only — no component design, no field-level data model, no detailed architecture |
 | 2 | `@slalom-sdlc /refine` | SA / FL / BA | `artifacts/{KEY}/refinement-notes.md` with Gherkin AC + business context. Story transitioned to Ready for Design. | Business context + AC only — no org discovery, no solution design, no technical decisions whatsoever |
 | 3 | `@slalom-sdlc /design` | TA / TL | `artifacts/{KEY}/sf-discovery.md`, `artifacts/{KEY}/solution-design.md`, JIRA sub-tasks. Story transitioned to Ready for Build. | The only agent that produces detailed solution designs |
 | 4 | `@slalom-sdlc /build` | Developer | Salesforce metadata deployed under `force-app/`. | Implementation only — follows `solution-design.md` |
@@ -117,7 +117,7 @@ This project uses a structured, agent-driven delivery workflow. Each agent has a
 
 These rules apply across all agents and override any other instruction:
 
-- **`/discover`** outputs programme-level artefacts only. The High-Level System Architecture covers *approach and patterns* per epic — never component-level design, field-level data models, or automation specifications. JIRA epics and stories are **never created automatically**: the agent only creates items after the user explicitly asks.
+- **`/discover`** runs a 4-phase engagement (Prepare → Learn → Ideate → Plan). Outputs are local knowledge-hub artefacts only (session notes, registers, current/future-state docs, backlog Excel). JIRA items are **never created automatically** — they are pushed explicitly by the `push-backlog` sub-prompt after human review of the Excel file. No component design, field-level data models, or automation specifications.
 - **`/refine`** outputs Gherkin acceptance criteria and business context only. It must not perform org discovery, produce solution designs, or make any Salesforce implementation recommendations. All technical decisions belong in `/design`.
 - **`/design`** is the **only agent** that produces detailed solution designs, org discovery (`sf-discovery.md`), and JIRA sub-tasks. It owns all technical decisions.
 - **`/build`** is the **only agent** that writes to `force-app/`. No other agent may create or modify Salesforce metadata.
@@ -142,7 +142,9 @@ These rules apply across all agents and override any other instruction:
 
 The shared JIRA item creation protocol is in `.github/instructions/jira-item-protocol.instructions.md`.
 
-Story artifacts live under `artifacts/{JIRA-KEY}/` — `refinement-notes.md`, `sf-discovery.md`, `solution-design.md`, `test-plan.md`.
+Discovery artifacts live under `artifacts/discovery/` in numbered subfolders (`00 - Project/`, `01 - Sessions/`, `02 - Current State/`, `03 - Future State/`, `04 - Backlog/`). Story artifacts live under `artifacts/{JIRA-KEY}/` — `refinement-notes.md`, `sf-discovery.md`, `solution-design.md`, `test-plan.md`.
+
+The `/discover` sub-prompts are under `.github/prompts/sdlc/discover/`. Invoke with `#sdlc/discover <skill>` (e.g. `#sdlc/discover process-session`, `#sdlc/discover push-backlog`). Phase playbooks are at `.github/prompts/sdlc/discover/playbooks/`.
 
 ---
 
