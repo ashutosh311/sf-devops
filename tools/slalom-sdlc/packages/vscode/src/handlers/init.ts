@@ -5,10 +5,9 @@ import { getWorkspaceRoot, loadConfig } from "../config";
 import { runVSCodeInterview } from "../interview";
 
 export async function handleInit(
-  request: vscode.ChatRequest,
-  context: vscode.ChatContext,
-  stream: vscode.ChatResponseStream,
-  extContext: vscode.ExtensionContext
+  _request: vscode.ChatRequest,
+  _context: vscode.ChatContext,
+  stream: vscode.ChatResponseStream
 ): Promise<void> {
   const root = getWorkspaceRoot();
   if (!root) {
@@ -31,42 +30,10 @@ export async function handleInit(
     return;
   }
 
-  const token = await resolveBitbucketToken(extContext, stream);
-  if (!token) return;
-
   stream.markdown("Scaffolding project files...\n\n");
-  const result = await scaffoldRepo(config, root, token);
+  const result = await scaffoldRepo(config, root);
 
   stream.markdown(buildSummary(config, result, isReconfigure));
-}
-
-async function resolveBitbucketToken(
-  context: vscode.ExtensionContext,
-  stream: vscode.ChatResponseStream
-): Promise<string | undefined> {
-  const SECRET_KEY = "BITBUCKET_TOKEN";
-  const stored = await context.secrets.get(SECRET_KEY);
-  if (stored) return stored;
-
-  const entered = await vscode.window.showInputBox({
-    title: "Bitbucket HTTP Access Token",
-    prompt:
-      "Required to fetch the latest Slalom standards from sf-uki-devops. " +
-      "Generate one at bitbucket.org → Personal settings → App passwords (Repository: Read scope).",
-    password: true,
-    ignoreFocusOut: true,
-  });
-
-  if (!entered) {
-    stream.markdown(
-      "⛔ Setup cancelled — a Bitbucket token is required to fetch the development standards from sf-uki-devops. " +
-      "Generate an app password with **Repository: Read** scope and run `/init` again."
-    );
-    return undefined;
-  }
-
-  await context.secrets.store(SECRET_KEY, entered);
-  return entered;
 }
 
 function buildSummary(

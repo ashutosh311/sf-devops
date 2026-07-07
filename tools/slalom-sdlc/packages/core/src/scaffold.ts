@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { SdlcConfig } from "./schema.js";
-import { fetchStandards } from "./standards.js";
+import { getStandards } from "./standards.js";
 
 export interface ScaffoldResult {
   created: string[];
@@ -11,14 +11,13 @@ export interface ScaffoldResult {
 
 export async function scaffoldRepo(
   config: SdlcConfig,
-  outputDir: string,
-  bitbucketToken = ""
+  outputDir: string
 ): Promise<ScaffoldResult> {
   const result: ScaffoldResult = { created: [], updated: [], preserved: [] };
 
   await writeConfig(config, outputDir, result);
   await writeArtifactDirs(config, outputDir, result);
-  await writeStandardsStubs(config, outputDir, result, bitbucketToken);
+  await writeStandards(config, outputDir, result);
   await writeTriggerFrameworkPlaceholder(config, outputDir, result);
   await writeMcpConfig(config, outputDir, result);
   await writeClaudeCodeMcpConfig(config, outputDir, result);
@@ -68,11 +67,11 @@ async function writeArtifactDirs(config: SdlcConfig, root: string, result: Scaff
   }
 }
 
-async function writeStandardsStubs(config: SdlcConfig, root: string, result: ScaffoldResult, token: string): Promise<void> {
+async function writeStandards(config: SdlcConfig, root: string, result: ScaffoldResult): Promise<void> {
   const dir = path.join(root, config.paths.standards);
   await fs.mkdir(dir, { recursive: true });
 
-  const files = await fetchStandards(token);
+  const files = getStandards();
 
   for (const [filename, content] of Object.entries(files)) {
     const filepath = path.join(dir, filename);

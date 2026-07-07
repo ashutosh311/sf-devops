@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext): void {
     ) => {
       try {
         if (request.command === "init") {
-          await handleInit(request, chatContext, stream, context);
+          await handleInit(request, chatContext, stream);
         } else if (request.command === "about") {
           stream.markdown(buildAboutText(context, syncService));
         } else if (request.command === "discover") {
