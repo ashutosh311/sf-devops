@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { renderPrompt, CACHE_CURRENT_DIR } from "@sdlc/core";
 import { requireConfig } from "../config";
 
-const PHASE_COMMANDS = new Set(["discover", "refine", "design", "build", "test", "release"]);
+const PHASE_COMMANDS = new Set(["discover", "design", "build", "test", "release"]);
 
 export async function handleAgent(
   request: vscode.ChatRequest,
