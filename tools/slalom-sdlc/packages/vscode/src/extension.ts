@@ -6,12 +6,25 @@ import { handleDesign } from "./handlers/design";
 import { handleRefine } from "./handlers/refine";
 import { handleForceSync, handleSyncStatus } from "./handlers/sync";
 import { InstructionSyncService } from "./sync";
+import { maybeShowSyncNudge } from "./syncNudge";
 
 export function activate(context: vscode.ExtensionContext): void {
   const syncService = new InstructionSyncService();
 
-  // Kick off a background sync on activation — fire and forget, never blocks
-  syncService.syncIfDue(context).catch(() => { /* errors recorded in metadata.json */ });
+  // Kick off a background sync on activation — fire and forget, never blocks activation.
+  // Once it settles, check whether sync is silently stuck and nudge the user if so.
+  void (async () => {
+    try {
+      await syncService.syncIfDue(context);
+    } catch {
+      // errors recorded in metadata.json
+    }
+    try {
+      await maybeShowSyncNudge(syncService, context);
+    } catch {
+      // never let a notification failure affect activation
+    }
+  })();
 
   const participant = vscode.chat.createChatParticipant(
     "slalom.slalom-sdlc",
