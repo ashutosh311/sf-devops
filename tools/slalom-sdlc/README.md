@@ -208,6 +208,17 @@ If a release run fails for an infrastructure reason (not a code problem), re-run
 
 > Tags must look like `vX.Y.Z` (e.g. `v1.2.3`) and must point to a commit on `main` — the workflow rejects anything else.
 
+### Dry-running a release before merging
+
+Finding out a release build breaks *after* merging is worse than finding out before. To validate the exact same pipeline against an unmerged commit — a feature branch, an open PR — tag it with a semver pre-release suffix instead of a plain version, and push that tag:
+
+```bash
+git tag v1.3.0-rc.1
+git push origin v1.3.0-rc.1
+```
+
+Any tag matching `vX.Y.Z-<suffix>` (e.g. `-rc.1`, `-beta.2`) skips the "must be on main" check and runs the full pipeline — build, typecheck, package VSIX/CLI binaries/instructions — from that commit. It still publishes a real GitHub Release so you can download and inspect the actual assets, but as a **prerelease, not marked "latest"** — so it's never picked up by the VS Code extension's background sync or by anyone just grabbing the latest release. Once you're confident, merge as normal and tag the merged commit with the real `vX.Y.Z` version.
+
 ---
 
 ## Versioning
@@ -218,6 +229,7 @@ If a release run fails for an infrastructure reason (not a code problem), re-run
 - The real version only ever exists transiently, inside the release workflow's CI run: `.github/workflows/release.yml` reads it straight from the pushed tag and stamps it into the working tree with `scripts/sync-version.mjs` before building — that stamp is never committed back.
 - Because of this, **version continuity lives entirely in your tag history**, not in any file in the repo. Check `git tag -l` (or the repo's Releases page) before cutting a new one, and bump from whatever the last real tag was — don't restart from `0.0.0`/`0.1.0` just because that's what you see in `package.json`.
 - This repo's release history predates this scheme: earlier releases used an `instructions-v*` tag (e.g. `instructions-v0.5.0`) and only shipped the instruction bundle, with each package's version bumped and committed by hand. Those old tags and releases stay as-is. The current workflow only triggers on the new `vX.Y.Z` pattern (no prefix), and the next release should continue the same numeric sequence — e.g. if `instructions-v0.5.0` was the last one shipped, tag the next release `v0.6.0`, not `v0.1.0`.
+- `vX.Y.Z-<suffix>` tags (e.g. `v1.3.0-rc.1`) are pipeline dry runs, not real releases — see [Dry-running a release before merging](#dry-running-a-release-before-merging). They don't count against the numeric sequence above; the next *real* release still picks up from the last plain `vX.Y.Z` tag.
 
 ---
 

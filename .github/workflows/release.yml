@@ -12,6 +12,16 @@ name: Release
 #        git push origin v1.2.3
 #   3. This workflow builds, packages, and publishes the release automatically.
 #
+# Dry-run / pre-merge validation:
+#   Tag any commit — including one still on a feature branch or open PR — with
+#   a semver pre-release suffix, e.g. `v1.2.3-rc.1`, and push it. The full
+#   pipeline (build, typecheck, package VSIX/CLI/instructions) runs exactly as
+#   it would for the real release, so a red build surfaces before you merge
+#   instead of after. This bypasses the "tag must be on main" check, and
+#   publishes a GitHub prerelease (not marked "latest"), so it's never picked
+#   up by the VS Code extension's auto-sync or by anyone installing "latest".
+#   Plain `vX.Y.Z` tags (no suffix) still require the tag to be on main.
+#
 # For local/dev builds that don't need a real version number, see
 # tools/slalom-sdlc/README.md → "Local builds".
 
@@ -22,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to rebuild and republish (e.g. v1.2.3)"
+        description: "Existing tag to rebuild and republish (e.g. v1.2.3 or v1.2.3-rc.1)"
         required: true
         type: string
 
@@ -49,20 +59,28 @@ jobs:
         working-directory: .
         run: |
           TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag '$TAG' is not a valid release tag (expected vX.Y.Z)." >&2
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Tag '$TAG' is not a valid release tag (expected vX.Y.Z or vX.Y.Z-rc.N)." >&2
             exit 1
+          fi
+          if [[ -n "${BASH_REMATCH[1]}" ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "Releasing ${TAG} (version ${TAG#v})"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "Releasing ${TAG} (version ${TAG#v}, prerelease=${PRERELEASE})"
 
       - name: Verify tag is reachable from main
+        if: steps.version.outputs.prerelease != 'true'
         working-directory: .
         run: |
           git fetch origin main
           if ! git merge-base --is-ancestor "${{ steps.version.outputs.tag }}" origin/main; then
             echo "Tag ${{ steps.version.outputs.tag }} is not on main — refusing to release from an unmerged commit." >&2
+            echo "For a pre-merge dry run, use a pre-release tag instead, e.g. ${{ steps.version.outputs.tag }}-rc.1" >&2
             exit 1
           fi
 
@@ -84,11 +102,11 @@ jobs:
       - name: Stamp release version
         run: node scripts/sync-version.mjs --version "${{ steps.version.outputs.version }}"
 
-      - name: Typecheck
-        run: pnpm -r typecheck
-
       - name: Build packages
         run: pnpm -r build
+
+      - name: Typecheck
+        run: pnpm -r typecheck
 
       - name: Package VS Code extension (VSIX)
         run: pnpm --filter slalom-sdlc package
@@ -111,16 +129,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Slalom SDLC ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.prerelease == 'true' && format('Slalom SDLC {0} (pre-merge dry run — not for install)', steps.version.outputs.tag) || format('Slalom SDLC {0}', steps.version.outputs.tag) }}
           body: |
-            Automated release, built entirely from this tag — no manual version bump involved.
+            ${{ steps.version.outputs.prerelease == 'true' && 'Pre-merge dry-run build — validates the release pipeline from an unmerged commit. Not marked "latest"; the VS Code extension will never auto-sync to this.' || 'Automated release, built entirely from this tag — no manual version bump involved.' }}
 
             - **`*.vsix`** — the VS Code extension. Install via the Extensions panel → `···` → *Install from VSIX…* (first-time setup).
             - **`slalom-sdlc-*`** — standalone CLI binaries (macOS/Windows/Linux) for headless or non-VS Code use.
             - **`instructions.zip`** — the instruction bundle the installed extension downloads automatically on its daily background sync.
               Every file is checksum-validated against `manifest.json` before activation.
-          prerelease: false
-          make_latest: true
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
           files: |
             tools/slalom-sdlc/dist/release/instructions.zip
             tools/slalom-sdlc/dist/release/manifest.json
