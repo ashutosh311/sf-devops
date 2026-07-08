@@ -1,6 +1,6 @@
 {
   "name": "slalom-sdlc-mcp",
-  "version": "0.2.5",
+  "version": "0.0.0",
   "description": "Slalom SDLC MCP server for Claude Code — AI-assisted SDLC agents for Salesforce projects",
   "license": "SEE LICENSE IN LICENSE",
   "bin": {

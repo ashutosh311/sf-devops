@@ -17,7 +17,8 @@ The **primary, fully-supported experience is the VS Code extension running on Gi
 5. [Distribution](#distribution)
 6. [IP Protection](#ip-protection)
 7. [For Slalom Delivery Teams: Publishing an Update](#for-slalom-delivery-teams-publishing-an-update)
-8. [Development](#development)
+8. [Versioning](#versioning)
+9. [Development](#development)
 
 ---
 
@@ -162,13 +163,14 @@ Install the `.vsix` extension. The extension connects to the private `Slalom/sal
 
 Distribute a `.vsix` directly. The instructions bundled into that release are available immediately — no GitHub access or internet connection required after install. The sync feature is simply a no-op (no token → no sync → bundled instructions used).
 
-Build a client-ready VSIX:
+For a one-off client VSIX outside the normal tag-driven release (see [Local builds](#local-builds)), pass a real version explicitly so it isn't stamped `0.0.0`:
 
 ```bash
 cd tools/slalom-sdlc
+node scripts/sync-version.mjs --version 1.2.3   # not committed — CI working-tree only, normally
 pnpm -r build
 cd packages/vscode
-pnpm package    # → slalom-sdlc-x.x.x.vsix
+pnpm package    # → slalom-sdlc-1.2.3.vsix
 ```
 
 ---
@@ -189,32 +191,33 @@ This means:
 
 ## For Slalom Delivery Teams: Publishing an Update
 
-When delivery procedures change (e.g. improved design phase, updated deployment steps):
+Releases are fully automated and tag-driven — there is no version to bump and no release script to run yourself. Every release ships the same three assets together: the VS Code extension (`.vsix`), the standalone CLI binaries, and the instruction bundle (`instructions.zip` + `manifest.json`).
 
-1. Edit the template files in `packages/core/src/templates/` or the instruction markdown in `devops/instructions/`
-2. Build and package the release assets:
-
-```bash
-pnpm -r build
-node scripts/package-instructions.mjs --version 1.2.3
-```
-
-This produces `dist/release/`:
-- `instructions.zip` — the instruction bundle (8 files + manifest with checksums)
-- `manifest.json` — standalone manifest
-- `slalom-sdlc-x.x.x.vsix` — current extension binary (if built)
-
-3. Create a new GitHub Release on `Slalom/salesforce-devops` and upload `instructions.zip` as a release asset
-4. All consultants with the extension pick up the update within 24 hours automatically
-
-To also ship a new extension version (e.g. when adding new commands or changing the VS Code integration):
+1. Edit whatever needs to change (instruction markdown in `devops/instructions/`, templates in `packages/core/src/templates/`, extension code, etc.) and merge it into `main` as normal.
+2. Tag the merged commit with the version you want to release and push the tag:
 
 ```bash
-cd packages/vscode
-pnpm package    # → slalom-sdlc-x.x.x.vsix
+git tag v1.2.3
+git push origin v1.2.3
 ```
 
-Distribute the `.vsix` through your normal channel.
+3. `.github/workflows/release.yml` picks up the tag, verifies it's actually reachable from `main`, builds and typechecks every package, stamps `v1.2.3` into each package's `package.json` and `TOOL_VERSION` (this stamping happens only in the CI working tree — nothing is committed back to the repo), packages the VSIX / CLI binaries / instruction bundle, and publishes them all as one GitHub Release.
+4. All consultants with the extension pick up the new instructions within 24 hours automatically. Anyone installing a fresh `.vsix` or CLI binary gets `v1.2.3` baked in.
+
+If a release run fails for an infrastructure reason (not a code problem), re-run it without re-tagging via **Actions → Release → Run workflow**, supplying the existing tag.
+
+> Tags must look like `vX.Y.Z` (e.g. `v1.2.3`) and must point to a commit on `main` — the workflow rejects anything else.
+
+---
+
+## Versioning
+
+**The git tag is the single source of truth for the release version — nothing else.** There is no version to bump by hand and no sync command to remember to run before tagging.
+
+- Every `package.json` in this workspace (root, `core`, `mcp`, `cli`, `vscode`) and the generated `packages/core/src/version.ts` (`TOOL_VERSION`) are checked into git at a fixed placeholder, **`0.0.0`**. That's not a "current version" — it's an intentionally-fake sentinel so a locally-built artifact can never be mistaken for an official release. It never changes as part of normal development and should never be hand-edited.
+- The real version only ever exists transiently, inside the release workflow's CI run: `.github/workflows/release.yml` reads it straight from the pushed tag and stamps it into the working tree with `scripts/sync-version.mjs` before building — that stamp is never committed back.
+- Because of this, **version continuity lives entirely in your tag history**, not in any file in the repo. Check `git tag -l` (or the repo's Releases page) before cutting a new one, and bump from whatever the last real tag was — don't restart from `0.0.0`/`0.1.0` just because that's what you see in `package.json`.
+- This repo's release history predates this scheme: earlier releases used an `instructions-v*` tag (e.g. `instructions-v0.5.0`) and only shipped the instruction bundle, with each package's version bumped and committed by hand. Those old tags and releases stay as-is. The current workflow only triggers on the new `vX.Y.Z` pattern (no prefix), and the next release should continue the same numeric sequence — e.g. if `instructions-v0.5.0` was the last one shipped, tag the next release `v0.6.0`, not `v0.1.0`.
 
 ---
 
@@ -244,17 +247,59 @@ tools/slalom-sdlc/
 │   ├── mcp/        slalom-sdlc-mcp — Claude Code MCP server
 │   └── cli/        @sdlc/cli — standalone CLI for init/reconfigure
 └── scripts/
+    ├── sync-version.mjs           — stamps a version into every package.json + TOOL_VERSION (release workflow only)
     └── package-instructions.mjs   — release asset builder
 ```
+
+### Local builds
+
+`pnpm build` and `pnpm typecheck` never touch versioning — every package's `package.json` and `TOOL_VERSION` stay at the checked-in `0.0.0` placeholder for local work. See [Versioning](#versioning) for why.
+
+```bash
+cd tools/slalom-sdlc
+pnpm install
+pnpm build          # builds all packages, TOOL_VERSION stays "0.0.0"
+pnpm typecheck      # type-checks all packages
+```
+
+If you need a one-off local artifact with a real version baked in (e.g. a client VSIX, see [Distribution](#distribution)), stamp it yourself first — it's a local-only, uncommitted change:
+
+```bash
+node scripts/sync-version.mjs --version 1.2.3
+pnpm -r build
+```
+
+### Building a local VSIX for testing
+
+To try your own changes inside a real VS Code window (not just `pnpm typecheck`), build a VSIX and install it directly — no version stamping needed, the placeholder `0.0.0` is fine for this:
+
+```bash
+cd tools/slalom-sdlc
+pnpm install                      # first time only
+pnpm --filter @sdlc/core build    # rebuild core first — vscode depends on it via workspace:*
+cd packages/vscode
+pnpm package                      # → slalom-sdlc-0.0.0.vsix
+```
+
+Then in VS Code: **Extensions panel → `···` → Install from VSIX…** and pick the generated file, or from the integrated terminal:
+
+```bash
+code --install-extension slalom-sdlc-0.0.0.vsix
+```
+
+Reload the window (**Developer: Reload Window**) to pick up the new build. There's no watch/hot-reload loop for the packaged extension — every code change needs a repackage-and-reinstall cycle. If you only changed instruction markdown under `devops/instructions/` or templates under `packages/core/src/templates/`, you still need to rebuild `@sdlc/core` (step above) before repackaging `vscode`, since both are compiled into the bundle at build time (see [How It Works](#how-it-works)).
+
+If a reload doesn't seem to pick up your rebuild (VS Code can be sticky about reinstalling the same version number), uninstall the extension from the Extensions panel first, then install the freshly-built VSIX again.
 
 ### Key scripts
 
 | Command | What it does |
 |---|---|
-| `pnpm build` | Build all packages |
+| `pnpm build` | Build all packages (placeholder version) |
 | `pnpm typecheck` | Type-check all packages |
 | `pnpm package` | Build CLI native binaries (macOS/Windows/Linux) |
-| `node scripts/package-instructions.mjs --version x.x.x` | Build release assets for GitHub Release |
+| `node scripts/sync-version.mjs --version x.x.x` | Stamp a real version locally (uncommitted) — release workflow does this automatically from the tag |
+| `node scripts/package-instructions.mjs --version x.x.x` | Build the instruction bundle for a GitHub Release |
 
 ### Architecture references
 

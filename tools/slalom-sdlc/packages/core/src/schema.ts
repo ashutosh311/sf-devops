@@ -92,7 +92,14 @@ export type EpicStatusMap = z.infer<typeof EpicStatusMapSchema>;
 export type SubTaskStatusMap = z.infer<typeof SubTaskStatusMapSchema>;
 export type EstimationApproach = z.infer<typeof EstimationApproachSchema>;
 
-export const TOOL_VERSION = "1.0.0";
+// TOOL_VERSION is the tool's release version, stamped from the release git tag
+// by scripts/sync-version.mjs during .github/workflows/release.yml. Re-exported
+// here for convenience.
+export { TOOL_VERSION } from "./version.js";
+
+// CONFIG_VERSION is the schema version of the .sdlc/config.json file written into
+// client projects. It is owned separately and changes only when the config file
+// FORMAT changes — never on a tool release.
 export const CONFIG_VERSION = "1.0.0";
 
 export const DEFAULT_PATHS = {
