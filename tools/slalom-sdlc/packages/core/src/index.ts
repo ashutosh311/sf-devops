@@ -1,3 +1,4 @@
+export * from "./version.js";
 export * from "./schema.js";
 export * from "./questions.js";
 export * from "./jira.js";

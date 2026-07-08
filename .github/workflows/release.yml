@@ -1,0 +1,128 @@
+name: Release
+
+# Builds and publishes every Slalom SDLC release asset — the VS Code extension
+# (VSIX), standalone CLI binaries, and the instruction bundle — from a single
+# git tag. The tag is the only source of truth for the release version: no
+# package.json bump, no local script to run or remember.
+#
+# Release process:
+#   1. Merge your changes into main.
+#   2. Tag the merged commit and push the tag:
+#        git tag v1.2.3
+#        git push origin v1.2.3
+#   3. This workflow builds, packages, and publishes the release automatically.
+#
+# For local/dev builds that don't need a real version number, see
+# tools/slalom-sdlc/README.md → "Local builds".
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to rebuild and republish (e.g. v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write # required to create releases and upload assets
+
+defaults:
+  run:
+    working-directory: tools/slalom-sdlc
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve version from tag
+        id: version
+        working-directory: .
+        run: |
+          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '$TAG' is not a valid release tag (expected vX.Y.Z)." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Releasing ${TAG} (version ${TAG#v})"
+
+      - name: Verify tag is reachable from main
+        working-directory: .
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "${{ steps.version.outputs.tag }}" origin/main; then
+            echo "Tag ${{ steps.version.outputs.tag }} is not on main — refusing to release from an unmerged commit." >&2
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: tools/slalom-sdlc/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Stamp release version
+        run: node scripts/sync-version.mjs --version "${{ steps.version.outputs.version }}"
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Package VS Code extension (VSIX)
+        run: pnpm --filter slalom-sdlc package
+
+      - name: Package CLI binaries
+        run: pnpm --filter @sdlc/cli package
+
+      - name: Package instruction bundle
+        run: node scripts/package-instructions.mjs --version "${{ steps.version.outputs.version }}"
+
+      - name: Verify assets
+        run: |
+          test -f dist/release/instructions.zip
+          test -f dist/release/manifest.json
+          ls packages/vscode/*.vsix
+          ls packages/cli/binaries/*
+          ls -lh dist/release packages/vscode/*.vsix packages/cli/binaries/*
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Slalom SDLC ${{ steps.version.outputs.tag }}
+          body: |
+            Automated release, built entirely from this tag — no manual version bump involved.
+
+            - **`*.vsix`** — the VS Code extension. Install via the Extensions panel → `···` → *Install from VSIX…* (first-time setup).
+            - **`slalom-sdlc-*`** — standalone CLI binaries (macOS/Windows/Linux) for headless or non-VS Code use.
+            - **`instructions.zip`** — the instruction bundle the installed extension downloads automatically on its daily background sync.
+              Every file is checksum-validated against `manifest.json` before activation.
+          prerelease: false
+          make_latest: true
+          files: |
+            tools/slalom-sdlc/dist/release/instructions.zip
+            tools/slalom-sdlc/dist/release/manifest.json
+            tools/slalom-sdlc/packages/vscode/*.vsix
+            tools/slalom-sdlc/packages/cli/binaries/*
