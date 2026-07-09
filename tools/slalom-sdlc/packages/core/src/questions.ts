@@ -1,4 +1,4 @@
-import type { SdlcConfig, Phase, EstimationApproach, StoryStatusMap, EpicStatusMap, SubTaskStatusMap } from "./schema.js";
+import type { SdlcConfig, Phase, EstimationApproach } from "./schema.js";
 import { DEFAULT_STANDARDS } from "./schema.js";
 
 export type QuestionType =
@@ -153,7 +153,7 @@ export const QUESTIONS: Question[] = [
 ];
 
 export const STORY_GATE_LABELS: Record<
-  keyof StoryStatusMap,
+  keyof SdlcConfig["jira"]["statusMap"]["story"],
   string
 > = {
   backlog: "Story created / not started",
@@ -167,7 +167,7 @@ export const STORY_GATE_LABELS: Record<
 };
 
 export const EPIC_GATE_LABELS: Record<
-  keyof EpicStatusMap,
+  keyof SdlcConfig["jira"]["statusMap"]["epic"],
   string
 > = {
   notStarted: "Epic not started",
@@ -176,7 +176,7 @@ export const EPIC_GATE_LABELS: Record<
 };
 
 export const SUBTASK_GATE_LABELS: Record<
-  keyof SubTaskStatusMap,
+  keyof SdlcConfig["jira"]["statusMap"]["subTask"],
   string
 > = {
   todo: "Sub-task not started",

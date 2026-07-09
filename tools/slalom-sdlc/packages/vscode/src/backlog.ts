@@ -16,7 +16,7 @@ export interface BacklogEpic {
   priority?: string;
   status?: string;
   demo_slice?: string;
-  pm_key?: string;
+  jira_key?: string;
   disregarded?: string;
 }
 
@@ -32,7 +32,7 @@ export interface BacklogFeature {
   complexity?: string;
   status?: string;
   implementation_boundary?: string;
-  pm_key?: string;
+  jira_key?: string;
   disregarded?: string;
 }
 
@@ -49,7 +49,7 @@ export interface BacklogStory {
   use_case_labels?: string;
   size?: string;
   status?: string;
-  pm_key?: string;
+  jira_key?: string;
   disregarded?: string;
 }
 
@@ -161,14 +161,14 @@ function buildEpics(wb: ExcelJS.Workbook, epics: BacklogEpic[]): void {
   const headers = [
     "ID", "Epic Name", "Narrative Goal", "Business Outcome",
     "Solution Notes", "Requirement IDs", "Pain Points Addressed",
-    "Stakeholder Groups", "Priority", "Status", "Demo Narrative Slice", "PM Key", "Disregarded",
+    "Stakeholder Groups", "Priority", "Status", "Demo Narrative Slice", "JIRA Key", "Disregarded",
   ];
   styleHeaderRow(ws, headers, [12, 30, 40, 40, 40, 20, 20, 25, 8, 12, 30, 12, 12]);
   epics.forEach((e, i) => {
     addDataRow(ws, [
       e.id, e.name, e.narrative_goal, e.business_outcome, e.solution_notes,
       e.requirement_ids, e.pain_points, e.stakeholder_groups, e.priority,
-      e.status ?? "Draft", e.demo_slice, e.pm_key, e.disregarded,
+      e.status ?? "Draft", e.demo_slice, e.jira_key, e.disregarded,
     ], i + 2, (e.disregarded || "").toUpperCase() === "Y");
   });
 }
@@ -178,14 +178,14 @@ function buildFeatures(wb: ExcelJS.Workbook, features: BacklogFeature[]): void {
   const headers = [
     "ID", "Epic ID", "Epic Name", "Feature Name", "Description",
     "System Components", "Dependencies", "Priority", "Complexity",
-    "Status", "Implementation Boundary", "PM Key", "Disregarded",
+    "Status", "Implementation Boundary", "JIRA Key", "Disregarded",
   ];
   styleHeaderRow(ws, headers, [12, 12, 25, 30, 45, 25, 20, 8, 10, 12, 35, 12, 12]);
   features.forEach((f, i) => {
     addDataRow(ws, [
       f.id, f.epic_id, f.epic_name, f.name, f.description, f.system_components,
       f.dependencies, f.priority, f.complexity, f.status ?? "Draft",
-      f.implementation_boundary, f.pm_key, f.disregarded,
+      f.implementation_boundary, f.jira_key, f.disregarded,
     ], i + 2, (f.disregarded || "").toUpperCase() === "Y");
   });
 }
@@ -195,14 +195,14 @@ function buildStories(wb: ExcelJS.Workbook, stories: BacklogStory[]): void {
   const headers = [
     "Story ID", "Epic ID", "Epic Name", "Feature ID", "Feature Name",
     "User Story", "Acceptance Criteria", "Functional Requirements",
-    "Solution Notes", "Use Case Labels", "Size", "Status", "PM Key", "Disregarded",
+    "Solution Notes", "Use Case Labels", "Size", "Status", "JIRA Key", "Disregarded",
   ];
   styleHeaderRow(ws, headers, [12, 12, 25, 12, 25, 50, 50, 20, 30, 20, 8, 12, 12, 12]);
   stories.forEach((s, i) => {
     addDataRow(ws, [
       s.id, s.epic_id, s.epic_name, s.feature_id, s.feature_name, s.user_story,
       s.acceptance_criteria, s.functional_requirements, s.solution_notes,
-      s.use_case_labels, s.size, s.status ?? "Draft", s.pm_key, s.disregarded,
+      s.use_case_labels, s.size, s.status ?? "Draft", s.jira_key, s.disregarded,
     ], i + 2, (s.disregarded || "").toUpperCase() === "Y");
   });
 }
@@ -291,7 +291,7 @@ export async function readBacklogWorkbook(inputPath: string): Promise<BacklogDat
         business_outcome: cellText(row, 4), solution_notes: cellText(row, 5),
         requirement_ids: cellText(row, 6), pain_points: cellText(row, 7),
         stakeholder_groups: cellText(row, 8), priority: cellText(row, 9),
-        status: cellText(row, 10), demo_slice: cellText(row, 11), pm_key: cellText(row, 12),
+        status: cellText(row, 10), demo_slice: cellText(row, 11), jira_key: cellText(row, 12),
         disregarded: cellText(row, 13) || undefined,
       });
     });
@@ -305,7 +305,7 @@ export async function readBacklogWorkbook(inputPath: string): Promise<BacklogDat
         id: cellText(row, 1), epic_id: cellText(row, 2), epic_name: cellText(row, 3),
         name: cellText(row, 4), description: cellText(row, 5), system_components: cellText(row, 6),
         dependencies: cellText(row, 7), priority: cellText(row, 8), complexity: cellText(row, 9),
-        status: cellText(row, 10), implementation_boundary: cellText(row, 11), pm_key: cellText(row, 12),
+        status: cellText(row, 10), implementation_boundary: cellText(row, 11), jira_key: cellText(row, 12),
         disregarded: cellText(row, 13) || undefined,
       });
     });
@@ -320,7 +320,7 @@ export async function readBacklogWorkbook(inputPath: string): Promise<BacklogDat
         feature_id: cellText(row, 4), feature_name: cellText(row, 5), user_story: cellText(row, 6),
         acceptance_criteria: cellText(row, 7), functional_requirements: cellText(row, 8),
         solution_notes: cellText(row, 9), use_case_labels: cellText(row, 10), size: cellText(row, 11),
-        status: cellText(row, 12), pm_key: cellText(row, 13),
+        status: cellText(row, 12), jira_key: cellText(row, 13),
         disregarded: cellText(row, 14) || undefined,
       });
     });

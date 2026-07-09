@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { renderPrompt, CACHE_CURRENT_DIR, type SdlcConfig, resolveProjectKey } from "@sdlc/core";
+import { renderPrompt, CACHE_CURRENT_DIR, type SdlcConfig } from "@sdlc/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { readBacklogWorkbook, type BacklogStory, type BacklogEpic } from "../backlog";
 
@@ -41,8 +41,8 @@ export async function handleDesign(
 
   const ctx: DesignCtx = { root, config, request, stream, token };
 
-  // If the user already typed a PM key in the prompt → skip menu, PM mode
-  const inlineKey = extractJiraKey(request.prompt, resolveProjectKey(config));
+  // If the user already typed a JIRA key in the prompt → skip menu, JIRA mode
+  const inlineKey = extractJiraKey(request.prompt, config.project.jiraKey);
   if (inlineKey) {
     return runAgent(ctx, request.prompt.trim());
   }
@@ -106,13 +106,13 @@ async function runJiraMode(ctx: DesignCtx): Promise<void> {
     const key = await vscode.window.showInputBox({
       title: "Design Agent — JIRA Mode",
       prompt: "Enter the JIRA story or epic key",
-    placeHolder: `${resolveProjectKey(config)}-123`,
+      placeHolder: `${config.project.jiraKey}-123`,
       ignoreFocusOut: true,
     });
     if (!key?.trim()) { stream.markdown("Design cancelled."); return; }
     userMessage = key.trim();
   } else {
-    userMessage = `Design all stories currently in "Ready for Design" status in project ${resolveProjectKey(config)}.`;
+    userMessage = `Design all stories currently in "Ready for Design" status in JIRA project ${config.project.jiraKey}.`;
   }
 
   return runAgent(ctx, userMessage);
@@ -142,7 +142,7 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
   // Find eligible stories: have refinement-notes.md but no solution-design.md yet
   const eligible: EligibleStory[] = [];
   for (const story of (data.stories ?? [])) {
-    const key = story.pm_key || story.id;
+    const key = story.jira_key || story.id;
     if (!key) continue;
     const epicId = (story.epic_id || "ungrouped").trim();
     const base = path.join(
@@ -207,10 +207,10 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
   } else {
     // Specific story picker
     const storyItems = eligible.map((s) => ({
-      label: `$(symbol-method) ${s.pm_key ?? s.id}`,
+      label: `$(symbol-method) ${s.jira_key ?? s.id}`,
       description: s.user_story?.slice(0, 80) ?? "",
       detail: `Epic: ${s.epicLabel}`,
-      storyKey: s.pm_key ?? s.id,
+      storyKey: s.jira_key ?? s.id,
     }));
     const storyPick = await vscode.window.showQuickPick(storyItems, {
       title: "Design Agent — Select Story",
@@ -219,13 +219,13 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
       ignoreFocusOut: true,
     });
     if (!storyPick) { stream.markdown("Design cancelled."); return; }
-    scoped = eligible.filter((s) => (s.pm_key ?? s.id) === storyPick.storyKey);
+    scoped = eligible.filter((s) => (s.jira_key ?? s.id) === storyPick.storyKey);
   }
 
   // ── Build context message ────────────────────────────────────────────────────
   const storyList = scoped
     .map((s) => {
-      const key = s.pm_key ?? s.id;
+      const key = s.jira_key ?? s.id;
       const epicId = (s.epic_id ?? "ungrouped").trim();
       const notesPath = `artifacts/discovery/04 - Backlog/stories/${epicId}/${key}/refinement-notes.md`;
       const designPath = `artifacts/discovery/04 - Backlog/stories/${epicId}/${key}/solution-design.md`;

@@ -165,9 +165,9 @@ manifest and phase-context note:
   JIRA key if pushed).
 - `artifacts/discovery/04 - Backlog/open-questions.md` — open-questions register.
 - `artifacts/discovery/04 - Backlog/_manifest.json` — machine registry:
-  `{id, name, pmKey?, epicId?}` per item, plus `workbookChecksum`,
+  `{id, name, jiraKey?, epicId?}` per item, plus `workbookChecksum`,
   `sessions` (processed session folders), and `pushedAt?`. Preserve existing
-  `pmKey`s by ID on every write.
+  `jiraKey`s by ID on every write.
 - `artifacts/discovery/00 - Project/Phase Context.md` — handoff note: what
   discovery produced, where artefacts live, current status (drafted / synced /
   pushed), and the next step.

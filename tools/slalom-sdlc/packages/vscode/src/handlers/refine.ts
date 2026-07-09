@@ -7,16 +7,13 @@ import {
   CONFIG_VERSION,
   TOOL_VERSION,
   type SdlcConfig,
-  type StoryStatusMap,
-  type EpicStatusMap,
-  type SubTaskStatusMap,
-  resolveProjectKey,
 } from "@sdlc/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 
-type JiraStatusMap = { story: StoryStatusMap; epic: EpicStatusMap; subTask: SubTaskStatusMap };
-
-const DEFAULT_STATUS_MAP: JiraStatusMap = {
+// Sensible defaults for JIRA status names — cover the majority of Jira Cloud
+// setups without requiring a full /init. Users with custom status names can
+// run /init to persist their overrides.
+const DEFAULT_STATUS_MAP: SdlcConfig["jira"]["statusMap"] = {
   story: {
     backlog:          "Backlog",
     refineInProgress: "In Refinement",
@@ -91,7 +88,7 @@ export async function handleRefine(
   }
 
   // Substitute the story key if the user provided one (e.g. /refine PROJ-42)
-  const storyKey = extractStoryKey(request.prompt, resolveProjectKey(config));
+  const storyKey = extractStoryKey(request.prompt, config.project.jiraKey);
   if (storyKey) {
     systemPrompt = systemPrompt
       .replace(/\{STORY_KEY\}/g, storyKey)

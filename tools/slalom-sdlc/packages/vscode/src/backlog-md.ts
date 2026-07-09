@@ -7,15 +7,12 @@ import type { BacklogData, BacklogEpic, BacklogFeature, BacklogStory } from "./b
 //
 // A small machine-readable registry that makes backlog generation ID-stable and
 // BAU-safe. It records every epic/feature/story id, its display name, and its
-// PM tool key once pushed, plus a checksum of the workbook so we can detect edits.
+// JIRA key once pushed, plus a checksum of the workbook so we can detect edits.
 
 export interface ManifestItem {
   id: string;
   name?: string;
   epicId?: string;
-  /** PM tool key (JIRA: e.g. PROJ-123; ADO: e.g. #1234). Previously called jiraKey — old manifests are auto-migrated on read. */
-  pmKey?: string;
-  /** @deprecated use pmKey. Present in manifests written before ADO support was added. */
   jiraKey?: string;
   sourceSession?: string;
   disregarded?: boolean;
@@ -54,14 +51,6 @@ export function readManifest(backlogDir: string): BacklogManifest | undefined {
     parsed.epics ??= [];
     parsed.features ??= [];
     parsed.stories ??= [];
-    // Backward compat: migrate jiraKey → pmKey for manifests written before ADO support.
-    const migrateItem = (m: ManifestItem): ManifestItem => {
-      if (m.jiraKey && !m.pmKey) { m.pmKey = m.jiraKey; delete m.jiraKey; }
-      return m;
-    };
-    parsed.epics = parsed.epics.map(migrateItem);
-    parsed.features = parsed.features.map(migrateItem);
-    parsed.stories = parsed.stories.map(migrateItem);
     return parsed;
   } catch {
     return undefined;
@@ -74,7 +63,7 @@ export function writeManifest(backlogDir: string, manifest: BacklogManifest): vo
   fs.writeFileSync(manifestPath(backlogDir), JSON.stringify(manifest, null, 2) + "\n");
 }
 
-/** Build a manifest from full backlog data, preserving PM keys and disregarded flags already on the items. */
+/** Build a manifest from full backlog data, preserving JIRA keys and disregarded flags already on the items. */
 export function manifestFromData(data: BacklogData, prev?: BacklogManifest): BacklogManifest {
   const prevItem = (list: ManifestItem[] | undefined, id?: string): ManifestItem | undefined =>
     list?.find((m) => m.id === id);
@@ -82,7 +71,7 @@ export function manifestFromData(data: BacklogData, prev?: BacklogManifest): Bac
   const carryForwardExcluded = (current: ManifestItem[], previous?: ManifestItem[]): ManifestItem[] => {
     const seen = new Set(current.map((m) => m.id).filter(Boolean));
     const preserved = (previous ?? []).filter(
-      (m) => !!m.id && !seen.has(m.id) && (!!m.pmKey || !!m.disregarded)
+      (m) => !!m.id && !seen.has(m.id) && (!!m.jiraKey || !!m.disregarded)
     );
     return [...current, ...preserved];
   };
@@ -90,7 +79,7 @@ export function manifestFromData(data: BacklogData, prev?: BacklogManifest): Bac
     const p = prevItem(prev?.epics, e.id);
     return {
       id: e.id ?? "", name: e.name,
-      pmKey: e.pm_key || p?.pmKey,
+      jiraKey: e.jira_key || p?.jiraKey,
       disregarded: (e.disregarded || "").toUpperCase() === "Y" ? true : (p?.disregarded || undefined),
     };
   });
@@ -98,7 +87,7 @@ export function manifestFromData(data: BacklogData, prev?: BacklogManifest): Bac
     const p = prevItem(prev?.features, f.id);
     return {
       id: f.id ?? "", name: f.name, epicId: f.epic_id,
-      pmKey: f.pm_key || p?.pmKey,
+      jiraKey: f.jira_key || p?.jiraKey,
       disregarded: (f.disregarded || "").toUpperCase() === "Y" ? true : (p?.disregarded || undefined),
     };
   });
@@ -106,7 +95,7 @@ export function manifestFromData(data: BacklogData, prev?: BacklogManifest): Bac
     const p = prevItem(prev?.stories, s.id);
     return {
       id: s.id ?? "", name: s.user_story?.slice(0, 60), epicId: s.epic_id,
-      pmKey: s.pm_key || p?.pmKey,
+      jiraKey: s.jira_key || p?.jiraKey,
       disregarded: (s.disregarded || "").toUpperCase() === "Y" ? true : (p?.disregarded || undefined),
     };
   });
@@ -191,7 +180,7 @@ function mdField(label: string, value?: string): string {
 
 function renderStory(s: BacklogStory): string {
   let out = `#### ${s.id ?? ""} — ${s.user_story || "(user story)"}\n\n`;
-  if (s.pm_key) out += `**PM Key:** ${s.pm_key}\n\n`;
+  if (s.jira_key) out += `**JIRA:** ${s.jira_key}\n\n`;
   out += mdField("Acceptance Criteria", s.acceptance_criteria);
   out += mdField("Functional Requirements", s.functional_requirements);
   out += mdField("Solution Notes", s.solution_notes);
@@ -204,7 +193,7 @@ function renderStory(s: BacklogStory): string {
 
 function renderFeature(f: BacklogFeature): string {
   let out = `### ${f.id ?? ""} — ${f.name || "(feature)"}\n\n`;
-  if (f.pm_key) out += `**PM Key:** ${f.pm_key}\n\n`;
+  if (f.jira_key) out += `**JIRA:** ${f.jira_key}\n\n`;
   out += mdField("Description", f.description);
   out += mdField("System Components", f.system_components);
   out += mdField("Dependencies", f.dependencies);
@@ -221,7 +210,7 @@ function renderEpicFile(
   stories: BacklogStory[]
 ): string {
   let out = `# ${epic.id ?? ""} — ${epic.name || "(epic)"}\n\n`;
-  if (epic.pm_key) out += `**PM Key:** ${epic.pm_key}\n\n`;
+  if (epic.jira_key) out += `**JIRA:** ${epic.jira_key}\n\n`;
   out += mdField("Narrative Goal", epic.narrative_goal);
   out += mdField("Business Outcome", epic.business_outcome);
   out += mdField("Solution Notes", epic.solution_notes);
@@ -248,16 +237,16 @@ function renderIndex(data: BacklogData): string {
   const stories = data.stories ?? [];
   const features = data.features ?? [];
   let out = `# Backlog Index\n\n`;
-  out += `_Machine-maintained. Source of truth for the local backlog until pushed to the PM tool. `;
+  out += `_Machine-maintained. Source of truth for the local backlog until pushed to JIRA. `;
   out += `Each epic has its own file under \`epics/\`._\n\n`;
   out += `**Totals:** ${epics.length} epics · ${features.length} features · ${stories.length} stories\n\n`;
-  out += `| Epic | Name | Priority | Stories | PM Key | File |\n`;
+  out += `| Epic | Name | Priority | Stories | JIRA Key | File |\n`;
   out += `| --- | --- | --- | --- | --- | --- |\n`;
   for (const e of epics) {
     const count = stories.filter((s) => s.epic_id === e.id).length;
     const file = `${EPICS_DIR}/${epicFileName(e)}`;
     const nm = (e.name || "").replace(/\|/g, "\\|");
-    out += `| ${e.id ?? ""} | ${nm} | ${e.priority ?? ""} | ${count} | ${e.pm_key ?? ""} | [${file}](${encodeURI(file)}) |\n`;
+    out += `| ${e.id ?? ""} | ${nm} | ${e.priority ?? ""} | ${count} | ${e.jira_key ?? ""} | [${file}](${encodeURI(file)}) |\n`;
   }
   return out;
 }
