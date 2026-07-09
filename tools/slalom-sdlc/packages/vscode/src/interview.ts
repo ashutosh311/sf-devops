@@ -6,6 +6,9 @@ import {
   SUBTASK_GATE_LABELS,
   type InterviewAnswers,
   type SdlcConfig,
+  type StoryStatusMap,
+  type EpicStatusMap,
+  type SubTaskStatusMap,
   fetchJiraStatuses,
   type JiraStatus,
   DEFAULT_PATHS,
@@ -13,6 +16,9 @@ import {
   TOOL_VERSION,
   type Phase,
 } from "@sdlc/core";
+
+/** Local type alias for JIRA status map structure used in the interview flow. */
+type JiraStatusMap = { story: StoryStatusMap; epic: EpicStatusMap; subTask: SubTaskStatusMap };
 
 export async function runVSCodeInterview(
   existing?: Partial<SdlcConfig>
@@ -121,7 +127,7 @@ async function collectAnswers(
 async function collectStatusMap(
   answers: InterviewAnswers,
   existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"] | undefined> {
+): Promise<JiraStatusMap | undefined> {
   const token = process.env.ATLASSIAN_TOKEN;
 
   if (token) {
@@ -152,7 +158,7 @@ async function collectStatusMap(
 async function mapStatusesWithQuickPick(
   byType: Record<string, JiraStatus[]>,
   existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"] | undefined> {
+): Promise<JiraStatusMap | undefined> {
   const pick = async (gateLabel: string, statuses: JiraStatus[], def?: string) => {
     const result = await vscode.window.showQuickPick(
       statuses.map((s) => ({ label: s.name, picked: s.name === def })),
@@ -181,7 +187,7 @@ async function mapStatusesWithQuickPick(
 
 async function mapStatusesManually(
   existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"] | undefined> {
+): Promise<JiraStatusMap | undefined> {
   const ex = existing?.jira?.statusMap;
 
   const ask = async (label: string, def?: string): Promise<string | undefined> =>
@@ -218,8 +224,8 @@ type Picker = (label: string, statuses: JiraStatus[], def?: string) => Promise<s
 async function pickStoryStatuses(
   pick: Picker,
   statuses: JiraStatus[],
-  ex?: SdlcConfig["jira"]["statusMap"]["story"]
-): Promise<SdlcConfig["jira"]["statusMap"]["story"] | undefined> {
+  ex?: JiraStatusMap["story"]
+): Promise<JiraStatusMap["story"] | undefined> {
   const backlog          = await pick(STORY_GATE_LABELS.backlog,          statuses, ex?.backlog);
   const refineInProgress = await pick(STORY_GATE_LABELS.refineInProgress, statuses, ex?.refineInProgress);
   const readyForDesign   = await pick(STORY_GATE_LABELS.readyForDesign,   statuses, ex?.readyForDesign);
@@ -238,8 +244,8 @@ async function pickStoryStatuses(
 async function pickEpicStatuses(
   pick: Picker,
   statuses: JiraStatus[],
-  ex?: SdlcConfig["jira"]["statusMap"]["epic"]
-): Promise<SdlcConfig["jira"]["statusMap"]["epic"] | undefined> {
+  ex?: JiraStatusMap["epic"]
+): Promise<JiraStatusMap["epic"] | undefined> {
   const notStarted = await pick(EPIC_GATE_LABELS.notStarted, statuses, ex?.notStarted);
   const inProgress = await pick(EPIC_GATE_LABELS.inProgress, statuses, ex?.inProgress);
   const done       = await pick(EPIC_GATE_LABELS.done,       statuses, ex?.done);
@@ -250,8 +256,8 @@ async function pickEpicStatuses(
 async function pickSubTaskStatuses(
   pick: Picker,
   statuses: JiraStatus[],
-  ex?: SdlcConfig["jira"]["statusMap"]["subTask"]
-): Promise<SdlcConfig["jira"]["statusMap"]["subTask"] | undefined> {
+  ex?: JiraStatusMap["subTask"]
+): Promise<JiraStatusMap["subTask"] | undefined> {
   const todo          = await pick(SUBTASK_GATE_LABELS.todo,          statuses, ex?.todo);
   const inDevelopment = await pick(SUBTASK_GATE_LABELS.inDevelopment, statuses, ex?.inDevelopment);
   const readyForTest  = await pick(SUBTASK_GATE_LABELS.readyForTest,  statuses, ex?.readyForTest);
@@ -260,7 +266,7 @@ async function pickSubTaskStatuses(
   return { todo, inDevelopment, readyForTest, done };
 }
 
-function placeholderStatusMap(): SdlcConfig["jira"]["statusMap"] {
+function placeholderStatusMap(): JiraStatusMap {
   return {
     story:   { backlog: "Backlog", refineInProgress: "In Refinement", readyForDesign: "Ready for Design", designInProgress: "In Design", readyForBuild: "Ready for Build", inDevelopment: "In Development", readyForTest: "Ready for Test", done: "Done" },
     epic:    { notStarted: "To Do", inProgress: "In Progress", done: "Done" },
@@ -272,7 +278,7 @@ function placeholderStatusMap(): SdlcConfig["jira"]["statusMap"] {
 
 function buildConfig(
   answers: InterviewAnswers,
-  statusMap: SdlcConfig["jira"]["statusMap"]
+  statusMap: JiraStatusMap
 ): SdlcConfig {
   return {
     version: CONFIG_VERSION,

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { renderPrompt, CACHE_CURRENT_DIR } from "@sdlc/core";
+import { renderPrompt, CACHE_CURRENT_DIR, resolveProjectKey } from "@sdlc/core";
 import { requireConfig } from "../config";
 
 const PHASE_COMMANDS = new Set(["discover", "design", "build", "test", "release"]);
@@ -27,7 +27,7 @@ export async function handleAgent(
     return;
   }
 
-  const storyKey = extractStoryKey(request.prompt, config.project.jiraKey);
+  const storyKey = extractStoryKey(request.prompt, resolveProjectKey(config));
   if (storyKey) {
     systemPrompt = systemPrompt
       .replace(/\{STORY_KEY\}/g, storyKey)

@@ -44,7 +44,12 @@ function buildSummary(
   const lines: string[] = [];
 
   lines.push(`## ${isReconfigure ? "Reconfigured" : "Initialised"}: ${config.project.name}\n`);
-  lines.push(`- **JIRA**: [${config.project.jiraKey}](${config.project.jiraSite}/jira/software/projects/${config.project.jiraKey}/boards)`);
+  const pmKey = config.alm?.tool === "ADO" ? config.alm.project : (config.alm?.projectKey ?? config.project.jiraKey ?? config.project.name);
+  const pmUrl = config.alm?.tool === "ADO"
+    ? config.alm.organization
+    : (config.alm?.tool === "JIRA" ? config.alm.site : config.project.jiraSite) ?? "";
+  const pmLabel = config.alm?.tool === "ADO" ? "ADO Project" : "JIRA";
+  lines.push(`- **${pmLabel}**: [${pmKey}](${pmUrl})`);
   lines.push(`- **Sandbox org**: \`${config.salesforce.orgs.sandbox}\``);
   lines.push(`- **Phases**: ${config.phases.join(", ")}`);
   lines.push(`- **Sprint length**: ${config.team.sprintLengthWeeks} week(s)\n`);
