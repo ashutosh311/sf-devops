@@ -23,6 +23,11 @@ implementation-level (not fully-designed) solution notes when it is absent.
   the split markdown + manifest to match the edits, preserving JIRA keys by ID.
 - **BAU delta** — a new session has been processed: additively add its items,
   reusing an existing epic where they fit, never renumbering existing IDs.
+- **Pending-only workbook view (default)** — `Backlog Tracker.xlsx` should list
+  only items not yet pushed. Determine "already pushed" from JIRA keys and
+  reconcile with `04 - Backlog/pushed/push-record.md` when needed.
+- **Super option** — rebuild everything from registers (rare, explicit
+  confirmation, can renumber IDs).
 
 ---
 
@@ -38,9 +43,10 @@ Ask: "Does `artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` already exist
 
 If yes, ask:
 > "A Backlog Tracker already exists. Would you like to:
-> 1. **Extend** — add new rows without changing existing content
-> 2. **Rebuild** — replace the workbook with a fresh seed
-> 3. **Review only** — read and summarize the current state without writing"
+> 1. **Add new session to backlog** — additive, keep existing IDs
+> 2. **Refresh pending-only workbook** — default, show only not-yet-pushed items
+> 3. **Super option: rebuild everything** — regenerate all items from registers
+> 4. **Done** — no changes"
 
 Wait for the answer.
 

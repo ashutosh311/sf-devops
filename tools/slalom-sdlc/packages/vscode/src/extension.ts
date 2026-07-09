@@ -160,6 +160,9 @@ The discovery agent has targeted sub-commands. Run \`/discover\` on its own to b
 | \`process-session\` | Turn a workshop transcript into a session note + register entries |
 | \`synthesize\` | Registers → narrative current-state document |
 | \`analyze\` | Gap analysis, prioritisation, traceability |
+| \`generate-backlog\` | BA-owned backlog generation flow |
+| \`generate-functional-requirements\` | SA-owned update of \`functional_requirements\` only |
+| \`generate-solution-comments\` | TA-owned update of \`solution_notes\` only |
 | \`manage-backlog\` | Evidence → epic/story rows seeded into Excel |
 | \`stories-refined\` | Backlog → per-story \`refinement-notes.md\` (business context + AC) for the design phase — no JIRA required |
 | \`push-backlog\` | Excel → JIRA items + archive (⚠️ irreversible — JIRA becomes source of truth) |

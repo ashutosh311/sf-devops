@@ -17,6 +17,7 @@ export interface BacklogEpic {
   status?: string;
   demo_slice?: string;
   jira_key?: string;
+  disregarded?: string;
 }
 
 export interface BacklogFeature {
@@ -32,6 +33,7 @@ export interface BacklogFeature {
   status?: string;
   implementation_boundary?: string;
   jira_key?: string;
+  disregarded?: string;
 }
 
 export interface BacklogStory {
@@ -48,6 +50,7 @@ export interface BacklogStory {
   size?: string;
   status?: string;
   jira_key?: string;
+  disregarded?: string;
 }
 
 export interface BacklogOpenQuestion {
@@ -71,6 +74,7 @@ export interface BacklogData {
 
 const HEADER_FILL = "FF1F3864"; // dark navy (ARGB)
 const ALT_ROW_FILL = "FFEEF2F7"; // light blue-grey
+const DISREGARDED_FILL = "FFE0E0E0"; // muted grey for disregarded rows
 const TITLE_COLOR = "FF1F3864";
 const SUBTITLE_COLOR = "FF666666";
 const BORDER_COLOR = "FFCCCCCC";
@@ -97,7 +101,7 @@ function styleHeaderRow(ws: ExcelJS.Worksheet, headers: string[], widths: number
   ws.views = [{ state: "frozen", xSplit: 1, ySplit: 1 }];
 }
 
-function addDataRow(ws: ExcelJS.Worksheet, values: (string | undefined)[], rowIndex: number): void {
+function addDataRow(ws: ExcelJS.Worksheet, values: (string | undefined)[], rowIndex: number, disregarded = false): void {
   const row = ws.getRow(rowIndex);
   const shade = rowIndex % 2 === 0;
   values.forEach((val, i) => {
@@ -105,7 +109,10 @@ function addDataRow(ws: ExcelJS.Worksheet, values: (string | undefined)[], rowIn
     cell.value = val ?? "";
     cell.border = thinBorder;
     cell.alignment = { wrapText: true, vertical: "top" };
-    if (shade) {
+    if (disregarded) {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: DISREGARDED_FILL } };
+      cell.font = { color: { argb: "FF999999" }, italic: true };
+    } else if (shade) {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ALT_ROW_FILL } };
     }
   });
@@ -154,15 +161,15 @@ function buildEpics(wb: ExcelJS.Workbook, epics: BacklogEpic[]): void {
   const headers = [
     "ID", "Epic Name", "Narrative Goal", "Business Outcome",
     "Solution Notes", "Requirement IDs", "Pain Points Addressed",
-    "Stakeholder Groups", "Priority", "Status", "Demo Narrative Slice", "JIRA Key",
+    "Stakeholder Groups", "Priority", "Status", "Demo Narrative Slice", "JIRA Key", "Disregarded",
   ];
-  styleHeaderRow(ws, headers, [12, 30, 40, 40, 40, 20, 20, 25, 8, 12, 30, 12]);
+  styleHeaderRow(ws, headers, [12, 30, 40, 40, 40, 20, 20, 25, 8, 12, 30, 12, 12]);
   epics.forEach((e, i) => {
     addDataRow(ws, [
       e.id, e.name, e.narrative_goal, e.business_outcome, e.solution_notes,
       e.requirement_ids, e.pain_points, e.stakeholder_groups, e.priority,
-      e.status ?? "Draft", e.demo_slice, e.jira_key,
-    ], i + 2);
+      e.status ?? "Draft", e.demo_slice, e.jira_key, e.disregarded,
+    ], i + 2, (e.disregarded || "").toUpperCase() === "Y");
   });
 }
 
@@ -171,15 +178,15 @@ function buildFeatures(wb: ExcelJS.Workbook, features: BacklogFeature[]): void {
   const headers = [
     "ID", "Epic ID", "Epic Name", "Feature Name", "Description",
     "System Components", "Dependencies", "Priority", "Complexity",
-    "Status", "Implementation Boundary", "JIRA Key",
+    "Status", "Implementation Boundary", "JIRA Key", "Disregarded",
   ];
-  styleHeaderRow(ws, headers, [12, 12, 25, 30, 45, 25, 20, 8, 10, 12, 35, 12]);
+  styleHeaderRow(ws, headers, [12, 12, 25, 30, 45, 25, 20, 8, 10, 12, 35, 12, 12]);
   features.forEach((f, i) => {
     addDataRow(ws, [
       f.id, f.epic_id, f.epic_name, f.name, f.description, f.system_components,
       f.dependencies, f.priority, f.complexity, f.status ?? "Draft",
-      f.implementation_boundary, f.jira_key,
-    ], i + 2);
+      f.implementation_boundary, f.jira_key, f.disregarded,
+    ], i + 2, (f.disregarded || "").toUpperCase() === "Y");
   });
 }
 
@@ -188,15 +195,15 @@ function buildStories(wb: ExcelJS.Workbook, stories: BacklogStory[]): void {
   const headers = [
     "Story ID", "Epic ID", "Epic Name", "Feature ID", "Feature Name",
     "User Story", "Acceptance Criteria", "Functional Requirements",
-    "Solution Notes", "Use Case Labels", "Size", "Status", "JIRA Key",
+    "Solution Notes", "Use Case Labels", "Size", "Status", "JIRA Key", "Disregarded",
   ];
-  styleHeaderRow(ws, headers, [12, 12, 25, 12, 25, 50, 50, 20, 30, 20, 8, 12, 12]);
+  styleHeaderRow(ws, headers, [12, 12, 25, 12, 25, 50, 50, 20, 30, 20, 8, 12, 12, 12]);
   stories.forEach((s, i) => {
     addDataRow(ws, [
       s.id, s.epic_id, s.epic_name, s.feature_id, s.feature_name, s.user_story,
       s.acceptance_criteria, s.functional_requirements, s.solution_notes,
-      s.use_case_labels, s.size, s.status ?? "Draft", s.jira_key,
-    ], i + 2);
+      s.use_case_labels, s.size, s.status ?? "Draft", s.jira_key, s.disregarded,
+    ], i + 2, (s.disregarded || "").toUpperCase() === "Y");
   });
 }
 
@@ -285,6 +292,7 @@ export async function readBacklogWorkbook(inputPath: string): Promise<BacklogDat
         requirement_ids: cellText(row, 6), pain_points: cellText(row, 7),
         stakeholder_groups: cellText(row, 8), priority: cellText(row, 9),
         status: cellText(row, 10), demo_slice: cellText(row, 11), jira_key: cellText(row, 12),
+        disregarded: cellText(row, 13) || undefined,
       });
     });
   }
@@ -298,6 +306,7 @@ export async function readBacklogWorkbook(inputPath: string): Promise<BacklogDat
         name: cellText(row, 4), description: cellText(row, 5), system_components: cellText(row, 6),
         dependencies: cellText(row, 7), priority: cellText(row, 8), complexity: cellText(row, 9),
         status: cellText(row, 10), implementation_boundary: cellText(row, 11), jira_key: cellText(row, 12),
+        disregarded: cellText(row, 13) || undefined,
       });
     });
   }
@@ -312,6 +321,7 @@ export async function readBacklogWorkbook(inputPath: string): Promise<BacklogDat
         acceptance_criteria: cellText(row, 7), functional_requirements: cellText(row, 8),
         solution_notes: cellText(row, 9), use_case_labels: cellText(row, 10), size: cellText(row, 11),
         status: cellText(row, 12), jira_key: cellText(row, 13),
+        disregarded: cellText(row, 14) || undefined,
       });
     });
   }

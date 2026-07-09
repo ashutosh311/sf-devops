@@ -71,6 +71,38 @@ skills:
       - "seed the backlog"
       - "add stories"
 
+  - id: generate-backlog
+    name: generate-backlog
+    description: >
+      VS Code extension only. Generates or syncs backlog structure and story skeletons.
+    kind: vscode-only
+    trigger_phrases:
+      - "generate backlog"
+      - "create backlog"
+      - "build backlog"
+
+  - id: generate-functional-requirements
+    name: generate-functional-requirements
+    description: >
+      VS Code extension only. Fills missing functional requirements on stories in the workbook.
+      Updates only the functional_requirements field; all other fields are preserved.
+    kind: vscode-only
+    trigger_phrases:
+      - "generate functional requirements"
+      - "fill functional requirements"
+      - "fill fr"
+
+  - id: generate-solution-comments
+    name: generate-solution-comments
+    description: >
+      VS Code extension only. Fills missing solution notes on stories in the workbook.
+      Updates only the solution_notes field; all other fields are preserved.
+    kind: vscode-only
+    trigger_phrases:
+      - "generate solution comments"
+      - "fill solution notes"
+      - "solution notes"
+
   - id: push-backlog
     name: push-backlog
     description: >
@@ -180,7 +212,9 @@ skills:
     description: >
       Bridge between the reviewed backlog and the design phase. Reads Backlog Tracker.xlsx
       and writes a per-story refinement-notes.md (business context + AC + FR + solution notes)
-      for each story that has acceptance criteria. No JIRA required.
+      for each story that has acceptance criteria. Also auto-detects stories marked as disregarded
+      (Disregarded column = Y) in the workbook, persists them to disregard-record.md, and excludes
+      them from refinement, future backlog regeneration, and JIRA push. No JIRA required.
     kind: workflow
     path: .github/prompts/sdlc/discover/stories-refined.prompt.md
     trigger_phrases:

@@ -15,6 +15,7 @@ export interface ManifestItem {
   epicId?: string;
   jiraKey?: string;
   sourceSession?: string;
+  disregarded?: boolean;
 }
 
 export interface BacklogManifest {
@@ -22,6 +23,10 @@ export interface BacklogManifest {
   updatedAt?: string;
   pushedAt?: string;
   workbookChecksum?: string;
+  /** Count of pushed+disregarded items when the pending xlsx was last written.
+   *  Used to detect when the manifest has been updated externally (e.g. after push-backlog)
+   *  without the xlsx having been touched, so manage-backlog can auto-refresh the view. */
+  workbookExcludedCount?: number;
   sessions?: string[];
   epics: ManifestItem[];
   features: ManifestItem[];
@@ -58,24 +63,49 @@ export function writeManifest(backlogDir: string, manifest: BacklogManifest): vo
   fs.writeFileSync(manifestPath(backlogDir), JSON.stringify(manifest, null, 2) + "\n");
 }
 
-/** Build a manifest from full backlog data, preserving JIRA keys already on the items. */
+/** Build a manifest from full backlog data, preserving JIRA keys and disregarded flags already on the items. */
 export function manifestFromData(data: BacklogData, prev?: BacklogManifest): BacklogManifest {
-  const prevKey = (list: ManifestItem[] | undefined, id?: string): string | undefined =>
-    list?.find((m) => m.id === id)?.jiraKey || undefined;
+  const prevItem = (list: ManifestItem[] | undefined, id?: string): ManifestItem | undefined =>
+    list?.find((m) => m.id === id);
+  /** Carry forward pushed OR disregarded items that are absent from the current workbook data. */
+  const carryForwardExcluded = (current: ManifestItem[], previous?: ManifestItem[]): ManifestItem[] => {
+    const seen = new Set(current.map((m) => m.id).filter(Boolean));
+    const preserved = (previous ?? []).filter(
+      (m) => !!m.id && !seen.has(m.id) && (!!m.jiraKey || !!m.disregarded)
+    );
+    return [...current, ...preserved];
+  };
+  const epicsCurrent: ManifestItem[] = (data.epics ?? []).map((e) => {
+    const p = prevItem(prev?.epics, e.id);
+    return {
+      id: e.id ?? "", name: e.name,
+      jiraKey: e.jira_key || p?.jiraKey,
+      disregarded: (e.disregarded || "").toUpperCase() === "Y" ? true : (p?.disregarded || undefined),
+    };
+  });
+  const featuresCurrent: ManifestItem[] = (data.features ?? []).map((f) => {
+    const p = prevItem(prev?.features, f.id);
+    return {
+      id: f.id ?? "", name: f.name, epicId: f.epic_id,
+      jiraKey: f.jira_key || p?.jiraKey,
+      disregarded: (f.disregarded || "").toUpperCase() === "Y" ? true : (p?.disregarded || undefined),
+    };
+  });
+  const storiesCurrent: ManifestItem[] = (data.stories ?? []).map((s) => {
+    const p = prevItem(prev?.stories, s.id);
+    return {
+      id: s.id ?? "", name: s.user_story?.slice(0, 60), epicId: s.epic_id,
+      jiraKey: s.jira_key || p?.jiraKey,
+      disregarded: (s.disregarded || "").toUpperCase() === "Y" ? true : (p?.disregarded || undefined),
+    };
+  });
   return {
     project: data.project,
     pushedAt: prev?.pushedAt,
     workbookChecksum: prev?.workbookChecksum,
-    epics: (data.epics ?? []).map((e) => ({
-      id: e.id ?? "", name: e.name, jiraKey: e.jira_key || prevKey(prev?.epics, e.id),
-    })),
-    features: (data.features ?? []).map((f) => ({
-      id: f.id ?? "", name: f.name, epicId: f.epic_id, jiraKey: f.jira_key || prevKey(prev?.features, f.id),
-    })),
-    stories: (data.stories ?? []).map((s) => ({
-      id: s.id ?? "", name: s.user_story?.slice(0, 60), epicId: s.epic_id,
-      jiraKey: s.jira_key || prevKey(prev?.stories, s.id),
-    })),
+    epics: carryForwardExcluded(epicsCurrent, prev?.epics),
+    features: carryForwardExcluded(featuresCurrent, prev?.features),
+    stories: carryForwardExcluded(storiesCurrent, prev?.stories),
   };
 }
 

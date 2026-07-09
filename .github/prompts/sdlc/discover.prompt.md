@@ -24,6 +24,9 @@ Available skills:
 | `#sdlc/discover synthesize` | `discover/synthesize.prompt.md` |
 | `#sdlc/discover analyze` | `discover/analyze.prompt.md` |
 | `#sdlc/discover manage-backlog` | `discover/manage-backlog.prompt.md` |
+| `#sdlc/discover generate-backlog` _(VS Code only)_ | handled natively in the extension |
+| `#sdlc/discover generate-functional-requirements` _(VS Code only)_ | handled natively in the extension |
+| `#sdlc/discover generate-solution-comments` _(VS Code only)_ | handled natively in the extension |
 | `#sdlc/discover stories-refined` | `discover/stories-refined.prompt.md` |
 | `#sdlc/discover push-backlog` | `discover/push-backlog.prompt.md` |
 | `#sdlc/discover sync-jira` | `discover/sync-jira.prompt.md` |
@@ -59,16 +62,19 @@ Otherwise, greet the user and present this menu:
 > 2. **Process a workshop session** — extract insights from a transcript or notes (`process-session`)
 > 3. **Synthesize insights** — narrative summary of themes and current state across sessions (`synthesize`)
 > 4. **Prepare for an upcoming workshop** — build an agenda and facilitation guide (`prep-workshop`)
-> 5. **Build the backlog** — generate epics, features and stories from the registers (`manage-backlog`)
-> 6. **Mark stories refined** — backlog → per-story `refinement-notes.md` for the design phase (`stories-refined`)
-> 7. **Registers to stories** — guided bridge from populated registers to story candidates (`registers-to-stories`)
-> 8. **Push backlog to JIRA** — export the Excel backlog to JIRA and archive the file (`push-backlog`)
-> 9. **Sync JIRA status** — pull current JIRA status back into the repo (`sync-jira`)
-> 10. **Analyze and prioritize** — rank pain points, check coverage, compare options (`analyze`)
-> 11. **Check for conflicts** — surface contradictions across sessions and registers (`conflict-check`)
-> 12. **Compose a deliverable** — generate a client-facing document from discovery artifacts (`compose-deliverable`)
-> 13. **Audit the knowledge hub** — check completeness and phase-gate readiness (`hub-audit`)
-> 14. **What's next?** — get a full orientation and recommended next step (`whats-next`)
+> 5. **Generate Backlog** — generate/sync backlog structure and story skeletons (`generate-backlog`)
+> 6. **Generate Functional Requirements** — fill missing functional requirements on stories (`generate-functional-requirements`)
+> 7. **Generate Solution Comments** — fill missing solution notes on stories (`generate-solution-comments`)
+> 8. **Build the backlog (combined/advanced)** — generate/sync the backlog end-to-end (`manage-backlog`)
+> 9. **Mark stories refined** — backlog → per-story `refinement-notes.md` for the design phase; also auto-detects and persists workbook-disregarded items (`stories-refined`)
+> 10. **Registers to stories** — guided bridge from populated registers to story candidates (`registers-to-stories`)
+> 11. **Push backlog to JIRA** — export the Excel backlog to JIRA and archive the file (`push-backlog`)
+> 12. **Sync JIRA status** — pull current JIRA status back into the repo (`sync-jira`)
+> 13. **Analyze and prioritize** — rank pain points, check coverage, compare options (`analyze`)
+> 14. **Check for conflicts** — surface contradictions across sessions and registers (`conflict-check`)
+> 15. **Compose a deliverable** — generate a client-facing document from discovery artifacts (`compose-deliverable`)
+> 16. **Audit the knowledge hub** — check completeness and phase-gate readiness (`hub-audit`)
+> 17. **What's next?** — get a full orientation and recommended next step (`whats-next`)
 >
 > Reply with a number or type the skill name."
 

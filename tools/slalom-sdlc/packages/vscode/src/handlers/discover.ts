@@ -31,6 +31,9 @@ import type { SdlcConfig } from "@sdlc/core";
 type Skill =
   | "setup"
   | "process-session"
+  | "generate-backlog"
+  | "generate-functional-requirements"
+  | "generate-solution-comments"
   | "manage-backlog"
   | "stories-refined"
   | "push-backlog"
@@ -54,6 +57,9 @@ const MENU: SkillMenuItem[] = [
   { skill: "setup", label: "$(new-folder) Set up a new project", description: "scaffold the discovery knowledge hub" },
   { skill: "process-session", label: "$(inbox) Process a workshop session", description: "extract insights from an inbox file" },
   { skill: "prep-workshop", label: "$(calendar) Prepare for an upcoming workshop", description: "agenda + facilitation guide" },
+  { skill: "generate-backlog", label: "$(table) Generate Backlog", description: "generate/sync backlog structure and story skeletons" },
+  { skill: "generate-functional-requirements", label: "$(list-flat) Generate Functional Requirements", description: "fill missing functional requirements on stories" },
+  { skill: "generate-solution-comments", label: "$(comment-discussion) Generate Solution Comments", description: "fill missing solution notes on stories" },
   { skill: "manage-backlog", label: "$(table) Build the backlog", description: "generate/sync the backlog (xlsx + markdown)" },
   { skill: "stories-refined", label: "$(checklist) Mark stories refined", description: "backlog → per-story refinement-notes.md for design" },
   { skill: "set-preferences", label: "$(settings-gear) Set authoring preferences", description: "AC / FR / Solution Notes style" },
@@ -100,6 +106,9 @@ export async function handleDiscover(
 
   switch (skill) {
     case "setup": return runSetup(ctx);
+    case "generate-backlog": return runGenerateBacklog(ctx);
+    case "generate-functional-requirements": return runGenerateFunctionalRequirements(ctx);
+    case "generate-solution-comments": return runGenerateSolutionComments(ctx);
     case "manage-backlog": return runManageBacklog(ctx);
     case "stories-refined": return runStoriesRefined(ctx);
     case "process-session": return runProcessSession(ctx);
@@ -689,12 +698,17 @@ async function finalizeBacklog(
   backlogDir: string,
   workbookPath: string,
   data: BacklogData,
-  opts: FinalizeOpts
+  opts: FinalizeOpts,
+  workbookData?: BacklogData
 ): Promise<{ summary: string; epicFiles: string[] }> {
   if (!data.project) data.project = ctx.config.project.name;
   denormalizeNames(data);
+  if (workbookData) {
+    if (!workbookData.project) workbookData.project = data.project;
+    denormalizeNames(workbookData);
+  }
 
-  const summary = await writeBacklogWorkbook(workbookPath, data);
+  const summary = await writeBacklogWorkbook(workbookPath, workbookData ?? data);
   const md = writeBacklogMarkdown(backlogDir, data);
 
   const manifest = manifestFromData(data, opts.prev);
@@ -719,6 +733,216 @@ function listSessionFolders(ctx: SkillContext): Array<{ folder: string; title: s
 function unprocessedSessions(ctx: SkillContext, manifest: BacklogManifest): Array<{ folder: string; title: string }> {
   const done = new Set(manifest.sessions ?? []);
   return listSessionFolders(ctx).filter((s) => !done.has(s.folder));
+}
+
+function readPushRecordEntries(backlogDir: string): Array<{ type: string; id: string; key: string }> {
+  const p = path.join(backlogDir, "pushed", "push-record.md");
+  if (!fs.existsSync(p)) return [];
+  const text = fs.readFileSync(p, "utf-8");
+  const out: Array<{ type: string; id: string; key: string }> = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim().startsWith("|")) continue;
+    const cols = line
+      .split("|")
+      .slice(1, -1)
+      .map((c) => c.trim());
+    if (cols.length < 3) continue;
+    const key = cols[0];
+    const type = cols[1].toLowerCase();
+    const id = cols[2].toUpperCase();
+    if (!key || key.toLowerCase() === "jira key") continue; // header row
+    if (!["epic", "feature", "story"].includes(type)) continue;
+    if (!/^(EPIC|FEAT|STORY)-\d+$/i.test(id)) continue;
+    out.push({ type, id, key });
+  }
+  return out;
+}
+
+function reconcileManifestFromPushRecord(backlogDir: string, manifest: BacklogManifest): {
+  manifest: BacklogManifest;
+  changed: boolean;
+} {
+  const entries = readPushRecordEntries(backlogDir);
+  if (!entries.length) return { manifest, changed: false };
+  const next: BacklogManifest = {
+    ...manifest,
+    epics: [...(manifest.epics ?? [])],
+    features: [...(manifest.features ?? [])],
+    stories: [...(manifest.stories ?? [])],
+  };
+  let changed = false;
+  const apply = (list: Array<{ id: string; jiraKey?: string }>, id: string, key: string): void => {
+    const item = list.find((x) => x.id === id);
+    if (item) {
+      if (item.jiraKey !== key) { item.jiraKey = key; changed = true; }
+    } else {
+      // Item exists in the push-record but is absent from the manifest (e.g. manifest was
+      // regenerated from a pending-only workbook that omitted this item). Insert a stub so
+      // nextCounters always sees the full ID space and never reuses a pushed ID.
+      list.push({ id, jiraKey: key });
+      changed = true;
+    }
+  };
+  for (const e of entries) {
+    if (e.type === "epic") apply(next.epics, e.id, e.key);
+    else if (e.type === "feature") apply(next.features, e.id, e.key);
+    else if (e.type === "story") apply(next.stories, e.id, e.key);
+  }
+  return { manifest: next, changed };
+}
+
+// ── Disregard record helpers ─────────────────────────────────────────────────
+
+const DISREGARD_DIR = "disregarded";
+const DISREGARD_RECORD_FILE = "disregard-record.md";
+
+function disregardRecordPath(backlogDir: string): string {
+  return path.join(backlogDir, DISREGARD_DIR, DISREGARD_RECORD_FILE);
+}
+
+function readDisregardRecord(backlogDir: string): Array<{ type: string; id: string; name: string }> {
+  const p = disregardRecordPath(backlogDir);
+  if (!fs.existsSync(p)) return [];
+  const text = fs.readFileSync(p, "utf-8");
+  const out: Array<{ type: string; id: string; name: string }> = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim().startsWith("|")) continue;
+    const cols = line.split("|").slice(1, -1).map((c) => c.trim());
+    if (cols.length < 4) continue;
+    const type = cols[1].toLowerCase();
+    const id = cols[2].toUpperCase();
+    const name = cols[3];
+    if (!type || type === "type") continue; // header
+    if (!["epic", "feature", "story"].includes(type)) continue;
+    if (!/^(EPIC|FEAT|STORY)-\d+$/i.test(id)) continue;
+    out.push({ type, id, name });
+  }
+  return out;
+}
+
+function reconcileManifestFromDisregardRecord(
+  backlogDir: string,
+  manifest: BacklogManifest
+): { manifest: BacklogManifest; changed: boolean } {
+  const entries = readDisregardRecord(backlogDir);
+  if (!entries.length) return { manifest, changed: false };
+  const next: BacklogManifest = {
+    ...manifest,
+    epics: [...(manifest.epics ?? [])],
+    features: [...(manifest.features ?? [])],
+    stories: [...(manifest.stories ?? [])],
+  };
+  let changed = false;
+  const apply = (list: Array<{ id: string; name?: string; disregarded?: boolean }>, id: string, name: string): void => {
+    const item = list.find((x) => x.id === id);
+    if (item) {
+      if (!item.disregarded) { item.disregarded = true; changed = true; }
+    } else {
+      // Item exists in the disregard-record but is absent from the manifest. Insert a stub
+      // so nextCounters always sees the full ID space and never reuses a disregarded ID.
+      list.push({ id, name, disregarded: true });
+      changed = true;
+    }
+  };
+  for (const e of entries) {
+    if (e.type === "epic") apply(next.epics, e.id, e.name);
+    else if (e.type === "feature") apply(next.features, e.id, e.name);
+    else if (e.type === "story") apply(next.stories, e.id, e.name);
+  }
+  return { manifest: next, changed };
+}
+
+function appendDisregardRecord(
+  backlogDir: string,
+  entries: Array<{ type: string; id: string; name: string }>
+): void {
+  if (!entries.length) return;
+  const p = disregardRecordPath(backlogDir);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  const now = new Date().toISOString().slice(0, 10);
+  if (!fs.existsSync(p)) {
+    const header =
+      `# Disregard Record\n\n` +
+      `Items intentionally excluded from backlog generation.\n` +
+      `These are never regenerated by \`/discover manage-backlog\`.\n\n` +
+      `| Disregarded At | Type | ID | Name / Summary |\n` +
+      `|---|---|---|---|\n`;
+    fs.writeFileSync(p, header);
+  }
+  const existing = readDisregardRecord(backlogDir);
+  const existingIds = new Set(existing.map((e) => e.id));
+  const newLines = entries
+    .filter((e) => !existingIds.has(e.id))
+    .map((e) => `| ${now} | ${e.type} | ${e.id} | ${e.name} |`)
+    .join("\n");
+  if (newLines) {
+    fs.appendFileSync(p, newLines + "\n");
+  }
+}
+
+// ── Pending workbook view ────────────────────────────────────────────────────
+
+/** Count pushed+disregarded items in the manifest — used to detect stale pending views. */
+function countExcluded(manifest: BacklogManifest): number {
+  let n = 0;
+  for (const e of manifest.epics ?? []) if ((e.jiraKey || "").trim() || e.disregarded) n++;
+  for (const f of manifest.features ?? []) if ((f.jiraKey || "").trim() || f.disregarded) n++;
+  for (const s of manifest.stories ?? []) if ((s.jiraKey || "").trim() || s.disregarded) n++;
+  return n;
+}
+
+function pendingWorkbookView(data: BacklogData, manifest?: BacklogManifest): BacklogData {
+  const excludedEpics = new Set<string>();
+  const excludedFeatures = new Set<string>();
+  const excludedStories = new Set<string>();
+
+  // Pushed (have JIRA key)
+  for (const e of data.epics ?? []) if ((e.jira_key || "").trim()) excludedEpics.add((e.id || "").trim());
+  for (const f of data.features ?? []) if ((f.jira_key || "").trim()) excludedFeatures.add((f.id || "").trim());
+  for (const s of data.stories ?? []) if ((s.jira_key || "").trim()) excludedStories.add((s.id || "").trim());
+  for (const e of manifest?.epics ?? []) if ((e.jiraKey || "").trim()) excludedEpics.add((e.id || "").trim());
+  for (const f of manifest?.features ?? []) if ((f.jiraKey || "").trim()) excludedFeatures.add((f.id || "").trim());
+  for (const s of manifest?.stories ?? []) if ((s.jiraKey || "").trim()) excludedStories.add((s.id || "").trim());
+
+  // Disregarded (workbook column or manifest flag)
+  for (const e of data.epics ?? []) if ((e.disregarded || "").toUpperCase() === "Y") excludedEpics.add((e.id || "").trim());
+  for (const f of data.features ?? []) if ((f.disregarded || "").toUpperCase() === "Y") excludedFeatures.add((f.id || "").trim());
+  for (const s of data.stories ?? []) if ((s.disregarded || "").toUpperCase() === "Y") excludedStories.add((s.id || "").trim());
+  for (const e of manifest?.epics ?? []) if (e.disregarded) excludedEpics.add((e.id || "").trim());
+  for (const f of manifest?.features ?? []) if (f.disregarded) excludedFeatures.add((f.id || "").trim());
+  for (const s of manifest?.stories ?? []) if (s.disregarded) excludedStories.add((s.id || "").trim());
+
+  // Compute pending stories/features first, then retain their ancestors even if those
+  // ancestors are in the excluded (pushed/disregarded) sets. This prevents orphaned
+  // workbook rows where a story references an epic_id not present in the Epics sheet.
+  const pendingStories = (data.stories ?? []).filter((s) => !excludedStories.has((s.id || "").trim()));
+  const pendingFeatures = (data.features ?? []).filter((f) => !excludedFeatures.has((f.id || "").trim()));
+
+  // IDs of ancestors needed by still-pending descendants
+  const neededFeatureIds = new Set<string>(pendingStories.map((s) => (s.feature_id || "").trim()).filter(Boolean));
+  const neededEpicIds = new Set<string>([
+    ...pendingStories.map((s) => (s.epic_id || "").trim()).filter(Boolean),
+    ...(data.features ?? [])
+      .filter((f) => neededFeatureIds.has((f.id || "").trim()))
+      .map((f) => (f.epic_id || "").trim())
+      .filter(Boolean),
+    ...pendingFeatures.map((f) => (f.epic_id || "").trim()).filter(Boolean),
+  ]);
+
+  // A pushed/disregarded ancestor is retained only because a child still needs it; merge
+  // with genuinely pending items to avoid duplicates.
+  const retainedFeatureIds = new Set([...pendingFeatures.map((f) => (f.id || "").trim()), ...neededFeatureIds]);
+  const retainedEpicIds = new Set([...pendingFeatures.map((f) => (f.epic_id || "").trim()).filter(Boolean), ...(data.epics ?? []).filter((e) => !excludedEpics.has((e.id || "").trim())).map((e) => (e.id || "").trim()), ...neededEpicIds]);
+
+  const out: BacklogData = {
+    project: data.project,
+    epics: (data.epics ?? []).filter((e) => retainedEpicIds.has((e.id || "").trim())),
+    features: (data.features ?? []).filter((f) => retainedFeatureIds.has((f.id || "").trim())),
+    stories: pendingStories,
+    open_questions: data.open_questions ?? [],
+  };
+  denormalizeNames(out);
+  return out;
 }
 
 function writePhaseContext(
@@ -815,17 +1039,213 @@ function mergeDelta(
   return { merged, added: { epics: addedEpics, features: addedFeatures, stories: addedStories } };
 }
 
+async function runGenerateBacklog(ctx: SkillContext): Promise<void> {
+  ctx.stream.markdown("Running **Generate Backlog (BA)** using the combined backlog flow.\n\n");
+  await runManageBacklog(ctx);
+}
+
+async function runGenerateFunctionalRequirements(ctx: SkillContext): Promise<void> {
+  await runStoryFieldGenerator(
+    ctx,
+    "generate-functional-requirements",
+    "Functional Requirements",
+    "functional_requirements",
+    "Generate concise, implementable Functional Requirements aligned to discovery evidence."
+  );
+}
+
+async function runGenerateSolutionComments(ctx: SkillContext): Promise<void> {
+  await runStoryFieldGenerator(
+    ctx,
+    "generate-solution-comments",
+    "Solution Notes",
+    "solution_notes",
+    "Generate practical implementation guidance (solution comments) aligned to discovery evidence."
+  );
+}
+
+async function runStoryFieldGenerator(
+  ctx: SkillContext,
+  commandName: string,
+  fieldLabel: string,
+  fieldName: "functional_requirements" | "solution_notes",
+  fieldInstruction: string
+): Promise<void> {
+  const backlogDir = discoveryDir(ctx, "04 - Backlog");
+  const workbookPath = path.join(backlogDir, BACKLOG_FILE);
+  const manifest = readManifest(backlogDir);
+  if (!manifest || !fs.existsSync(workbookPath)) {
+    ctx.stream.markdown("⛔ No backlog found. Run `/discover generate-backlog` (or `/discover manage-backlog`) first.");
+    return;
+  }
+
+  const prefsText = await ensurePreferences(ctx);
+
+  let data: BacklogData;
+  try {
+    data = await readBacklogWorkbook(workbookPath);
+  } catch (err) {
+    ctx.stream.markdown(`⛔ Could not read \`${BACKLOG_FILE}\`: ${String(err)}`);
+    return;
+  }
+  data.project ||= manifest.project || ctx.config.project.name;
+  denormalizeNames(data);
+
+  const stories = data.stories ?? [];
+  if (!stories.length) {
+    ctx.stream.markdown("⛔ The workbook has no stories. Run `/discover generate-backlog` first.");
+    return;
+  }
+
+  const mode = await vscode.window.showQuickPick(
+    [
+      {
+        label: `$(sparkle) Fill missing ${fieldLabel} only`,
+        description: "recommended — leave existing values untouched",
+        value: "missing",
+      },
+      {
+        label: `$(warning) Overwrite all ${fieldLabel}`,
+        description: "re-generate values for all stories",
+        value: "overwrite",
+      },
+    ],
+    {
+      title: `${fieldLabel} Generator`,
+      placeHolder: "How should existing values be handled?",
+      ignoreFocusOut: true,
+    }
+  );
+  if (!mode) {
+    ctx.stream.markdown("Operation cancelled.");
+    return;
+  }
+
+  const targets = stories.filter((s) => {
+    const v = (s[fieldName] || "").trim();
+    return mode.value === "overwrite" ? true : !v;
+  });
+  if (!targets.length) {
+    ctx.stream.markdown(`No target stories found — every story already has ${fieldLabel}.`);
+    return;
+  }
+
+  const registers = readDirFiles(discoveryDir(ctx, "00 - Registers"), [".md"]);
+  if (!hasContent(registers)) {
+    ctx.stream.markdown(
+      "⛔ The registers in `00 - Registers/` are empty. Run `/discover process-session` to extract content first."
+    );
+    return;
+  }
+  const enrichment = [
+    ...readDirFiles(discoveryDir(ctx, "02 - Current State"), [".md"]),
+    ...readDirFiles(discoveryDir(ctx, "03 - Future State"), [".md"]),
+  ];
+
+  const storyLines = targets
+    .map((s) => `- ${s.id}: ${s.user_story || ""}`)
+    .join("\n");
+  const userContent =
+    `PROJECT: ${data.project}\n\n` +
+    `TARGET FIELD: ${fieldLabel}\n\n` +
+    `TARGET STORIES (${targets.length}):\n${storyLines}\n\n` +
+    `=== REGISTERS ===\n\n${combineFiles(registers)}` +
+    (enrichment.length ? `\n\n=== SUPPORTING CONTEXT ===\n\n${combineFiles(enrichment)}` : "") +
+    `\n\n=== AUTHORING PREFERENCES ===\n\n${prefsText}`;
+  const systemPrompt =
+    `You are a Salesforce discovery assistant.\n` +
+    `${fieldInstruction}\n\n` +
+    `Return ONLY valid JSON in this exact shape:\n` +
+    `{"updates":[{"id":"STORY-001","value":"..."}]}\n\n` +
+    `Rules:\n` +
+    `- Update only the requested field.\n` +
+    `- Include only IDs from the target stories list.\n` +
+    `- Do not add other fields or prose.`;
+
+  let raw: string;
+  try {
+    raw = await collectResponse(ctx, systemPrompt, userContent);
+  } catch (err) {
+    ctx.stream.markdown(`⛔ Model error while generating ${fieldLabel}: ${String(err)}`);
+    return;
+  }
+
+  const parsed = extractJson<{ updates?: Array<{ id?: string; value?: string }> }>(raw);
+  const updates = parsed?.updates ?? [];
+  if (!updates.length) {
+    ctx.stream.markdown(`⛔ Could not parse ${fieldLabel} updates from the model response. Please try again.`);
+    return;
+  }
+
+  const targetById = new Map(targets.map((s) => [(s.id || "").trim(), s]));
+  let changed = 0;
+  for (const u of updates) {
+    const id = (u.id || "").trim();
+    const value = (u.value || "").trim();
+    if (!id || !value) continue;
+    const story = targetById.get(id);
+    if (!story) continue;
+    if ((story[fieldName] || "").trim() === value) continue;
+    story[fieldName] = value;
+    changed += 1;
+  }
+
+  if (!changed) {
+    ctx.stream.markdown(`No ${fieldLabel} values were changed.`);
+    return;
+  }
+
+  try {
+    const summary = await writeBacklogWorkbook(workbookPath, data);
+    // Do NOT call writeBacklogMarkdown here — data is the pending-only workbook view and
+    // would prune markdown files for pushed epics. The markdown split is full-context and
+    // is only rewritten by fullBuild/deltaBuild/syncFromWorkbook("all").
+    const updated = manifestFromData(data, manifest);
+    updated.workbookChecksum = fileChecksum(workbookPath);
+    updated.sessions = manifest.sessions ?? [];
+    writeManifest(backlogDir, updated);
+    writePhaseContext(ctx, data, "sync", updated);
+    ctx.stream.markdown(
+      `## ${fieldLabel} updated\n\n` +
+      `Updated **${changed}** story(ies). Workbook now has **${summary}**.\n\n` +
+      `Only \`${fieldName}\` was modified; other story fields were preserved.`
+    );
+  } catch (err) {
+    ctx.stream.markdown(`⛔ Failed to write updates: ${String(err)}`);
+    return;
+  }
+
+  await promptForFeedback(ctx, commandName);
+}
+
 async function runManageBacklog(ctx: SkillContext): Promise<void> {
   const backlogDir = discoveryDir(ctx, "04 - Backlog");
   const workbookPath = path.join(backlogDir, BACKLOG_FILE);
   const prefsText = await ensurePreferences(ctx);
-  const manifest = readManifest(backlogDir);
+  let manifest = readManifest(backlogDir);
 
   // ── First build: no manifest yet → full derivation from registers ──────────
   if (!manifest) {
-    await fullBuild(ctx, backlogDir, workbookPath, prefsText);
+    await fullBuild(ctx, backlogDir, workbookPath, prefsText, "pending");
     await promptForFeedback(ctx, "manage-backlog");
     return;
+  }
+
+  // If users pushed manually (outside the managed flow), infer pushed keys from
+  // pushed/push-record.md so pending filtering still works reliably.
+  const reconciled = reconcileManifestFromPushRecord(backlogDir, manifest);
+  if (reconciled.changed) {
+    manifest = reconciled.manifest;
+    writeManifest(backlogDir, manifest);
+    ctx.stream.markdown("Detected manual push history in `pushed/push-record.md` and reconciled JIRA keys in the manifest.\n\n");
+  }
+
+  // Re-apply disregarded flags from disregard-record.md (protects against workbook rebuilds).
+  const disregardReconciled = reconcileManifestFromDisregardRecord(backlogDir, manifest);
+  if (disregardReconciled.changed) {
+    manifest = disregardReconciled.manifest;
+    writeManifest(backlogDir, manifest);
+    ctx.stream.markdown("Applied disregarded flags from `disregarded/disregard-record.md` to manifest.\n\n");
   }
 
   // ── Progressive: auto-sync markdown + manifest from an edited workbook ──────
@@ -833,8 +1253,14 @@ async function runManageBacklog(ctx: SkillContext): Promise<void> {
   let liveManifest: BacklogManifest = manifest;
   const currentChecksum = fileChecksum(workbookPath);
   if (currentChecksum && manifest.workbookChecksum && currentChecksum !== manifest.workbookChecksum) {
-    ctx.stream.markdown("Detected edits in the workbook — syncing markdown + manifest to match…\n\n");
-    liveManifest = (await syncFromWorkbook(ctx, backlogDir, workbookPath, manifest)) ?? manifest;
+    ctx.stream.markdown("Detected edits in the workbook — syncing manifest to match…\n\n");
+    liveManifest = (await syncFromWorkbook(ctx, backlogDir, workbookPath, manifest, "pending")) ?? manifest;
+    synced = true;
+  } else if (!synced && typeof manifest.workbookExcludedCount === "number" && countExcluded(manifest) > manifest.workbookExcludedCount) {
+    // Manifest was updated externally (e.g. push-backlog added JIRA keys) without touching the xlsx.
+    // The pending view is now stale — refresh it automatically.
+    ctx.stream.markdown("Backlog has been updated externally — refreshing pending workbook view…\n\n");
+    liveManifest = (await syncFromWorkbook(ctx, backlogDir, workbookPath, manifest, "pending")) ?? manifest;
     synced = true;
   }
 
@@ -849,9 +1275,14 @@ async function runManageBacklog(ctx: SkillContext): Promise<void> {
     });
   }
   choices.push({
-    label: "$(refresh) Rebuild from scratch",
-    description: "regenerate everything from registers (renumbers IDs)",
-    value: "rebuild",
+    label: "$(sync) Refresh pending-only workbook",
+    description: "default — keep only not-yet-pushed items in Backlog Tracker.xlsx",
+    value: "refresh-pending",
+  });
+  choices.push({
+    label: "$(warning) Super option: rebuild everything from scratch",
+    description: "regenerate all items from registers (renumbers IDs; use rarely)",
+    value: "rebuild-all",
   });
   choices.push({
     label: "$(check) Done",
@@ -864,20 +1295,23 @@ async function runManageBacklog(ctx: SkillContext): Promise<void> {
     placeHolder: unprocessed.length ? `New session ready: ${unprocessed[0].title}` : "What would you like to do?",
     ignoreFocusOut: true,
   });
-  const action = pick?.value ?? "done";
+  const action = pick?.value ?? "refresh-pending";
 
   if (action === "delta") {
-    await deltaBuild(ctx, backlogDir, workbookPath, liveManifest, unprocessed[0], prefsText);
-  } else if (action === "rebuild") {
+    await deltaBuild(ctx, backlogDir, workbookPath, liveManifest, unprocessed[0], prefsText, "pending");
+  } else if (action === "refresh-pending") {
+    const refreshed = await syncFromWorkbook(ctx, backlogDir, workbookPath, liveManifest, "pending");
+    if (!refreshed && !synced) ctx.stream.markdown("No changes made.");
+  } else if (action === "rebuild-all") {
     const confirm = await vscode.window.showQuickPick(
       [
-        { label: "Yes, rebuild", description: "existing IDs and any JIRA keys will be reassigned", value: "yes" },
+        { label: "Yes, rebuild everything", description: "super option — all items regenerated from registers", value: "yes" },
         { label: "Cancel", value: "no" },
       ],
-      { title: "Rebuild from scratch?", placeHolder: "This discards the current numbering", ignoreFocusOut: true }
+      { title: "Super option: rebuild all items?", placeHolder: "This regenerates everything and can renumber IDs", ignoreFocusOut: true }
     );
     if (confirm?.value === "yes") {
-      await fullBuild(ctx, backlogDir, workbookPath, prefsText);
+      await fullBuild(ctx, backlogDir, workbookPath, prefsText, "all");
     } else if (!synced) {
       ctx.stream.markdown("Left the backlog unchanged.");
     }
@@ -892,7 +1326,8 @@ async function fullBuild(
   ctx: SkillContext,
   backlogDir: string,
   workbookPath: string,
-  prefsText: string
+  prefsText: string,
+  workbookMode: "pending" | "all"
 ): Promise<void> {
   const registers = readDirFiles(discoveryDir(ctx, "00 - Registers"), [".md"]);
   if (!hasContent(registers)) {
@@ -909,14 +1344,27 @@ async function fullBuild(
     ...readDirFiles(discoveryDir(ctx, "03 - Future State"), [".md"]),
   ];
 
+  // Inject any previously disregarded items so the model knows not to regenerate them.
+  const disregardedEntries = readDisregardRecord(backlogDir);
+  const disregardedSection = disregardedEntries.length
+    ? `\n\n=== DISREGARDED ITEMS (excluded from scope — do not generate) ===\n\n` +
+      disregardedEntries.map((e) => `- ${e.type} ${e.id}: ${e.name}`).join("\n")
+    : "";
+
   const userContent =
     `PROJECT: ${ctx.config.project.name}\n\n` +
     `=== REGISTERS ===\n\n${combineFiles(registers)}` +
-    (enrichment.length ? `\n\n=== SUPPORTING CONTEXT ===\n\n${combineFiles(enrichment)}` : "");
+    (enrichment.length ? `\n\n=== SUPPORTING CONTEXT ===\n\n${combineFiles(enrichment)}` : "") +
+    disregardedSection;
+
+  const systemPrompt = backlogSystem(prefsText) +
+    (disregardedEntries.length
+      ? "\n\nIMPORTANT: Do not generate items listed under DISREGARDED ITEMS. These have been explicitly excluded from this project's scope."
+      : "");
 
   let raw: string;
   try {
-    raw = await collectResponse(ctx, backlogSystem(prefsText), userContent);
+    raw = await collectResponse(ctx, systemPrompt, userContent);
   } catch (err) {
     ctx.stream.markdown(`⛔ Model error while drafting the backlog: ${String(err)}`);
     return;
@@ -934,8 +1382,17 @@ async function fullBuild(
   }
 
   const sessions = listSessionFolders(ctx).map((s) => s.folder);
+  // Re-read manifest to carry forward disregarded items into the new manifest.
+  const prevManifest = readManifest(backlogDir);
   try {
-    const { summary } = await finalizeBacklog(ctx, backlogDir, workbookPath, data, { mode: "full", sessions });
+    const { summary } = await finalizeBacklog(
+      ctx,
+      backlogDir,
+      workbookPath,
+      data,
+      { mode: "full", sessions, prev: prevManifest },
+      workbookMode === "pending" ? pendingWorkbookView(data, prevManifest) : data
+    );
     const rel = path.relative(ctx.root, workbookPath);
     ctx.stream.markdown(
       `## Backlog created\n\n` +
@@ -953,7 +1410,8 @@ async function syncFromWorkbook(
   ctx: SkillContext,
   backlogDir: string,
   workbookPath: string,
-  manifest: BacklogManifest
+  manifest: BacklogManifest,
+  workbookMode: "pending" | "all"
 ): Promise<BacklogManifest | undefined> {
   let data: BacklogData;
   try {
@@ -964,17 +1422,24 @@ async function syncFromWorkbook(
   }
   data.project ||= manifest.project || ctx.config.project.name;
   denormalizeNames(data);
-  writeBacklogMarkdown(backlogDir, data);
+  if (workbookMode === "all") {
+    writeBacklogMarkdown(backlogDir, data);
+  }
+  const workbookData = workbookMode === "pending" ? pendingWorkbookView(data, manifest) : data;
+  await writeBacklogWorkbook(workbookPath, workbookData);
 
   const updated = manifestFromData(data, manifest);
   updated.workbookChecksum = fileChecksum(workbookPath);
+  if (workbookMode === "pending") {
+    updated.workbookExcludedCount = countExcluded(updated);
+  }
   updated.sessions = manifest.sessions ?? [];
   writeManifest(backlogDir, updated);
   writePhaseContext(ctx, data, "sync", updated);
 
   ctx.stream.markdown(
-    `Synced markdown + manifest from your workbook edits ` +
-      `(${(data.epics ?? []).length} epics · ${(data.stories ?? []).length} stories).\n\n`
+    `Synced manifest from your workbook edits, then refreshed \`${BACKLOG_FILE}\` ` +
+      `(${(workbookData.epics ?? []).length} epics · ${(workbookData.stories ?? []).length} stories).\n\n`
   );
   return updated;
 }
@@ -985,7 +1450,8 @@ async function deltaBuild(
   workbookPath: string,
   manifest: BacklogManifest,
   session: { folder: string; title: string },
-  prefsText: string
+  prefsText: string,
+  workbookMode: "pending" | "all"
 ): Promise<void> {
   let existing: BacklogData;
   try {
@@ -1041,11 +1507,18 @@ async function deltaBuild(
   const dateStamp = new Date().toISOString().slice(0, 10);
   const sessions = [...new Set([...(manifest.sessions ?? []), session.folder])];
   try {
-    const { summary } = await finalizeBacklog(ctx, backlogDir, workbookPath, merged, {
-      mode: "delta",
-      prev: manifest,
-      sessions,
-    });
+    const { summary } = await finalizeBacklog(
+      ctx,
+      backlogDir,
+      workbookPath,
+      merged,
+      {
+        mode: "delta",
+        prev: manifest,
+        sessions,
+      },
+      workbookMode === "pending" ? pendingWorkbookView(merged, manifest) : merged
+    );
     denormalizeNames(merged);
     const deltaRel = writeDeltaNote(backlogDir, session.title, dateStamp, added);
     ctx.stream.markdown(
@@ -1168,12 +1641,48 @@ async function runStoriesRefined(ctx: SkillContext): Promise<void> {
   const epicById = new Map((data.epics ?? []).map((e) => [e.id ?? "", e]));
   const featureById = new Map((data.features ?? []).map((f) => [f.id ?? "", f]));
   const allStories = data.stories ?? [];
-  const withAc = allStories.filter((s) => (s.acceptance_criteria || "").trim().length > 0);
-  const noAc = allStories.length - withAc.length;
+
+  // Exclude disregarded stories from refinement.
+  // Also persist any newly workbook-disregarded items to the record file so they're
+  // remembered by fullBuild and not pushed to the PM tool.
+  const existingRecordIds = new Set(readDisregardRecord(backlogDir).map((e) => e.id));
+  const manifest = readManifest(backlogDir);
+
+  // Collect stories newly marked as disregarded in the workbook (not yet in the record).
+  const newlyDisregarded = allStories.filter(
+    (s) => (s.disregarded || "").toUpperCase() === "Y" && !existingRecordIds.has((s.id || "").trim())
+  );
+  if (newlyDisregarded.length) {
+    appendDisregardRecord(
+      backlogDir,
+      newlyDisregarded.map((s) => ({ type: "story", id: s.id ?? "", name: (s.user_story ?? "").slice(0, 80) }))
+    );
+  }
+
+  // Also include stories that are disregarded in the manifest.
+  const disregardedIds = new Set(readDisregardRecord(backlogDir).map((e) => e.id));
+  for (const s of manifest?.stories ?? []) if (s.disregarded) disregardedIds.add(s.id);
+  for (const s of allStories) if ((s.disregarded || "").toUpperCase() === "Y") disregardedIds.add((s.id || "").trim());
+
+  const eligibleStories = allStories.filter((s) => !disregardedIds.has((s.id || "").trim()));
+  const disregardedCount = allStories.length - eligibleStories.length;
+
+  const withAc = eligibleStories.filter((s) => (s.acceptance_criteria || "").trim().length > 0);
+  const noAc = eligibleStories.length - withAc.length;
+
+  if (newlyDisregarded.length > 0) {
+    ctx.stream.markdown(
+      `_${newlyDisregarded.length} story(ies) marked as disregarded in the workbook — persisted to \`disregarded/disregard-record.md\`. They will not be regenerated or pushed to JIRA._\n\n`
+    );
+  } else if (disregardedCount > 0) {
+    ctx.stream.markdown(
+      `_${disregardedCount} story(ies) excluded — already marked as disregarded._\n\n`
+    );
+  }
 
   if (!withAc.length) {
     ctx.stream.markdown(
-      `⛔ No stories in the backlog have acceptance criteria yet (${allStories.length} stories found). ` +
+      `⛔ No eligible stories have acceptance criteria yet (${eligibleStories.length} eligible stories found, ${noAc} without AC). ` +
         `Add AC in \`04 - Backlog/Backlog Tracker.xlsx\` (or rebuild via \`/discover manage-backlog\`) and try again.`
     );
     return;
