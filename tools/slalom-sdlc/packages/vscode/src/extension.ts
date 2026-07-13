@@ -164,9 +164,9 @@ The discovery agent has targeted sub-commands. Run \`/discover\` on its own to b
 | \`generate-functional-requirements\` | SA-owned update of \`functional_requirements\` only |
 | \`generate-solution-comments\` | TA-owned update of \`solution_notes\` only |
 | \`manage-backlog\` | Evidence → epic/story rows seeded into Excel |
-| \`stories-refined\` | Backlog → per-story \`refinement-notes.md\` (business context + AC) for the design phase — no JIRA required |
-| \`push-backlog\` | Excel → JIRA items + archive (⚠️ irreversible — JIRA becomes source of truth) |
-| \`sync-jira\` | Pull JIRA status back as a read-only snapshot |
+| \`stories-refined\` | Backlog → per-story \`refinement-notes.md\` (business context + AC) for the design phase — no PM tool required |
+| \`push-backlog\` | Excel → PM tool items + archive (⚠️ irreversible — PM tool becomes source of truth) |
+| \`sync-pm\` | Pull PM tool status back as a read-only snapshot |
 | \`compose-deliverable\` | Executive readout or technical handoff document |
 | \`conflict-check\` | Find contradictions across registers |
 | \`prep-workshop\` | Pre-session briefing materials |
@@ -181,8 +181,8 @@ The discovery agent has targeted sub-commands. Run \`/discover\` on its own to b
 @slalom-sdlc /discover setup        ← onboard project, set up knowledge hub
 @slalom-sdlc /discover process-session  ← after each workshop
 @slalom-sdlc /discover manage-backlog   ← build evidence-backed backlog
-@slalom-sdlc /discover push-backlog     ← push to JIRA (review Excel first)
-@slalom-sdlc /discover stories-refined  ← backlog → refinement-notes.md (no JIRA needed)
+@slalom-sdlc /discover push-backlog     ← push to PM tool (review Excel first)
+@slalom-sdlc /discover stories-refined  ← backlog → refinement-notes.md (no PM tool needed)
 @slalom-sdlc /refine PROJ-42        ← refine each story before the sprint (JIRA)
 @slalom-sdlc /design PROJ-42        ← technical design, produces solution-design.md
 @slalom-sdlc /build PROJ-42         ← scaffold, test, deploy, raise PR
@@ -196,7 +196,7 @@ The discovery agent has targeted sub-commands. Run \`/discover\` on its own to b
 
 \`\`\`
 .vscode/
-  mcp.json                  ← Atlassian MCP (OAuth)
+  mcp.json                  ← PM tool MCP (Atlassian for JIRA / Azure DevOps for ADO)
 .sdlc/
   config.json               ← project config written by /init
 artifacts/

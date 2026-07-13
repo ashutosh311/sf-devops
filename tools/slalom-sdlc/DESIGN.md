@@ -34,7 +34,7 @@
 
 ## 1. Purpose
 
-`@slalom-sdlc` is a VS Code Chat Participant (a GitHub Copilot extension) that brings Slalom's Salesforce delivery process directly into the editor. Each slash command activates a purpose-built AI agent for a specific SDLC phase — discovery, refinement, design, build, test, and release — and works within the project's JIRA board, Salesforce org, and coding standards without the user needing to switch tools.
+`@slalom-sdlc` is a VS Code Chat Participant (a GitHub Copilot extension) that brings Slalom's Salesforce delivery process directly into the editor. Each slash command activates a purpose-built AI agent for a specific SDLC phase — discovery, refinement, design, build, test, and release — and works within the project's PM tool (**JIRA or Azure DevOps**), Salesforce org, and coding standards without the user needing to switch tools. The PM tool is chosen once at `/init` and every agent adapts its status names, work-item hierarchy, and MCP accordingly.
 
 The extension is a thin orchestration layer. It does not implement the agent logic itself; instead it:
 
@@ -348,7 +348,7 @@ The VS Code extension's `esbuild.mjs` bundles `packages/vscode/src/extension.ts`
     │ paths.standards   │             │ {{{instructions            │
     │ team.sprintLen    │             │    .orgImpactAssessment}}} │
     │ project.jiraKey   │             │                            │
-    │ jira.statusMap    │             │ Follow {{paths.standards}} │
+    │ alm / statusMap   │             │ Follow {{paths.standards}} │
     └────────┬──────────┘             │ /apex.md for Apex work…   │
              │                        └──────────────┬─────────────┘
              └──────────────┬──────────────────────────┘
@@ -406,7 +406,7 @@ What `scaffoldRepo()` writes to the client repo:
 
 ```
 .sdlc/config.json               project configuration
-.vscode/mcp.json                Salesforce + Atlassian MCP servers
+.vscode/mcp.json                Salesforce + PM tool MCP (Atlassian for JIRA, Azure DevOps for ADO)
 devops/standards/               full coding standards library
   apex.md
   lwc.md
@@ -441,7 +441,7 @@ The handler:
 
 1. Reads `.sdlc/config.json` via `requireConfig()` — aborts with a helpful message if no config is found
 2. Calls `renderPrompt(command, config)` to produce the fully resolved instruction string
-3. Extracts a story key from the user's message (e.g. `KAN-42`) using the project's `jiraKey` prefix from config as the pattern anchor
+3. Extracts a story key from the user's message using `resolveProjectKey(config)` as the pattern anchor — a JIRA key such as `KAN-42`, or an Azure DevOps work-item ID such as `#42` for ADO projects
 4. Substitutes any `{STORY-KEY}` literals in the rendered prompt
 5. Sends two messages to the LLM: the resolved prompt, then the user's original input
 6. Streams the LLM response back to the chat panel
@@ -465,20 +465,20 @@ The extension maps each phase to a Handlebars template. Templates define the age
 
 | Command | Persona | Key outputs |
 |---|---|---|
-| `/discover` | Solution Architect / BA | Epic map, story list, initial estimates |
-| `/refine` | SA / Functional Lead / BA | Gherkin AC on JIRA, `refinement-notes.md` |
-| `/design` | Technical Architect / Tech Lead | `sf-discovery.md`, `solution-design.md`, JIRA sub-tasks |
+| `/discover` | Solution Architect / BA | Discovery hub, evidence-backed backlog (Excel + markdown), push to the PM tool |
+| `/refine` | SA / Functional Lead / BA | Gherkin AC on the story, `refinement-notes.md` |
+| `/design` | Technical Architect / Tech Lead | `sf-discovery.md`, `solution-design.md`, PM-tool sub-tasks |
 | `/build` | Developer | Apex / LWC / config metadata, deployed to sandbox, PR raised, `implementation-record.md` |
 | `/test` | QA / Developer | Test classes, JEST tests, coverage validation |
-| `/release` | Release Manager | Release notes, deployment checklist, JIRA transitions |
+| `/release` | Release Manager | Release notes, deployment checklist, PM-tool transitions |
 
 Each template follows the same structural pattern:
 
-- **Step 0** — prerequisite gate (JIRA status check, local artifact scan, resume check)
+- **Step 0** — prerequisite gate (PM-tool status check, local artifact scan, resume check)
 - **Steps 1–N** — phase-specific work
-- **Final step** — local artifacts written, then JIRA updates proposed and confirmed before any changes are made
+- **Final step** — local artifacts written, then PM-tool updates proposed and confirmed before any changes are made
 
-The local-first, review-then-approve pattern is non-negotiable: the agent always writes files and presents them to the user before touching JIRA.
+The local-first, review-then-approve pattern is non-negotiable: the agent always writes files and presents them to the user before touching the PM tool.
 
 ---
 
@@ -494,10 +494,20 @@ The local-first, review-then-approve pattern is non-negotiable: the agent always
 
   project: {
     name: string,
-    jiraKey: string,        // e.g. "KAN"
-    jiraSite: string,       // e.g. "https://myco.atlassian.net"
-    jiraEmail: string,
+    // Legacy JIRA fields — optional and deprecated. Retained for backward
+    // compatibility with configs written before the `alm` block existed.
+    // New configs carry the equivalents under `alm` instead.
+    jiraKey?: string,        // e.g. "KAN"
+    jiraSite?: string,       // e.g. "https://myco.atlassian.net"
+    jiraEmail?: string,
   },
+
+  // PM-tool ("ALM") configuration — a discriminated union on `tool`.
+  // Chosen at /init. When absent, the tool defaults to JIRA using the legacy
+  // project.jira* fields above.
+  alm?:
+    | { tool: "JIRA", site?: string, projectKey?: string, email?: string }
+    | { tool: "ADO",  organization: string, project: string },
 
   phases: Array<"discover" | "refine" | "design" | "build" | "test" | "release">,
 
@@ -516,13 +526,24 @@ The local-first, review-then-approve pattern is non-negotiable: the agent always
     apexCoverageThreshold: number,   // default 85
   },
 
-  jira: {
+  // Status map for JIRA projects (alm.tool === "JIRA"). Optional.
+  jira?: {
     statusMap: {
       story: {
         backlog, refineInProgress, readyForDesign, designInProgress,
         readyForBuild, inDevelopment, readyForTest, done
       },
       epic: { notStarted, inProgress, done },
+      subTask: { todo, inDevelopment, readyForTest, done },
+    },
+  },
+
+  // Status map for Azure DevOps projects (alm.tool === "ADO"). Optional.
+  // Same story/epic/subTask shape, mapped to ADO state names.
+  ado?: {
+    statusMap: {
+      story: { /* … same keys as jira.statusMap.story … */ },
+      epic:  { notStarted, inProgress, done },
       subTask: { todo, inDevelopment, readyForTest, done },
     },
   },
@@ -537,7 +558,7 @@ The local-first, review-then-approve pattern is non-negotiable: the agent always
 }
 ```
 
-All `jira.statusMap` values are client-configurable because JIRA status names vary per project. The Handlebars templates reference them as `{{jira.statusMap.story.readyForBuild}}` etc., so the correct status names flow through to every agent prompt automatically.
+The active PM tool is resolved with the `resolveAlmTool(config)` helper (falls back to `"JIRA"` when `alm` is absent), and a display-safe identifier with `resolveProjectKey(config)` (the ADO project name, the JIRA project key, or the legacy `project.jiraKey`). Status-map values are client-configurable because status names vary per project. The Handlebars templates reference the resolved status map so the correct names flow through to every agent prompt automatically, regardless of which PM tool is in use.
 
 ---
 
@@ -571,7 +592,13 @@ The extension scaffolds `.vscode/mcp.json` on `/init` with two MCP server defini
 
 **Atlassian MCP** (`https://mcp.atlassian.com/v1/mcp`) — connects via HTTP. On first use VS Code prompts the user to authorise with their Atlassian account via OAuth. After authorisation, the LLM can read JIRA stories, transition statuses, and read Confluence pages without any API key configuration.
 
-The agent prompt templates reference both MCPs in their instructions — for example the design agent uses the Salesforce MCP to inspect live org metadata and the Atlassian MCP to fetch story context and create sub-tasks.
+**Azure DevOps MCP** (for ADO projects) — when `alm.tool === "ADO"`, the scaffold writes the `ado` (`@azure-devops/mcp`) server entry into `.vscode/mcp.json` instead of `atlassian`, using the org name extracted from `alm.organization`. The prompt templates reference ADO MCP tools by capability — listing work-item-type fields, creating Epics/User Stories, and linking children to parents.
+
+The agent prompt templates reference the active PM tool's MCP in their instructions — for example the design agent uses the Salesforce MCP to inspect live org metadata and the PM tool MCP to fetch story context and create sub-tasks.
+
+### Discovery skills that write to the PM tool (`push-backlog`, `sync-pm`)
+
+MCP tools are only exposed when Copilot runs in **agent mode**; a plain `model.sendRequest()` call has no tool access. The two discovery skills that must call the PM tool MCP — `push-backlog` and the renamed `sync-pm` (formerly `sync-jira`) — therefore do **not** execute inline. Instead the discover handler builds a context-enriched prompt (rendered template + injected project config + the user's request) and opens it in the Copilot Chat panel via `workbench.action.chat.open` with `isPartialQuery: true`, so the user can confirm agent mode and the correct MCP (Atlassian for JIRA, Azure DevOps for ADO) before pressing Enter. As a fallback, the same prompt is persisted to `.sdlc/prompts/{skill}.md` so it survives if the chat panel can't be opened. `push-backlog` builds a three-tier Epic → Feature → Story hierarchy for JIRA and a two-tier Epic → Story hierarchy for ADO, writing the resulting identifier back to the workbook's single **PM Key** column (and the manifest's `pmKey` field).
 
 ---
 

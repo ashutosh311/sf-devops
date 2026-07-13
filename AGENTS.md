@@ -103,14 +103,14 @@ The `/discover` agent runs a 4-phase structured engagement methodology (Prepare 
 | `synthesize` | Registers → narrative current-state document |
 | `analyze` | Prioritisation, gap analysis, traceability matrix |
 | `manage-backlog` | Evidence-backed epic/story construction → seeds `Backlog Tracker.xlsx` |
-| `push-backlog` | Reads Excel, updates markdown, creates JIRA items, archives Excel |
-| `sync-jira` | Pulls JIRA status back as a read-only `jira-sync.md` snapshot |
+| `push-backlog` | Reads Excel, updates markdown, creates PM tool items, archives Excel |
+| `sync-pm` | Pulls PM tool status back as a read-only `pm-sync.md` snapshot |
 | `compose-deliverable` | Executive readout, technical handoff document |
 | `conflict-check` | Contradiction and assumption conflict detection |
 | `prep-workshop` | Pre-session briefing materials |
 | `hub-audit` | Phase-gate readiness check |
 | `whats-next` | "Where are we and what's next?" orientation |
-| `stories-refined` | Backlog → per-story `refinement-notes.md` for the design phase — no JIRA required |
+| `stories-refined` | Backlog → per-story `refinement-notes.md` for the design phase — no PM tool required |
 | `registers-to-stories` | Bridge from registers to story candidates |
 | `set-preferences` _(VS Code only)_ | Set authoring style for AC / FR / Solution Notes |
 | `feedback` _(VS Code only)_ | Rate the last command and append notes to authoring preferences |
@@ -119,9 +119,9 @@ The `/discover` agent runs a 4-phase structured engagement methodology (Prepare 
 
 1. Run `manage-backlog` → `Backlog Tracker.xlsx` is seeded with evidence-backed stories
 2. User opens and reviews the Excel file
-3. Run `push-backlog` → reads Excel, updates `_index.md` + `epics/<id>.md`, creates JIRA items, archives Excel to `04 - Backlog/pushed/`
-4. JIRA is now the source of truth — Excel is archived and immutable
-5. Run `sync-jira` at any time to pull current JIRA status back to `jira-sync.md`
+3. Run `push-backlog` → reads Excel, updates `_index.md` + `epics/<id>.md`, creates PM tool items, archives Excel to `04 - Backlog/pushed/`
+4. The PM tool is now the source of truth — Excel is archived and immutable
+5. Run `sync-pm` at any time to pull current PM tool status back to `pm-sync.md`
 
 ---
 

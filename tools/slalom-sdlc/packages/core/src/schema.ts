@@ -39,6 +39,50 @@ export const SubTaskStatusMapSchema = z.object({
   done: z.string(),
 });
 
+// ── PM-tool configuration ─────────────────────────────────────────────────────
+
+export const JiraAlmSchema = z.object({
+  tool: z.literal("JIRA"),
+  /** Jira site URL, e.g. https://your-org.atlassian.net */
+  site: z.string().url().optional(),
+  /** Jira project key, e.g. PROJ */
+  projectKey: z.string().optional(),
+  /** Atlassian account email for API auth */
+  email: z.string().optional(),
+});
+
+export const AdoAlmSchema = z.object({
+  tool: z.literal("ADO"),
+  /** Azure DevOps organisation URL, e.g. https://dev.azure.com/your-org */
+  organization: z.string().url(),
+  /** ADO project name */
+  project: z.string().min(1),
+});
+
+export const AlmSchema = z.discriminatedUnion("tool", [JiraAlmSchema, AdoAlmSchema]);
+export type AlmConfig = z.infer<typeof AlmSchema>;
+
+/** Returns the active PM tool. Falls back to "JIRA" if alm is not set. */
+export function resolveAlmTool(config: SdlcConfig): "JIRA" | "ADO" {
+  return config.alm?.tool ?? "JIRA";
+}
+
+/** Returns a display-safe project key / identifier for the active PM tool. */
+export function resolveProjectKey(config: SdlcConfig): string {
+  if (config.alm?.tool === "ADO") return config.alm.project;
+  if (config.alm?.tool === "JIRA" && config.alm.projectKey) return config.alm.projectKey;
+  return config.project.jiraKey ?? config.project.name;
+}
+
+// ── ADO status maps ───────────────────────────────────────────────────────────
+
+export const AdoStatusMapSchema = z.object({
+  story: StoryStatusMapSchema,
+  epic: EpicStatusMapSchema,
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const SdlcConfigSchema = z.object({
   version: z.string(),
   generatedAt: z.string(),
@@ -46,10 +90,16 @@ export const SdlcConfigSchema = z.object({
 
   project: z.object({
     name: z.string().min(1),
-    jiraKey: z.string().min(1).toUpperCase(),
-    jiraSite: z.string().url(),
-    jiraEmail: z.string().email(),
+    /** @deprecated Use alm.projectKey (JIRA) or alm.project (ADO) instead. Kept for backward compatibility. */
+    jiraKey: z.string().toUpperCase().optional(),
+    /** @deprecated Use alm.site (JIRA) instead. Kept for backward compatibility. */
+    jiraSite: z.string().url().optional(),
+    /** @deprecated Use alm.email (JIRA) instead. Kept for backward compatibility. */
+    jiraEmail: z.string().email().optional(),
   }),
+
+  /** PM tool configuration. When absent, the tool defaults to JIRA using project.jiraKey/jiraSite/jiraEmail. */
+  alm: AlmSchema.optional(),
 
   phases: z.array(PhaseSchema).min(1),
 
@@ -74,7 +124,12 @@ export const SdlcConfigSchema = z.object({
       epic: EpicStatusMapSchema,
       subTask: SubTaskStatusMapSchema,
     }),
-  }),
+  }).optional(),
+
+  /** ADO-specific status map. Used when alm.tool = "ADO". */
+  ado: z.object({
+    statusMap: AdoStatusMapSchema,
+  }).optional(),
 
   branching: z.literal("gitflow"),
 
@@ -86,6 +141,7 @@ export const SdlcConfigSchema = z.object({
 });
 
 export type SdlcConfig = z.infer<typeof SdlcConfigSchema>;
+export type JiraStatusMap = NonNullable<SdlcConfig["jira"]>["statusMap"];
 export type Phase = z.infer<typeof PhaseSchema>;
 export type StoryStatusMap = z.infer<typeof StoryStatusMapSchema>;
 export type EpicStatusMap = z.infer<typeof EpicStatusMapSchema>;

@@ -107,26 +107,26 @@ skills:
     name: push-backlog
     description: >
       Use when the user has reviewed Backlog Tracker.xlsx and is ready to push epics and stories
-      to JIRA. Archives the Excel file after push.
+      to the PM tool. Archives the Excel file after push.
     kind: workflow
     path: .github/prompts/sdlc/discover/push-backlog.prompt.md
     trigger_phrases:
-      - "push backlog to JIRA"
-      - "create JIRA items"
-      - "push to JIRA"
-      - "send to JIRA"
+      - "push backlog to PM tool"
+      - "create PM tool items"
+      - "push to PM tool"
+      - "send to PM tool"
 
-  - id: sync-jira
-    name: sync-jira
+  - id: sync-pm
+    name: sync-pm
     description: >
-      Use when the user wants to pull the current JIRA status of pushed stories back into the repo
+      Use when the user wants to pull the current PM tool status of pushed stories back into the repo
       as a read-only snapshot. Only valid after push-backlog has been run.
     kind: workflow
-    path: .github/prompts/sdlc/discover/sync-jira.prompt.md
+    path: .github/prompts/sdlc/discover/sync-pm.prompt.md
     trigger_phrases:
-      - "sync JIRA"
-      - "pull JIRA status"
-      - "what's the status in JIRA"
+      - "sync PM tool"
+      - "pull PM status"
+      - "what's the status in the PM tool"
       - "update jira-sync"
 
   - id: compose-deliverable
@@ -214,7 +214,7 @@ skills:
       and writes a per-story refinement-notes.md (business context + AC + FR + solution notes)
       for each story that has acceptance criteria. Also auto-detects stories marked as disregarded
       (Disregarded column = Y) in the workbook, persists them to disregard-record.md, and excludes
-      them from refinement, future backlog regeneration, and JIRA push. No JIRA required.
+      them from refinement, future backlog regeneration, and PM tool push. No JIRA required.
     kind: workflow
     path: .github/prompts/sdlc/discover/stories-refined.prompt.md
     trigger_phrases:

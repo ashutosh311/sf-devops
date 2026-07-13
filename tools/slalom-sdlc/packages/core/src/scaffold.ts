@@ -101,6 +101,21 @@ async function writeTriggerFrameworkPlaceholder(config: SdlcConfig, root: string
   }
 }
 
+/** Builds the PM-tool MCP server entry for .vscode/mcp.json (format="vscode") or .mcp.json (format="claude"). */
+function buildPmMcpEntry(config: SdlcConfig, format: "vscode" | "claude"): Record<string, unknown> {
+  if (config.alm?.tool === "ADO") {
+    // Extract the org name from the full URL, e.g. "https://dev.azure.com/MyOrg" → "MyOrg"
+    const orgName = config.alm.organization.replace(/^https?:\/\/dev\.azure\.com\//, "").replace(/\/$/, "");
+    const args = ["-y", "@azure-devops/mcp", orgName, "-d", "core", "work", "work-items", "--authentication", "interactive"];
+    return format === "vscode"
+      ? { ado: { type: "stdio", command: "npx", args } }
+      : { ado: { command: "npx", args } };
+  }
+  return format === "vscode"
+    ? { atlassian: { type: "http", url: "https://mcp.atlassian.com/v1/mcp" } }
+    : { atlassian: { type: "http", url: "https://mcp.atlassian.com/v1/mcp" } };
+}
+
 async function writeMcpConfig(config: SdlcConfig, root: string, result: ScaffoldResult): Promise<void> {
   const dir = path.join(root, ".vscode");
   await fs.mkdir(dir, { recursive: true });
@@ -128,10 +143,7 @@ async function writeMcpConfig(config: SdlcConfig, root: string, result: Scaffold
           "--allow-non-ga-tools",
         ],
       },
-      atlassian: {
-        type: "http",
-        url: "https://mcp.atlassian.com/v1/mcp",
-      },
+      ...(buildPmMcpEntry(config, "vscode")),
     },
   };
 
@@ -162,10 +174,7 @@ async function writeClaudeCodeMcpConfig(config: SdlcConfig, root: string, result
           "--allow-non-ga-tools",
         ],
       },
-      atlassian: {
-        type: "http",
-        url: "https://mcp.atlassian.com/v1/mcp",
-      },
+      ...(buildPmMcpEntry(config, "claude")),
     },
   };
 

@@ -26,7 +26,7 @@
    - 8.2 [Tools](#82-tools)
 9. [Installation in Claude Code](#9-installation-in-claude-code)
 10. [Configuration Schema](#10-configuration-schema)
-11. [MCP-to-MCP: Salesforce and Atlassian](#11-mcp-to-mcp-salesforce-and-atlassian)
+11. [MCP-to-MCP: Salesforce and the PM tool](#11-mcp-to-mcp-salesforce-and-the-pm-tool)
 12. [VSIX vs MCP — Feature Parity](#12-vsix-vs-mcp--feature-parity)
 13. [What Lives Where](#13-what-lives-where)
 14. [Open Questions & Risks](#14-open-questions--risks)
@@ -182,7 +182,7 @@ for (const phase of ["discover","refine","design","build","test","release"]) {
       description: PHASE_DESCRIPTIONS[phase],
       argsSchema: STORYLESS.has(phase)
         ? {}
-        : { storyKey: z.string().describe("JIRA story key, e.g. PROJ-42").optional() },
+        : { storyKey: z.string().describe("Story key — a JIRA key (e.g. PROJ-42) or an ADO work-item ID (e.g. #42)").optional() },
     },
     async ({ storyKey }) => {
       const config = await loadConfig();              // reads .sdlc/config.json
@@ -209,15 +209,16 @@ The VSIX `/init` runs an interactive wizard of input boxes. MCP prompts are sing
 User:   /mcp__slalom-sdlc__init        (a thin prompt that kicks this off)
 Claude: What's the client / project name?
 User:   Acme
-Claude: JIRA project key?  ... (walks the questions from core/questions.ts)
+Claude: Which PM tool — JIRA or Azure DevOps?  ... (walks the questions from core/questions.ts;
+        asks JIRA key/site/email for JIRA, or org URL/project name for ADO)
 ...
-Claude: → calls sdlc_scaffold({ projectName: "Acme", jiraKey: "ACME", ... })
+Claude: → calls sdlc_scaffold({ projectName: "Acme", pmTool: "JIRA", jiraKey: "ACME", ... })
 Server: validates with SdlcConfigSchema, runs scaffoldRepo(config, root)
 Server: ← returns { created: [...], updated: [...], preserved: [...] }
 Claude: ✅ Initialised Acme. Created .sdlc/config.json, devops/standards/...
 ```
 
-The tool's input schema is **derived from `core/questions.ts`** so the question set stays single-sourced across CLI, VSIX, and MCP. The tool body is essentially the VSIX `handleInit` minus the UI: build `SdlcConfig`, `scaffoldRepo(config, root)`, return the `ScaffoldResult`.
+The tool's input schema is **derived from `core/questions.ts`** so the question set stays single-sourced across CLI, VSIX, and MCP — including the `pmTool` branch that selects between the JIRA (`jiraKey`/`jiraSite`/`jiraEmail`) and ADO (`adoOrganization`/`adoProject`) question sets. The tool body is essentially the VSIX `handleInit` minus the UI: build `SdlcConfig`, `scaffoldRepo(config, root)`, return the `ScaffoldResult`.
 
 A companion `/about` prompt and an optional `/init` kickoff prompt give the interview a discoverable entry point.
 
@@ -313,7 +314,7 @@ The `--no-dependencies`/external story is simpler than the VSIX: bundle everythi
             ▼                                 ▼
     loadConfig()                      designTemplate (Handlebars string)
     root via roots/list,              {{{instructions.orgImpactAssessment}}}
-    reads .sdlc/config.json           {{paths.standards}} / {{jira.statusMap…}}
+    reads .sdlc/config.json           {{paths.standards}} / {{…statusMap…}}
             │                                 │
             └────────────────┬────────────────┘
                              ▼
@@ -360,7 +361,7 @@ Prompts whose phase is not enabled in `config.phases` are still registered but r
 | Tool | Input | Effect |
 |---|---|---|
 | `sdlc_scaffold` | full config params (schema derived from `core/questions.ts`) | validates via `SdlcConfigSchema`, runs `scaffoldRepo(config, root)`, returns `ScaffoldResult` |
-| `sdlc_status` *(optional)* | — | reports whether `.sdlc/config.json` exists, the enabled phases, and the JIRA/sandbox config — useful for Claude to self-orient |
+| `sdlc_status` *(optional)* | — | reports whether `.sdlc/config.json` exists, the enabled phases, and the PM-tool (JIRA or ADO) / sandbox config — useful for Claude to self-orient |
 
 ---
 
@@ -404,7 +405,7 @@ After connecting, `/mcp__slalom-sdlc__*` commands appear in Claude Code's slash-
 
 > Note: `slalom-sdlc` is **not** in the project `.mcp.json`. It is registered at user scope via `setup.sh` (see [§15](#15-getting-started--installing-the-mcp-server)) and is therefore already available in every Claude Code session — no per-project entry needed.
 
-> The init flow writes **both** `.vscode/mcp.json` (Salesforce + Atlassian, for the VSIX/Copilot path) **and** `.mcp.json` (for Claude Code), so a single project can be driven from either agent. See [§11](#11-mcp-to-mcp-salesforce-and-atlassian).
+> The init flow writes **both** `.vscode/mcp.json` (Salesforce + Atlassian, for the VSIX/Copilot path) **and** `.mcp.json` (for Claude Code), so a single project can be driven from either agent. See [§11](#11-mcp-to-mcp-salesforce-and-the-pm-tool).
 
 ---
 
@@ -412,13 +413,13 @@ After connecting, `/mcp__slalom-sdlc__*` commands appear in Claude Code's slash-
 
 Unchanged from the VSIX — the **same `.sdlc/config.json`** validated by the same `SdlcConfigSchema` in `@sdlc/core` ([DESIGN.md §9](./DESIGN.md#9-configuration-schema)). A project initialised by the VSIX works with the MCP server and vice-versa; there is one config, one schema, one source of truth.
 
-The only scaffold addition is writing `.mcp.json` next to `.vscode/mcp.json` (see [§11](#11-mcp-to-mcp-salesforce-and-atlassian)).
+The only scaffold addition is writing `.mcp.json` next to `.vscode/mcp.json` (see [§11](#11-mcp-to-mcp-salesforce-and-the-pm-tool)).
 
 ---
 
-## 11. MCP-to-MCP: Salesforce and Atlassian
+## 11. MCP-to-MCP: Salesforce and the PM tool
 
-The phase prompts instruct Claude to use the Salesforce and Atlassian MCPs for org metadata, Apex tests, JIRA, and Confluence — exactly as the VSIX templates already do. Those are **separate MCP servers** that Claude Code connects to directly; our server does not proxy them.
+The phase prompts instruct Claude to use the Salesforce MCP and the PM-tool MCP for org metadata, Apex tests, and work-item/status operations — exactly as the VSIX templates already do. Those are **separate MCP servers** that Claude Code connects to directly; our server does not proxy them. For JIRA projects the PM-tool MCP is Atlassian (which also serves Confluence); for Azure DevOps projects it is the Azure DevOps MCP, which must be added to the config manually (the scaffold writes the Atlassian entry by default).
 
 `scaffoldRepo()` is extended to emit a Claude-Code-flavoured `.mcp.json` carrying the same two server definitions it already writes to `.vscode/mcp.json`:
 
@@ -599,7 +600,7 @@ artifacts/                 ← SDLC artifact directories
 force-app/frameworks/      ← trigger framework placeholder
 ```
 
-Commit `.mcp.json` and `.vscode/mcp.json` — teammates who clone the client repo get the Salesforce and Atlassian MCP servers wired up automatically.
+Commit `.mcp.json` and `.vscode/mcp.json` — teammates who clone the client repo get the Salesforce and PM tool MCP servers wired up automatically (Atlassian for JIRA projects, Azure DevOps for ADO projects).
 
 ---
 
@@ -611,7 +612,7 @@ Commit `.mcp.json` and `.vscode/mcp.json` — teammates who clone the client rep
 /mcp__slalom-sdlc__design PROJ-42    ← technical design, produces solution-design.md
 /mcp__slalom-sdlc__build PROJ-42     ← scaffold Apex/LWC/config, deploy to sandbox
 /mcp__slalom-sdlc__test PROJ-42      ← test classes, JEST tests, coverage validation
-/mcp__slalom-sdlc__release           ← deployment notes and JIRA transitions
+/mcp__slalom-sdlc__release           ← deployment notes and PM-tool transitions
 ```
 
 ---

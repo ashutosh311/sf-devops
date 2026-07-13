@@ -24,6 +24,7 @@ import {
   type BacklogManifest,
 } from "../backlog-md";
 import { extractFileText, extractPdfImages } from "../extract";
+import { pushBacklogAdoTemplate, pushBacklogJiraTemplate, syncPmAdoTemplate, syncPmJiraTemplate } from "@sdlc/core";
 import type { SdlcConfig } from "@sdlc/core";
 
 // ── Skill catalogue ─────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ type Skill =
   | "manage-backlog"
   | "stories-refined"
   | "push-backlog"
-  | "sync-jira"
+  | "sync-pm"
   | "set-preferences"
   | "feedback"
   | "synthesize"
@@ -63,8 +64,8 @@ const MENU: SkillMenuItem[] = [
   { skill: "manage-backlog", label: "$(table) Build the backlog", description: "generate/sync the backlog (xlsx + markdown)" },
   { skill: "stories-refined", label: "$(checklist) Mark stories refined", description: "backlog → per-story refinement-notes.md for design" },
   { skill: "set-preferences", label: "$(settings-gear) Set authoring preferences", description: "AC / FR / Solution Notes style" },
-  { skill: "push-backlog", label: "$(cloud-upload) Push backlog to JIRA", description: "requires Atlassian MCP" },
-  { skill: "sync-jira", label: "$(sync) Sync JIRA status", description: "requires Atlassian MCP" },
+  { skill: "push-backlog", label: "$(cloud-upload) Push backlog to PM tool", description: "requires PM tool MCP (Atlassian / Azure DevOps)" },
+  { skill: "sync-pm", label: "$(sync) Sync PM status", description: "requires PM tool MCP (Atlassian / Azure DevOps)" },
   { skill: "analyze", label: "$(graph) Analyze and prioritize", description: "rank pain points, coverage, options" },
   { skill: "conflict-check", label: "$(warning) Check for conflicts", description: "contradictions across sessions" },
   { skill: "synthesize", label: "$(sparkle) Synthesize insights", description: "themes and patterns across sessions" },
@@ -115,7 +116,7 @@ export async function handleDiscover(
     case "set-preferences": return runSetPreferences(ctx);
     case "feedback": return runFeedback(ctx);
     case "push-backlog":
-    case "sync-jira": return runDeferred(ctx, skill);
+    case "sync-pm": return runDeferred(ctx, skill);
     default: return runAdvisory(ctx, skill);
   }
 }
@@ -771,15 +772,15 @@ function reconcileManifestFromPushRecord(backlogDir: string, manifest: BacklogMa
     stories: [...(manifest.stories ?? [])],
   };
   let changed = false;
-  const apply = (list: Array<{ id: string; jiraKey?: string }>, id: string, key: string): void => {
+  const apply = (list: Array<{ id: string; pmKey?: string }>, id: string, key: string): void => {
     const item = list.find((x) => x.id === id);
     if (item) {
-      if (item.jiraKey !== key) { item.jiraKey = key; changed = true; }
+      if (item.pmKey !== key) { item.pmKey = key; changed = true; }
     } else {
       // Item exists in the push-record but is absent from the manifest (e.g. manifest was
       // regenerated from a pending-only workbook that omitted this item). Insert a stub so
       // nextCounters always sees the full ID space and never reuses a pushed ID.
-      list.push({ id, jiraKey: key });
+      list.push({ id, pmKey: key });
       changed = true;
     }
   };
@@ -885,9 +886,9 @@ function appendDisregardRecord(
 /** Count pushed+disregarded items in the manifest — used to detect stale pending views. */
 function countExcluded(manifest: BacklogManifest): number {
   let n = 0;
-  for (const e of manifest.epics ?? []) if ((e.jiraKey || "").trim() || e.disregarded) n++;
-  for (const f of manifest.features ?? []) if ((f.jiraKey || "").trim() || f.disregarded) n++;
-  for (const s of manifest.stories ?? []) if ((s.jiraKey || "").trim() || s.disregarded) n++;
+  for (const e of manifest.epics ?? []) if ((e.pmKey || "").trim() || e.disregarded) n++;
+  for (const f of manifest.features ?? []) if ((f.pmKey || "").trim() || f.disregarded) n++;
+  for (const s of manifest.stories ?? []) if ((s.pmKey || "").trim() || s.disregarded) n++;
   return n;
 }
 
@@ -897,12 +898,12 @@ function pendingWorkbookView(data: BacklogData, manifest?: BacklogManifest): Bac
   const excludedStories = new Set<string>();
 
   // Pushed (have JIRA key)
-  for (const e of data.epics ?? []) if ((e.jira_key || "").trim()) excludedEpics.add((e.id || "").trim());
-  for (const f of data.features ?? []) if ((f.jira_key || "").trim()) excludedFeatures.add((f.id || "").trim());
-  for (const s of data.stories ?? []) if ((s.jira_key || "").trim()) excludedStories.add((s.id || "").trim());
-  for (const e of manifest?.epics ?? []) if ((e.jiraKey || "").trim()) excludedEpics.add((e.id || "").trim());
-  for (const f of manifest?.features ?? []) if ((f.jiraKey || "").trim()) excludedFeatures.add((f.id || "").trim());
-  for (const s of manifest?.stories ?? []) if ((s.jiraKey || "").trim()) excludedStories.add((s.id || "").trim());
+  for (const e of data.epics ?? []) if ((e.pm_key || "").trim()) excludedEpics.add((e.id || "").trim());
+  for (const f of data.features ?? []) if ((f.pm_key || "").trim()) excludedFeatures.add((f.id || "").trim());
+  for (const s of data.stories ?? []) if ((s.pm_key || "").trim()) excludedStories.add((s.id || "").trim());
+  for (const e of manifest?.epics ?? []) if ((e.pmKey || "").trim()) excludedEpics.add((e.id || "").trim());
+  for (const f of manifest?.features ?? []) if ((f.pmKey || "").trim()) excludedFeatures.add((f.id || "").trim());
+  for (const s of manifest?.stories ?? []) if ((s.pmKey || "").trim()) excludedStories.add((s.id || "").trim());
 
   // Disregarded (workbook column or manifest flag)
   for (const e of data.epics ?? []) if ((e.disregarded || "").toUpperCase() === "Y") excludedEpics.add((e.id || "").trim());
@@ -954,13 +955,13 @@ function writePhaseContext(
   const p = discoveryDir(ctx, PROJECT_FOLDER, PHASE_CONTEXT_FILE);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   const status = manifest.pushedAt
-    ? `Pushed to JIRA on ${manifest.pushedAt.slice(0, 10)} — **JIRA is the source of truth**; the markdown mirror is the local, diff-able background.`
+    ? `Pushed to PM tool on ${manifest.pushedAt.slice(0, 10)} — **the PM tool is the source of truth**; the markdown mirror is the local, diff-able background.`
     : mode === "sync"
-      ? "Synced from workbook edits — drafted locally, not yet pushed to JIRA."
-      : "Drafted locally — not yet pushed to JIRA.";
+      ? "Synced from workbook edits — drafted locally, not yet pushed to PM tool."
+      : "Drafted locally — not yet pushed to PM tool.";
   const next = manifest.pushedAt
-    ? "Run `/discover sync-jira` to refresh status, or proceed to the refine/design phases per story."
-    : "Review `04 - Backlog/Backlog Tracker.xlsx`, then run `/discover push-backlog` (agent with Atlassian MCP) to create the JIRA items.";
+    ? "Run `/discover sync-pm` to refresh status, or proceed to the refine/design phases per story."
+    : "Review `04 - Backlog/Backlog Tracker.xlsx`, then run `/discover push-backlog` (agent with PM tool MCP) to create the items.";
   const content =
     `# Discovery Phase Context\n\n` +
     `_Handoff note for the refine / design / build phases. Machine-maintained by \`/discover manage-backlog\`._\n\n` +
@@ -974,7 +975,7 @@ function writePhaseContext(
     `- Backlog index — \`04 - Backlog/_index.md\`\n` +
     `- Per-epic detail — \`04 - Backlog/epics/<EPIC-ID> - <name>.md\` (AC, FR, solution notes, traceability)\n` +
     `- Open questions — \`04 - Backlog/open-questions.md\`\n` +
-    `- Manifest (IDs + JIRA keys) — \`04 - Backlog/_manifest.json\`\n` +
+    `- Manifest (IDs + PM keys) — \`04 - Backlog/_manifest.json\`\n` +
     `- Authoring preferences — \`00 - Project/${PREFERENCES_FILE}\`\n\n` +
     `## Next step\n\n${next}\n`;
   fs.writeFileSync(p, content);
@@ -1237,7 +1238,7 @@ async function runManageBacklog(ctx: SkillContext): Promise<void> {
   if (reconciled.changed) {
     manifest = reconciled.manifest;
     writeManifest(backlogDir, manifest);
-    ctx.stream.markdown("Detected manual push history in `pushed/push-record.md` and reconciled JIRA keys in the manifest.\n\n");
+    ctx.stream.markdown("Detected manual push history in `pushed/push-record.md` and reconciled PM keys in the manifest.\n\n");
   }
 
   // Re-apply disregarded flags from disregard-record.md (protects against workbook rebuilds).
@@ -1257,7 +1258,7 @@ async function runManageBacklog(ctx: SkillContext): Promise<void> {
     liveManifest = (await syncFromWorkbook(ctx, backlogDir, workbookPath, manifest, "pending")) ?? manifest;
     synced = true;
   } else if (!synced && typeof manifest.workbookExcludedCount === "number" && countExcluded(manifest) > manifest.workbookExcludedCount) {
-    // Manifest was updated externally (e.g. push-backlog added JIRA keys) without touching the xlsx.
+    // Manifest was updated externally (e.g. push-backlog added PM keys) without touching the xlsx.
     // The pending view is now stale — refresh it automatically.
     ctx.stream.markdown("Backlog has been updated externally — refreshing pending workbook view…\n\n");
     liveManifest = (await syncFromWorkbook(ctx, backlogDir, workbookPath, manifest, "pending")) ?? manifest;
@@ -1399,7 +1400,7 @@ async function fullBuild(
         `Wrote **${summary}** to \`${rel}\`.\n\n` +
         `Also wrote the split markdown background (\`_index.md\`, \`epics/\`, \`open-questions.md\`), the manifest, and \`${PROJECT_FOLDER}/${PHASE_CONTEXT_FILE}\`.\n\n` +
         renderBacklogPreview(data) +
-        `\n\nReview the workbook, then run \`/discover push-backlog\` (agent with the Atlassian MCP) to create the JIRA items.`
+        `\n\nReview the workbook, then run \`/discover push-backlog\` (agent with PM tool MCP) to create the items.`
     );
   } catch (err) {
     ctx.stream.markdown(`⛔ Failed to write the backlog: ${String(err)}`);
@@ -1547,8 +1548,8 @@ function renderBacklogPreview(data: BacklogData): string {
 //
 // Bridges the reviewed backlog to the design phase: for every story that has
 // acceptance criteria, write a per-story `refinement-notes.md` (business context
-// + AC) that `/design` consumes. Deterministic — no model call. JIRA-agnostic:
-// the story key is the JIRA key when present, else the backlog Story ID.
+// + AC) that `/design` consumes. Deterministic — no model call. PM-tool-agnostic:
+// the story key is the PM tool key when present, else the backlog Story ID.
 
 const REFINEMENT_FILE = "refinement-notes.md";
 
@@ -1584,13 +1585,13 @@ function renderRefinementNotes(
   out +=
     `_Generated by \`/discover stories-refined\` from the discovery backlog. ` +
     `Business-readiness context + acceptance criteria for the design phase. ` +
-    `Source of truth for AC is the backlog until pushed to JIRA._\n\n`;
+    `Source of truth for AC is the backlog until pushed to the PM tool._\n\n`;
 
   out += mdSection("Story", story.user_story);
 
   let meta = "";
   meta += mdLabel("Backlog ID", story.id);
-  meta += mdLabel("JIRA", story.jira_key);
+  meta += mdLabel("PM Key", story.pm_key);
   if (epic) meta += mdLabel("Epic", `${epic.id ?? ""}${epic.name ? ` — ${epic.name}` : ""}`);
   else if (story.epic_id) meta += mdLabel("Epic", `${story.epic_id}${story.epic_name ? ` — ${story.epic_name}` : ""}`);
   if (feature) meta += mdLabel("Feature", `${feature.id ?? ""}${feature.name ? ` — ${feature.name}` : ""}`);
@@ -1616,7 +1617,7 @@ function renderRefinementNotes(
 }
 
 function storyKey(story: BacklogStory): string {
-  return (story.jira_key || story.id || "").trim();
+  return (story.pm_key || story.id || "").trim();
 }
 
 async function runStoriesRefined(ctx: SkillContext): Promise<void> {
@@ -1672,7 +1673,7 @@ async function runStoriesRefined(ctx: SkillContext): Promise<void> {
 
   if (newlyDisregarded.length > 0) {
     ctx.stream.markdown(
-      `_${newlyDisregarded.length} story(ies) marked as disregarded in the workbook — persisted to \`disregarded/disregard-record.md\`. They will not be regenerated or pushed to JIRA._\n\n`
+      `_${newlyDisregarded.length} story(ies) marked as disregarded in the workbook — persisted to \`disregarded/disregard-record.md\`. They will not be regenerated or pushed to the PM tool._\n\n`
     );
   } else if (disregardedCount > 0) {
     ctx.stream.markdown(
@@ -1774,7 +1775,7 @@ async function runStoriesRefined(ctx: SkillContext): Promise<void> {
   if (skipped.length) msg += `Skipped ${skipped.length} story(ies) that already had notes: ${skipped.join(", ")}.\n\n`;
   if (noAc) msg += `_${noAc} story(ies) without acceptance criteria were not refined._\n\n`;
   msg +=
-    `**Next:** run \`/design\` to produce solution designs. Without JIRA, design works in ` +
+    `**Next:** run \`/design\` to produce solution designs. Without a PM tool connection, design works in ` +
     `local mode from these notes — stories are keyed by their backlog Story ID.\n`;
   ctx.stream.markdown(msg);
 
@@ -2159,19 +2160,115 @@ function uniqueName(dir: string, name: string): string {
   return candidate;
 }
 
-// ── deferred (need Atlassian MCP) ─────────────────────────────────────────────
+// ── deferred (need PM tool MCP) ───────────────────────────────────────────────
 
-function runDeferred(ctx: SkillContext, skill: "push-backlog" | "sync-jira"): void {
-  const label = skill === "push-backlog" ? "Push backlog to JIRA" : "Sync JIRA status";
-  ctx.stream.markdown(
-    `## ${label} needs the Atlassian MCP\n\n` +
-      `This action reads/writes JIRA, which the VS Code chat model can't do directly.\n\n` +
-      `Run it from an agent that has the Atlassian MCP connected (e.g. Copilot agent mode or the CLI), using the prompt:\n\n` +
-      `\`.github/prompts/sdlc/discover/${skill}.prompt.md\`\n\n` +
-      (skill === "push-backlog"
-        ? `It will read \`04 - Backlog/Backlog Tracker.xlsx\`, show a preview, then create the epics/stories in JIRA.`
-        : `It will read the push record and refresh JIRA status into the repo.`)
-  );
+function buildDeferredContext(config: SdlcConfig, skill: "push-backlog" | "sync-pm"): string {
+  const alm = config.alm;
+  const tool = alm?.tool ?? "JIRA";
+
+  const almLines = tool === "ADO"
+    ? [
+        `ALM tool: Azure DevOps`,
+        `Organization: ${(alm as { tool: "ADO"; organization?: string })?.organization ?? ""}`,
+        `Project: ${(alm as { tool: "ADO"; project?: string })?.project ?? ""}`,
+      ]
+    : [
+        `ALM tool: JIRA`,
+        `Site: ${(alm as { tool: "JIRA"; site?: string })?.site ?? config.project?.jiraSite ?? ""}`,
+        `Project key: ${(alm as { tool: "JIRA"; projectKey?: string })?.projectKey ?? config.project?.jiraKey ?? ""}`,
+      ];
+
+  const schemaLines = skill === "push-backlog"
+    ? [
+        `Spreadsheet location: ${path.join("artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx")}`,
+        ``,
+        `Spreadsheet schema (exact column names — do not attempt to discover headers):`,
+        `- Epics sheet: ID | Epic Name | Narrative Goal | Business Outcome | Solution Notes | Requirement IDs | Pain Points Addressed | Stakeholder Groups | Priority | Status | Demo Narrative Slice | PM Key | Disregarded`,
+        `- Features sheet: ID | Epic ID | Epic Name | Feature Name | Description | System Components | Dependencies | Priority | Complexity | Status | Implementation Boundary | PM Key | Disregarded`,
+        `- User Stories sheet: Story ID | Epic ID | Epic Name | Feature ID | Feature Name | User Story | Acceptance Criteria | Functional Requirements | Solution Notes | Use Case Labels | Size | Status | PM Key | Disregarded`,
+      ]
+    : [];
+
+  return [
+    `## Project config (use this directly — do not re-read .sdlc/config.json)`,
+    ...almLines,
+    ...schemaLines,
+  ].join("\n");
+}
+
+async function runDeferred(ctx: SkillContext, skill: "push-backlog" | "sync-pm"): Promise<void> {
+  const tool = ctx.config?.alm?.tool ?? "JIRA";
+  const isAdo = tool === "ADO";
+
+  // Select the backend-specific template — no dual-section prompts
+  const bundled = skill === "push-backlog"
+    ? (isAdo ? pushBacklogAdoTemplate : pushBacklogJiraTemplate)
+    : (isAdo ? syncPmAdoTemplate : syncPmJiraTemplate);
+
+  // Use workspace override if present; fall back to bundled template.
+  // The workspace files use the unified names (push-backlog.prompt.md / sync-pm.prompt.md)
+  // with a Step 0 that routes on alm.tool — the bundled templates are already split per tool.
+  const promptFile = skill === "push-backlog"
+    ? `.github/prompts/sdlc/discover/push-backlog.prompt.md`
+    : `.github/prompts/sdlc/discover/sync-pm.prompt.md`;
+  let systemPrompt: string;
+  try {
+    systemPrompt = fs.readFileSync(path.join(ctx.root, promptFile), "utf-8");
+  } catch {
+    systemPrompt = bundled;
+  }
+
+  // Build the full context-enriched prompt to send to the Copilot Chat panel.
+  // NOTE: model.sendRequest() creates a bare LLM call with NO tool access — MCP tools
+  // (ADO / Atlassian) are only available when Copilot runs in its own agent-mode session.
+  // The correct pattern is to open the VS Code Chat panel with the pre-built prompt so
+  // the user can run it there with full tool access.
+  const context = buildDeferredContext(ctx.config, skill);
+  const userRequest = ctx.request.prompt.trim() ||
+    (skill === "push-backlog" ? "Run the push-backlog agent." : "Run the sync-pm status agent.");
+  const fullPrompt = `${systemPrompt}\n\n---\n\n${context}\n\n---\n\n${userRequest}`;
+
+  const skillLabel = skill === "push-backlog" ? "Push Backlog" : "Sync PM Status";
+  const mcpName = isAdo ? "Azure DevOps" : "Atlassian";
+
+  // Persist the generated prompt so it survives if the chat open fails
+  const generatedPromptPath = path.join(ctx.root, ".sdlc", "prompts", `${skill}.md`);
+  try {
+    fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
+    fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
+  } catch {
+    // non-fatal — best-effort
+  }
+
+  // Open VS Code Chat with the pre-built prompt pre-filled.
+  // isPartialQuery: true means the input is populated but not auto-sent, giving the user
+  // a chance to verify agent mode and MCP tools are active before running.
+  try {
+    await vscode.commands.executeCommand("workbench.action.chat.open", {
+      query: fullPrompt,
+      isPartialQuery: true,
+    });
+    ctx.stream.markdown(
+      `### ${skillLabel} — opened in Copilot Chat\n\n` +
+      `The prompt has been pre-filled in the Copilot Chat panel with your project context injected.\n\n` +
+      `**Before pressing Enter:**\n` +
+      `- Switch to the **Copilot Chat** panel (it should now be in focus)\n` +
+      `- Make sure **Agent mode** is selected (not Ask or Edit)\n` +
+      `- Verify the **${mcpName} MCP** is listed in the tools section\n\n` +
+      `Then press **Enter** to run.`
+    );
+  } catch {
+    // Fallback: the command may not exist or may have a different signature on some
+    // VS Code / Copilot versions. Point the user to the generated file instead.
+    ctx.stream.markdown(
+      `### ${skillLabel} — run manually in agent mode\n\n` +
+      `The prompt has been saved to \`.sdlc/prompts/${skill}.md\`.\n\n` +
+      `**To run it:**\n` +
+      `1. Open **Copilot Chat** and switch to **Agent mode**\n` +
+      `2. Verify the **${mcpName} MCP** is connected\n` +
+      `3. Type: \`Read .sdlc/prompts/${skill}.md and follow its instructions.\`\n`
+    );
+  }
 }
 
 // ── advisory skills (read files → LLM → stream) ───────────────────────────────

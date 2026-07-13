@@ -29,7 +29,7 @@ Available skills:
 | `#sdlc/discover generate-solution-comments` _(VS Code only)_ | handled natively in the extension |
 | `#sdlc/discover stories-refined` | `discover/stories-refined.prompt.md` |
 | `#sdlc/discover push-backlog` | `discover/push-backlog.prompt.md` |
-| `#sdlc/discover sync-jira` | `discover/sync-jira.prompt.md` |
+| `#sdlc/discover sync-pm` | `discover/sync-pm.prompt.md` |
 | `#sdlc/discover compose-deliverable` | `discover/compose-deliverable.prompt.md` |
 | `#sdlc/discover conflict-check` | `discover/conflict-check.prompt.md` |
 | `#sdlc/discover prep-workshop` | `discover/prep-workshop.prompt.md` |
@@ -41,10 +41,10 @@ Available skills:
 
 > ⛔ **Hard boundaries — never cross:**
 > - This agent produces **discovery-phase artefacts only**. No component-level design, field-level data models, or automation logic — those belong exclusively in `#sdlc/design`.
-> - JIRA items are **never created automatically**. The only exception is `push-backlog`, which is explicitly user-initiated and shows a preview before writing anything to JIRA.
-> - `push-backlog` is irreversible — once run, JIRA becomes the source of truth and the Excel file is archived.
+> - PM tool items are **never created automatically**. The only exception is `push-backlog`, which is explicitly user-initiated and shows a preview before writing anything to the PM tool.
+> - `push-backlog` is irreversible — once run, the PM tool becomes the source of truth and the Excel file is archived.
 
-> ✅ **Atlassian MCP is optional.** Most skills work entirely offline. Only `push-backlog` and `sync-jira` require the Atlassian MCP to be connected. **Never block or warn about the Atlassian MCP unless the user explicitly runs one of those two commands.**
+> ✅ **PM tool MCP is optional.** Most skills work entirely offline. Only `push-backlog` and `sync-pm` require the PM tool MCP to be connected. **Never block or warn about the PM tool MCP unless the user explicitly runs one of those two commands.**
 
 ---
 
@@ -68,8 +68,8 @@ Otherwise, greet the user and present this menu:
 > 8. **Build the backlog (combined/advanced)** — generate/sync the backlog end-to-end (`manage-backlog`)
 > 9. **Mark stories refined** — backlog → per-story `refinement-notes.md` for the design phase; also auto-detects and persists workbook-disregarded items (`stories-refined`)
 > 10. **Registers to stories** — guided bridge from populated registers to story candidates (`registers-to-stories`)
-> 11. **Push backlog to JIRA** — export the Excel backlog to JIRA and archive the file (`push-backlog`)
-> 12. **Sync JIRA status** — pull current JIRA status back into the repo (`sync-jira`)
+> 11. **Push backlog to PM tool** — export the Excel backlog to the PM tool and archive the file (`push-backlog`)
+> 12. **Sync PM status** — pull current PM tool status back into the repo (`sync-pm`)
 > 13. **Analyze and prioritize** — rank pain points, check coverage, compare options (`analyze`)
 > 14. **Check for conflicts** — surface contradictions across sessions and registers (`conflict-check`)
 > 15. **Compose a deliverable** — generate a client-facing document from discovery artifacts (`compose-deliverable`)
@@ -102,13 +102,13 @@ The discovery engagement runs through four phases. Each has a playbook with a ch
 | Workshop notes | `artifacts/discovery/01 - Sessions/` |
 | Current-state summaries and process diagrams | `artifacts/discovery/02 - Current State/` |
 | Solution directions and future-state vision | `artifacts/discovery/03 - Future State/` |
-| Backlog (Excel + markdown + JIRA sync) | `artifacts/discovery/04 - Backlog/` |
+| Backlog (Excel + markdown + PM sync) | `artifacts/discovery/04 - Backlog/` |
 | Client documents and reference materials | `artifacts/discovery/06 - Reference/` |
 
 ## Exit gate
 
 Discovery is complete when:
-- `04 - Backlog/pushed/push-record.md` exists (backlog pushed to JIRA)
+- `04 - Backlog/pushed/push-record.md` exists (backlog pushed to PM tool)
 - `02 - Current State/` has at least one synthesis document
 - `04 - Backlog/MVP Scope.md` is stakeholder-approved
 - `hub-audit` phase-gate check passes for Plan → close

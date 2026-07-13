@@ -16,6 +16,7 @@ import {
 import {
   fetchJiraStatuses,
   type JiraStatus,
+  type JiraStatusMap,
   DEFAULT_PATHS,
   DEFAULT_STANDARDS,
   TOOL_VERSION,
@@ -43,11 +44,11 @@ export async function promptOutputDir(override?: string): Promise<string> {
 
 export async function collectStatusMapOnly(
   existing: SdlcConfig
-): Promise<SdlcConfig["jira"]["statusMap"]> {
+): Promise<JiraStatusMap> {
   return collectStatusMap(
-    existing.project.jiraEmail,
-    existing.project.jiraSite,
-    existing.project.jiraKey,
+    existing.project.jiraEmail ?? "",
+    existing.project.jiraSite ?? "",
+    existing.project.jiraKey ?? "",
     existing
   );
 }
@@ -143,7 +144,7 @@ async function collectStatusMap(
   jiraSite: string,
   jiraKey: string,
   existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"]> {
+): Promise<JiraStatusMap> {
   console.log("\n── JIRA Workflow ──────────────────────────────────────────────");
 
   const token = process.env.ATLASSIAN_TOKEN;
@@ -184,7 +185,7 @@ async function collectStatusMap(
 async function mapStatusesInteractively(
   byType: Record<string, JiraStatus[]>,
   existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"]> {
+): Promise<JiraStatusMap> {
   console.log("  Map your JIRA statuses to SDLC gates:\n");
 
   const pick = (gateLabel: string, statuses: JiraStatus[], existingValue?: string) =>
@@ -201,7 +202,7 @@ async function mapStatusesInteractively(
   const fallback = storyStatuses;
 
   console.log("  Stories:");
-  const story: SdlcConfig["jira"]["statusMap"]["story"] = {
+  const story: JiraStatusMap["story"] = {
     backlog:          await pick(STORY_GATE_LABELS.backlog,          storyStatuses, ex?.story.backlog),
     refineInProgress: await pick(STORY_GATE_LABELS.refineInProgress, storyStatuses, ex?.story.refineInProgress),
     readyForDesign:   await pick(STORY_GATE_LABELS.readyForDesign,   storyStatuses, ex?.story.readyForDesign),
@@ -213,14 +214,14 @@ async function mapStatusesInteractively(
   };
 
   console.log("\n  Epics:");
-  const epic: SdlcConfig["jira"]["statusMap"]["epic"] = {
+  const epic: JiraStatusMap["epic"] = {
     notStarted: await pick(EPIC_GATE_LABELS.notStarted, epicStatuses.length ? epicStatuses : fallback, ex?.epic.notStarted),
     inProgress:  await pick(EPIC_GATE_LABELS.inProgress,  epicStatuses.length ? epicStatuses : fallback, ex?.epic.inProgress),
     done:        await pick(EPIC_GATE_LABELS.done,        epicStatuses.length ? epicStatuses : fallback, ex?.epic.done),
   };
 
   console.log("\n  Sub-tasks:");
-  const subTask: SdlcConfig["jira"]["statusMap"]["subTask"] = {
+  const subTask: JiraStatusMap["subTask"] = {
     todo:          await pick(SUBTASK_GATE_LABELS.todo,          subTaskStatuses.length ? subTaskStatuses : fallback, ex?.subTask.todo),
     inDevelopment: await pick(SUBTASK_GATE_LABELS.inDevelopment, subTaskStatuses.length ? subTaskStatuses : fallback, ex?.subTask.inDevelopment),
     readyForTest:  await pick(SUBTASK_GATE_LABELS.readyForTest,  subTaskStatuses.length ? subTaskStatuses : fallback, ex?.subTask.readyForTest),
@@ -230,13 +231,13 @@ async function mapStatusesInteractively(
   return { story, epic, subTask };
 }
 
-async function mapStatusesManually(existing?: Partial<SdlcConfig>): Promise<SdlcConfig["jira"]["statusMap"]> {
+async function mapStatusesManually(existing?: Partial<SdlcConfig>): Promise<JiraStatusMap> {
   console.log("\n  Enter your JIRA status names:\n");
   const ex = existing?.jira?.statusMap;
   const ask = (label: string, def?: string) => input({ message: label, default: def });
 
   console.log("  Stories:");
-  const story: SdlcConfig["jira"]["statusMap"]["story"] = {
+  const story: JiraStatusMap["story"] = {
     backlog:          await ask(STORY_GATE_LABELS.backlog,          ex?.story.backlog          ?? "Backlog"),
     refineInProgress: await ask(STORY_GATE_LABELS.refineInProgress, ex?.story.refineInProgress ?? "In Refinement"),
     readyForDesign:   await ask(STORY_GATE_LABELS.readyForDesign,   ex?.story.readyForDesign   ?? "Ready for Design"),
@@ -248,14 +249,14 @@ async function mapStatusesManually(existing?: Partial<SdlcConfig>): Promise<Sdlc
   };
 
   console.log("\n  Epics:");
-  const epic: SdlcConfig["jira"]["statusMap"]["epic"] = {
+  const epic: JiraStatusMap["epic"] = {
     notStarted: await ask(EPIC_GATE_LABELS.notStarted, ex?.epic.notStarted ?? "To Do"),
     inProgress:  await ask(EPIC_GATE_LABELS.inProgress,  ex?.epic.inProgress  ?? "In Progress"),
     done:        await ask(EPIC_GATE_LABELS.done,        ex?.epic.done        ?? "Done"),
   };
 
   console.log("\n  Sub-tasks:");
-  const subTask: SdlcConfig["jira"]["statusMap"]["subTask"] = {
+  const subTask: JiraStatusMap["subTask"] = {
     todo:          await ask(SUBTASK_GATE_LABELS.todo,          ex?.subTask.todo          ?? "To Do"),
     inDevelopment: await ask(SUBTASK_GATE_LABELS.inDevelopment, ex?.subTask.inDevelopment ?? "In Progress"),
     readyForTest:  await ask(SUBTASK_GATE_LABELS.readyForTest,  ex?.subTask.readyForTest  ?? "In Review"),
@@ -265,7 +266,7 @@ async function mapStatusesManually(existing?: Partial<SdlcConfig>): Promise<Sdlc
   return { story, epic, subTask };
 }
 
-function placeholderStatusMap(): SdlcConfig["jira"]["statusMap"] {
+function placeholderStatusMap(): JiraStatusMap {
   return {
     story: {
       backlog: "Backlog", refineInProgress: "In Refinement", readyForDesign: "Ready for Design",
@@ -279,7 +280,7 @@ function placeholderStatusMap(): SdlcConfig["jira"]["statusMap"] {
 
 // ── Config assembly ───────────────────────────────────────────────────────────
 
-function buildConfig(answers: InterviewAnswers, statusMap: SdlcConfig["jira"]["statusMap"]): SdlcConfig {
+function buildConfig(answers: InterviewAnswers, statusMap: JiraStatusMap): SdlcConfig {
   return {
     version: CONFIG_VERSION,
     generatedAt: new Date().toISOString(),

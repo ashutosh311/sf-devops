@@ -1,4 +1,4 @@
-import type { SdlcConfig, Phase, EstimationApproach } from "./schema.js";
+import type { SdlcConfig, Phase, EstimationApproach, StoryStatusMap, EpicStatusMap, SubTaskStatusMap } from "./schema.js";
 import { DEFAULT_STANDARDS } from "./schema.js";
 
 export type QuestionType =
@@ -27,9 +27,14 @@ export interface Question<T = unknown> {
 
 export interface InterviewAnswers {
   projectName: string;
+  pmTool: "JIRA" | "ADO";
+  // JIRA-specific (only set when pmTool === "JIRA")
   jiraKey: string;
   jiraSite: string;
   jiraEmail: string;
+  // ADO-specific (only set when pmTool === "ADO")
+  adoOrganization: string;
+  adoProject: string;
   phases: Phase[];
   sprintLengthWeeks: number;
   estimationApproach: EstimationApproach;
@@ -62,11 +67,23 @@ export const QUESTIONS: Question[] = [
     validate: (v) => (String(v).trim().length > 0 ? true : "Required"),
   },
   {
+    id: "pmTool",
+    section: "Project",
+    label: "Project management tool",
+    type: "select",
+    options: [
+      { label: "JIRA (Atlassian)", value: "JIRA" },
+      { label: "Azure DevOps", value: "ADO" },
+    ],
+    default: "JIRA",
+  },
+  {
     id: "jiraKey",
     section: "Project",
     label: "JIRA project key",
     hint: "e.g. ACME",
     type: "text",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool !== "ADO",
     validate: (v) =>
       /^[A-Z][A-Z0-9]+$/.test(String(v).trim().toUpperCase())
         ? true
@@ -78,6 +95,7 @@ export const QUESTIONS: Question[] = [
     label: "JIRA site URL",
     hint: "e.g. https://acme.atlassian.net",
     type: "text",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool !== "ADO",
     validate: (v) => {
       try {
         new URL(String(v));
@@ -92,10 +110,36 @@ export const QUESTIONS: Question[] = [
     section: "Project",
     label: "Atlassian account email",
     type: "text",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool !== "ADO",
     validate: (v) =>
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).trim())
         ? true
         : "Must be a valid email address",
+  },
+  {
+    id: "adoOrganization",
+    section: "Project",
+    label: "Azure DevOps org URL",
+    hint: "e.g. https://dev.azure.com/your-org",
+    type: "text",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool === "ADO",
+    validate: (v) => {
+      try {
+        new URL(String(v));
+        return true;
+      } catch {
+        return "Must be a valid URL (e.g. https://dev.azure.com/your-org)";
+      }
+    },
+  },
+  {
+    id: "adoProject",
+    section: "Project",
+    label: "Azure DevOps project name",
+    hint: "e.g. MyProject",
+    type: "text",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool === "ADO",
+    validate: (v) => (String(v).trim().length > 0 ? true : "Required"),
   },
 
   // ── SDLC Phases ──────────────────────────────────────────────────────────
@@ -153,7 +197,7 @@ export const QUESTIONS: Question[] = [
 ];
 
 export const STORY_GATE_LABELS: Record<
-  keyof SdlcConfig["jira"]["statusMap"]["story"],
+  keyof StoryStatusMap,
   string
 > = {
   backlog: "Story created / not started",
@@ -167,7 +211,7 @@ export const STORY_GATE_LABELS: Record<
 };
 
 export const EPIC_GATE_LABELS: Record<
-  keyof SdlcConfig["jira"]["statusMap"]["epic"],
+  keyof EpicStatusMap,
   string
 > = {
   notStarted: "Epic not started",
@@ -176,7 +220,7 @@ export const EPIC_GATE_LABELS: Record<
 };
 
 export const SUBTASK_GATE_LABELS: Record<
-  keyof SdlcConfig["jira"]["statusMap"]["subTask"],
+  keyof SubTaskStatusMap,
   string
 > = {
   todo: "Sub-task not started",

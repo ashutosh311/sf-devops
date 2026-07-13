@@ -13,7 +13,7 @@ Before doing any phase-specific work, confirm the tools this phase depends on ar
 
 | Dependency | Needed by | How to detect |
 |---|---|---|
-| **Atlassian MCP** (JIRA / Confluence) | refine, design, build, test, release; **optional** in discover (only `push-backlog` and `sync-jira` sub-commands use it) | Look for `mcp__Atlassian__*` (or equivalently named) tools in your available tool list. |
+| **PM tool MCP** (Atlassian for JIRA / Azure DevOps for ADO) | refine, design, build, test, release; **optional** in discover (only `push-backlog` and `sync-pm` sub-commands use it) | For JIRA: look for `mcp__Atlassian__*` tools. For ADO: look for `mcp__ado__*` (or equivalently named) tools in your available tool list. Check `.sdlc/config.json` → `alm.tool` to know which one is expected. |
 | **Salesforce DX MCP** | design (org discovery), build (deploy/test), test (org validation), release (deploy) | Look for `mcp__Salesforce_DX__*` tools in your available tool list. |
 | **Salesforce CLI (`sf`)** | build, release — fallback for the few operations with no MCP equivalent (e.g. `sf org login web`, `sf project deploy start`) | Run `sf --version` via Bash. |
 | **Node.js & npm** | build, test — running LWC Jest tests (`npm run test:unit`) | Run `node --version` and `npm --version` via Bash. |
@@ -36,7 +36,8 @@ If something required is missing, stop before the phase's own Step 0 and tell th
 
 | Missing | Tell the user |
 |---|---|
-| Atlassian MCP | "The Atlassian MCP isn't connected, so I can't read or write JIRA/Confluence. Add it to your MCP config (`.mcp.json` or `.vscode/mcp.json`) — see your team's Atlassian MCP setup docs, or ask your tech lead for the project's connection details." |
+| Atlassian MCP (JIRA projects) | "The Atlassian MCP isn't connected, so I can't read or write JIRA/Confluence. Add it to your MCP config (`.mcp.json` or `.vscode/mcp.json`) — see your team's Atlassian MCP setup docs, or ask your tech lead for the project's connection details." |
+| Azure DevOps MCP (ADO projects) | "The Azure DevOps MCP isn't connected, so I can't read or write Azure DevOps work items. Add the `@azure-devops/mcp` server entry to your `.vscode/mcp.json` (or `.mcp.json`) and restart VS Code. Your tech lead can provide the exact config for your organisation." |
 | Salesforce DX MCP | "The Salesforce DX MCP isn't connected, so I can't query or deploy to your org through the structured tool envelope. Install it with `npm install -g @salesforce/mcp`, add it to your MCP config, then authenticate an org with `sf org login web`." |
 | Salesforce CLI (`sf`) | "The Salesforce CLI isn't installed. Install it with `npm install -g @salesforce/cli`, then authenticate a sandbox with `sf org login web --alias sandbox --instance-url https://test.salesforce.com`." |
 | Node.js / npm | "Node.js isn't installed, so I can't run the Jest test suite for LWC components. Install the LTS release from https://nodejs.org, or via a version manager such as `nvm install --lts`." |

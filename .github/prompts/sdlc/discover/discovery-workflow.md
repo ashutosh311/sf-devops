@@ -143,7 +143,7 @@ Session 3 ──┘  [discovered later]
               │
               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Push backlog to JIRA  (requires Atlassian MCP)                     │
+│  Push backlog to JIRA  (requires PM tool MCP (Atlassian or Azure DevOps))                     │
 │  → Creates epics/stories in JIRA                                     │
 │  → Writes  pushed/push-record.md  (JIRA key ↔ backlog ID mapping)   │
 │  → JIRA becomes source of truth from this point                     │
@@ -151,7 +151,7 @@ Session 3 ──┘  [discovered later]
               │
               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Sync JIRA status  (requires Atlassian MCP)                         │
+│  Sync JIRA status  (requires PM tool MCP (Atlassian or Azure DevOps))                         │
 │  → Refreshes JIRA key / status back into local manifest             │
 │  → Run periodically to keep local mirror up to date                 │
 └─────────────────────────────────────────────────────────────────────┘

@@ -17,7 +17,7 @@ Prepare the backlog and supporting materials for implementation. This is primari
 - [ ] Executive readout / slide deck created
 - [ ] Technical readout materials created
 - [ ] Risk gate meeting conducted
-- [ ] `#sdlc/discover push-backlog` run — JIRA items created and Excel archived
+- [ ] `#sdlc/discover push-backlog` run — PM tool items created and Excel archived
 - [ ] Discovery phase formally closed out
 
 ## Key Activities
@@ -40,17 +40,17 @@ Define what's in and what's out — keep it tight.
 - Reference decision register for borderline scope decisions
 - Get stakeholder sign-off on scope boundaries
 
-### Push to JIRA
+### Push to PM Tool
 
 Once the backlog is reviewed and approved:
 
 - Run `#sdlc/discover push-backlog` to:
   1. Read `Backlog Tracker.xlsx`
   2. Update `_index.md` and `epics/<id>.md` mirror (shows diff for confirmation)
-  3. Create JIRA epics and stories via Atlassian MCP
+  3. Create epics and stories in the PM tool via its MCP (Atlassian for JIRA, Azure DevOps for ADO)
   4. Archive `Backlog Tracker.xlsx` to `04 - Backlog/pushed/`
 
-After push, JIRA is the source of truth. Use `#sdlc/discover sync-jira` to pull status back to `jira-sync.md`.
+After push, the PM tool is the source of truth. Use `#sdlc/discover sync-pm` to pull status back to `pm-sync.md`.
 
 ### Stakeholder Communication
 
@@ -90,8 +90,8 @@ By end of Plan:
 | Prompt | Purpose |
 |--------|---------|
 | `#sdlc/discover manage-backlog` | Backlog initialization from registers |
-| `#sdlc/discover push-backlog` | Excel → JIRA push and Excel archive |
-| `#sdlc/discover sync-jira` | Pull JIRA status back to repo |
+| `#sdlc/discover push-backlog` | Excel → PM tool push and Excel archive |
+| `#sdlc/discover sync-pm` | Pull PM tool status back to repo |
 | `#sdlc/discover analyze` | Coverage-mode traceability validation |
 | `#sdlc/discover compose-deliverable` | Executive / technical deliverable assembly |
 | `#sdlc/discover synthesize` | Final documentation synthesis |

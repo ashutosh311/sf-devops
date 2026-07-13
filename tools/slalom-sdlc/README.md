@@ -2,7 +2,7 @@
 
 AI-assisted SDLC agents for Salesforce delivery, built by Slalom UK&I.
 
-Each slash command activates a purpose-built AI agent for a specific delivery phase — discovery, refinement, design, build, test, and release. The agents work within the project's JIRA board, Salesforce org, and Slalom coding standards without the consultant needing to switch context.
+Each slash command activates a purpose-built AI agent for a specific delivery phase — discovery, refinement, design, build, test, and release. The agents work within the project's PM tool — **JIRA (Atlassian) or Azure DevOps (ADO)** — Salesforce org, and Slalom coding standards without the consultant needing to switch context. You pick the PM tool once during `/init` and every agent adapts to it.
 
 The **primary, fully-supported experience is the VS Code extension running on GitHub Copilot** (`@slalom-sdlc`). A Claude Code MCP server is also included as an **experimental bonus** for teams that prefer Claude Code — it shares the same engine and standards, but is not the supported delivery path and does not receive automatic instruction updates (see [Instruction Updates](#instruction-updates)).
 
@@ -66,7 +66,7 @@ The `@slalom-sdlc` (VS Code / GitHub Copilot) column is the supported invocation
 | `@slalom-sdlc /design PROJ-42` | `/mcp__slalom-sdlc__design PROJ-42` | Technical design — solution, data model, sub-tasks |
 | `@slalom-sdlc /build PROJ-42` | `/mcp__slalom-sdlc__build PROJ-42` | Scaffold Apex/LWC/config, deploy to sandbox |
 | `@slalom-sdlc /test PROJ-42` | `/mcp__slalom-sdlc__test PROJ-42` | Generate test classes, validate coverage |
-| `@slalom-sdlc /release` | `/mcp__slalom-sdlc__release` | Deployment notes, checklist, JIRA transitions |
+| `@slalom-sdlc /release` | `/mcp__slalom-sdlc__release` | Deployment notes, checklist, PM-tool transitions |
 
 ### Typical sprint workflow
 
@@ -87,7 +87,7 @@ The extension is a thin orchestration layer. It does not contain agent logic —
 
 1. Reads `.sdlc/config.json` from the project root (written by `/init`)
 2. Loads the instruction set for the requested SDLC phase
-3. Renders a fully-resolved prompt by merging project config (JIRA key, status names, org alias, paths, standards) into the instruction template
+3. Renders a fully-resolved prompt by merging project config (PM tool + key/org, status names, org alias, paths, standards) into the instruction template
 4. Sends that prompt to the underlying LLM (GitHub Copilot or Claude) along with the user's message
 5. Streams the response back
 
@@ -97,10 +97,11 @@ The extension is a thin orchestration layer. It does not contain agent logic —
 
 ```
 .vscode/
-  mcp.json                 ← Atlassian OAuth MCP config
+  mcp.json                 ← Salesforce + Atlassian MCP config (add the Azure DevOps MCP here for ADO projects)
 .mcp.json                  ← Claude Code MCP config (Salesforce DX + Atlassian)
 .sdlc/
-  config.json              ← project config (JIRA key, statuses, org, team settings)
+  config.json              ← project config (PM tool + key/org, statuses, org, team settings)
+  prompts/                 ← context-enriched prompts written by push-backlog / sync-pm for agent-mode runs
 artifacts/
   {STORY-KEY}/
     sf-discovery.md        ← discovery notes

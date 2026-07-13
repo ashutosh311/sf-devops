@@ -6,6 +6,9 @@ import {
   SUBTASK_GATE_LABELS,
   type InterviewAnswers,
   type SdlcConfig,
+  type StoryStatusMap,
+  type EpicStatusMap,
+  type SubTaskStatusMap,
   fetchJiraStatuses,
   type JiraStatus,
   DEFAULT_PATHS,
@@ -13,6 +16,9 @@ import {
   TOOL_VERSION,
   type Phase,
 } from "@sdlc/core";
+
+/** Local type alias for JIRA status map structure used in the interview flow. */
+type JiraStatusMap = { story: StoryStatusMap; epic: EpicStatusMap; subTask: SubTaskStatusMap };
 
 export async function runVSCodeInterview(
   existing?: Partial<SdlcConfig>
@@ -118,10 +124,29 @@ async function collectAnswers(
 
 // ── JIRA status mapping ───────────────────────────────────────────────────────
 
+const ADO_DEFAULT_STATUS_MAP: JiraStatusMap = {
+  story: {
+    backlog: "New",
+    refineInProgress: "Active",
+    readyForDesign: "Active",
+    designInProgress: "Active",
+    readyForBuild: "Active",
+    inDevelopment: "Active",
+    readyForTest: "In Review",
+    done: "Closed",
+  },
+  epic: { notStarted: "New", inProgress: "In Progress", done: "Closed" },
+  subTask: { todo: "New", inDevelopment: "Active", readyForTest: "In Review", done: "Closed" },
+};
+
 async function collectStatusMap(
   answers: InterviewAnswers,
   existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"] | undefined> {
+): Promise<JiraStatusMap | undefined> {
+  if (answers.pmTool === "ADO") {
+    return collectAdoStatusMap(existing);
+  }
+
   const token = process.env.ATLASSIAN_TOKEN;
 
   if (token) {
@@ -152,7 +177,7 @@ async function collectStatusMap(
 async function mapStatusesWithQuickPick(
   byType: Record<string, JiraStatus[]>,
   existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"] | undefined> {
+): Promise<JiraStatusMap | undefined> {
   const pick = async (gateLabel: string, statuses: JiraStatus[], def?: string) => {
     const result = await vscode.window.showQuickPick(
       statuses.map((s) => ({ label: s.name, picked: s.name === def })),
@@ -180,13 +205,14 @@ async function mapStatusesWithQuickPick(
 }
 
 async function mapStatusesManually(
-  existing?: Partial<SdlcConfig>
-): Promise<SdlcConfig["jira"]["statusMap"] | undefined> {
-  const ex = existing?.jira?.statusMap;
+  existing?: Partial<SdlcConfig>,
+  defaults?: JiraStatusMap
+): Promise<JiraStatusMap | undefined> {
+  const ex = (existing?.jira?.statusMap ?? defaults) as JiraStatusMap | undefined;
 
   const ask = async (label: string, def?: string): Promise<string | undefined> =>
     vscode.window.showInputBox({
-      title: "JIRA Status Mapping",
+      title: "Status Mapping",
       prompt: label,
       value: def ?? "",
       ignoreFocusOut: true,
@@ -206,8 +232,8 @@ async function mapStatusesManually(
 
   return {
     story: { backlog, refineInProgress, readyForDesign, designInProgress, readyForBuild, inDevelopment, readyForTest, done },
-    epic:    { notStarted: "To Do", inProgress: "In Progress", done: "Done" },
-    subTask: { todo: "To Do", inDevelopment: "In Progress", readyForTest: "In Review", done: "Done" },
+    epic:    ex?.epic    ?? { notStarted: "To Do", inProgress: "In Progress", done: "Done" },
+    subTask: ex?.subTask ?? { todo: "To Do", inDevelopment: "In Progress", readyForTest: "In Review", done: "Done" },
   };
 }
 
@@ -218,8 +244,8 @@ type Picker = (label: string, statuses: JiraStatus[], def?: string) => Promise<s
 async function pickStoryStatuses(
   pick: Picker,
   statuses: JiraStatus[],
-  ex?: SdlcConfig["jira"]["statusMap"]["story"]
-): Promise<SdlcConfig["jira"]["statusMap"]["story"] | undefined> {
+  ex?: JiraStatusMap["story"]
+): Promise<JiraStatusMap["story"] | undefined> {
   const backlog          = await pick(STORY_GATE_LABELS.backlog,          statuses, ex?.backlog);
   const refineInProgress = await pick(STORY_GATE_LABELS.refineInProgress, statuses, ex?.refineInProgress);
   const readyForDesign   = await pick(STORY_GATE_LABELS.readyForDesign,   statuses, ex?.readyForDesign);
@@ -238,8 +264,8 @@ async function pickStoryStatuses(
 async function pickEpicStatuses(
   pick: Picker,
   statuses: JiraStatus[],
-  ex?: SdlcConfig["jira"]["statusMap"]["epic"]
-): Promise<SdlcConfig["jira"]["statusMap"]["epic"] | undefined> {
+  ex?: JiraStatusMap["epic"]
+): Promise<JiraStatusMap["epic"] | undefined> {
   const notStarted = await pick(EPIC_GATE_LABELS.notStarted, statuses, ex?.notStarted);
   const inProgress = await pick(EPIC_GATE_LABELS.inProgress, statuses, ex?.inProgress);
   const done       = await pick(EPIC_GATE_LABELS.done,       statuses, ex?.done);
@@ -250,8 +276,8 @@ async function pickEpicStatuses(
 async function pickSubTaskStatuses(
   pick: Picker,
   statuses: JiraStatus[],
-  ex?: SdlcConfig["jira"]["statusMap"]["subTask"]
-): Promise<SdlcConfig["jira"]["statusMap"]["subTask"] | undefined> {
+  ex?: JiraStatusMap["subTask"]
+): Promise<JiraStatusMap["subTask"] | undefined> {
   const todo          = await pick(SUBTASK_GATE_LABELS.todo,          statuses, ex?.todo);
   const inDevelopment = await pick(SUBTASK_GATE_LABELS.inDevelopment, statuses, ex?.inDevelopment);
   const readyForTest  = await pick(SUBTASK_GATE_LABELS.readyForTest,  statuses, ex?.readyForTest);
@@ -260,7 +286,7 @@ async function pickSubTaskStatuses(
   return { todo, inDevelopment, readyForTest, done };
 }
 
-function placeholderStatusMap(): SdlcConfig["jira"]["statusMap"] {
+function placeholderStatusMap(): JiraStatusMap {
   return {
     story:   { backlog: "Backlog", refineInProgress: "In Refinement", readyForDesign: "Ready for Design", designInProgress: "In Design", readyForBuild: "Ready for Build", inDevelopment: "In Development", readyForTest: "Ready for Test", done: "Done" },
     epic:    { notStarted: "To Do", inProgress: "In Progress", done: "Done" },
@@ -268,22 +294,42 @@ function placeholderStatusMap(): SdlcConfig["jira"]["statusMap"] {
   };
 }
 
+async function collectAdoStatusMap(existing?: Partial<SdlcConfig>): Promise<JiraStatusMap | undefined> {
+  const exAdoStatusMap = existing?.ado?.statusMap as JiraStatusMap | undefined;
+  const choice = await vscode.window.showQuickPick(["Use ADO defaults", "Customise status names"], {
+    title: "Azure DevOps Workflow Setup",
+    placeHolder: "How would you like to configure ADO status mapping?",
+    ignoreFocusOut: true,
+  });
+
+  if (!choice) return undefined;
+  if (choice === "Use ADO defaults") return exAdoStatusMap ?? ADO_DEFAULT_STATUS_MAP;
+  return mapStatusesManually(existing, exAdoStatusMap ?? ADO_DEFAULT_STATUS_MAP);
+}
+
 // ── Config assembly ───────────────────────────────────────────────────────────
 
 function buildConfig(
   answers: InterviewAnswers,
-  statusMap: SdlcConfig["jira"]["statusMap"]
+  statusMap: JiraStatusMap
 ): SdlcConfig {
+  const isAdo = answers.pmTool === "ADO";
   return {
     version: CONFIG_VERSION,
     generatedAt: new Date().toISOString(),
     toolVersion: TOOL_VERSION,
     project: {
-      name:      answers.projectName,
-      jiraKey:   answers.jiraKey.toUpperCase(),
-      jiraSite:  answers.jiraSite,
-      jiraEmail: answers.jiraEmail,
+      name: answers.projectName,
+      // Keep legacy JIRA fields for backward compat with older tooling
+      ...(isAdo ? {} : {
+        jiraKey:   answers.jiraKey.toUpperCase(),
+        jiraSite:  answers.jiraSite,
+        jiraEmail: answers.jiraEmail,
+      }),
     },
+    alm: isAdo
+      ? { tool: "ADO", organization: answers.adoOrganization, project: answers.adoProject }
+      : { tool: "JIRA", site: answers.jiraSite, projectKey: answers.jiraKey.toUpperCase(), email: answers.jiraEmail },
     phases: answers.phases as Phase[],
     team: {
       sprintLengthWeeks:  answers.sprintLengthWeeks,
@@ -295,7 +341,7 @@ function buildConfig(
     standards: {
       apexCoverageThreshold: answers.apexCoverageThreshold,
     },
-    jira: { statusMap },
+    ...(isAdo ? { ado: { statusMap } } : { jira: { statusMap } }),
     branching: "gitflow",
     paths: DEFAULT_PATHS,
   };
@@ -303,11 +349,15 @@ function buildConfig(
 
 function resolveExisting(questionId: string, existing?: Partial<SdlcConfig>): unknown {
   if (!existing) return undefined;
+  const almTool = existing.alm?.tool ?? (existing.project?.jiraKey ? "JIRA" : undefined);
   const map: Record<string, unknown> = {
     projectName:           existing.project?.name,
-    jiraKey:               existing.project?.jiraKey,
-    jiraSite:              existing.project?.jiraSite,
-    jiraEmail:             existing.project?.jiraEmail,
+    pmTool:                almTool,
+    jiraKey:               existing.project?.jiraKey ?? (existing.alm?.tool === "JIRA" ? existing.alm.projectKey : undefined),
+    jiraSite:              existing.project?.jiraSite ?? (existing.alm?.tool === "JIRA" ? existing.alm.site : undefined),
+    jiraEmail:             existing.project?.jiraEmail ?? (existing.alm?.tool === "JIRA" ? existing.alm.email : undefined),
+    adoOrganization:       existing.alm?.tool === "ADO" ? existing.alm.organization : undefined,
+    adoProject:            existing.alm?.tool === "ADO" ? existing.alm.project : undefined,
     phases:                existing.phases,
     sprintLengthWeeks:     existing.team?.sprintLengthWeeks,
     estimationApproach:    existing.team?.estimationApproach,

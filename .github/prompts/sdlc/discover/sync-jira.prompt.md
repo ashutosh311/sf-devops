@@ -1,6 +1,9 @@
+> ⚠️ **Deprecated** — this prompt has been superseded by `sync-pm.prompt.md`, which supports both JIRA and Azure DevOps.
+> Use `#sdlc/discover sync-pm` instead. This file is kept for compatibility only.
+
 # sync-jira — Sync JIRA Status to Repo
 
-**Usage:** `#sdlc/discover sync-jira`
+**Usage:** `#sdlc/discover sync-jira` _(deprecated — use `sync-pm`)_
 **Phase:** Post-push (after `push-backlog` has been run)
 **Prerequisite:** `artifacts/discovery/04 - Backlog/pushed/push-record.md` exists
 

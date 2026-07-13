@@ -2,7 +2,9 @@
 
 ## Purpose
 
-The Slalom AI SDLC tool embeds Slalom UK&I's Salesforce delivery methodology directly into developer workflows. It provides a suite of AI agents—one per delivery phase—that guide teams from initial discovery through to production release, enforcing coding standards and managing JIRA transitions without context-switching.
+The Slalom AI SDLC tool embeds Slalom UK&I's Salesforce delivery methodology directly into developer workflows. It provides a suite of AI agents—one per delivery phase—that guide teams from initial discovery through to production release, enforcing coding standards and managing project-management (PM) tool transitions without context-switching.
+
+The tool is **PM-tool agnostic**: it works with either **JIRA (Atlassian)** or **Azure DevOps (ADO)**. You choose your PM tool once when you run `/init`, and every agent adapts automatically — status names, work-item hierarchy, and the MCP it talks to.
 
 The tool runs as a GitHub Copilot chat participant inside VS Code. You invoke it by tagging `@slalom-sdlc` in the Copilot chat panel and running a phase command. Agents are phase-gated: each has a defined scope and will not cross into adjacent phases, ensuring clean handovers and traceable artefacts.
 
@@ -79,13 +81,15 @@ Once signed in, you can open the Copilot Chat panel with `Ctrl+Alt+I` (Mac: `Cmd
 
 ---
 
-## Step 5 — Set up the Atlassian MCP Server
+## Step 5 — Set up your PM tool MCP Server
 
-The SDLC tool connects to JIRA to read story details and update ticket statuses. This is done via an MCP (Model Context Protocol) server that handles Atlassian OAuth. You configure this once per project.
+The SDLC tool connects to your PM tool to read story details and update work-item statuses. This is done via an MCP (Model Context Protocol) server. Which server you need depends on the PM tool you select in `/init`.
 
 After running `/init` (Step 7), a file `.vscode/mcp.json` will be created in your project repository. VS Code reads this file automatically.
 
-To connect:
+### JIRA (Atlassian) projects
+
+`/init` writes the **Atlassian** MCP server into `.vscode/mcp.json` for you. To connect:
 
 1. Open the Copilot Chat panel in VS Code.
 2. Click the **Tools** icon (plug icon) at the bottom of the chat input.
@@ -95,6 +99,12 @@ To connect:
 Once connected, the SDLC agents can read your JIRA board and update ticket statuses as stories move through phases.
 
 > If the Atlassian server does not appear in the Tools list, confirm that `.vscode/mcp.json` exists in your project root and that VS Code has reloaded since it was created.
+
+### Azure DevOps (ADO) projects
+
+ADO uses the **Azure DevOps MCP** server. Add it to the `servers` block of `.vscode/mcp.json` (alongside the Salesforce server that `/init` writes), then connect it from the **Tools** icon in Copilot Chat the same way. Refer to your Azure DevOps MCP provider's setup for the exact server entry and authentication (typically a Personal Access Token with work-item read/write scope for your organisation).
+
+> Only the two discovery skills that write to your PM tool — `push-backlog` and `sync-pm` — require the PM tool MCP. Every other agent and skill works without it.
 
 ---
 
@@ -128,25 +138,28 @@ Open the Copilot Chat panel and run:
 @slalom-sdlc /init
 ```
 
-The wizard will ask for the following:
+The wizard will ask for the following. It first asks which **PM tool** you use, then only the fields relevant to that tool:
 
-| Setting | Example |
-|---|---|
-| Project / client name | Acme Corp |
-| JIRA project key | ACME |
-| JIRA site URL | https://acme.atlassian.net |
-| JIRA email address | you@acme.com |
-| Salesforce sandbox alias | `dev` (as shown in `sf org list`) |
-| Sprint length (weeks) | 2 |
-| Estimation approach | Team vote / TA assigns / Both |
-| Apex coverage threshold | 85% |
-| JIRA status names | Matching names from your board (one per phase) |
+| Setting | Applies to | Example |
+|---|---|---|
+| Project / client name | Both | Acme Corp |
+| **PM tool** | Both | JIRA (Atlassian) / Azure DevOps |
+| JIRA project key | JIRA | ACME |
+| JIRA site URL | JIRA | https://acme.atlassian.net |
+| JIRA account email | JIRA | you@acme.com |
+| Azure DevOps org URL | ADO | https://dev.azure.com/acme |
+| Azure DevOps project name | ADO | MyProject |
+| Salesforce sandbox alias | Both | `dev` (as shown in `sf org list`) |
+| Sprint length (weeks) | Both | 2 |
+| Estimation approach | Both | Team vote / TA assigns / Both |
+| Apex coverage threshold | Both | 85% |
+| Status names | Both | Matching names from your board (one per phase) — accept the defaults or customise |
 
 After completion, the following is created in your project repository:
 
 ```
-.sdlc/config.json          ← project configuration
-.vscode/mcp.json           ← Atlassian MCP server config
+.sdlc/config.json          ← project configuration (includes your PM tool choice)
+.vscode/mcp.json           ← Salesforce + PM tool MCP (Atlassian for JIRA / Azure DevOps for ADO)
 artifacts/                 ← discovery and story artefacts (agent outputs go here)
 devops/standards/          ← Apex, LWC, configuration, git, and UX standards
 ```
@@ -161,12 +174,12 @@ Invoke agents in the Copilot Chat panel by tagging `@slalom-sdlc` followed by th
 
 | Phase | Command | What it produces |
 |---|---|---|
-| Discovery | `/discover` | Capability map, epic/story list, sprint allocation plan |
+| Discovery | `/discover` | Discovery hub artefacts, evidence-backed backlog (Excel + markdown), and a push to your PM tool |
 | Refinement | `/refine <STORY-KEY>` | Gherkin acceptance criteria, INVEST validation, effort estimate |
-| Design | `/design <STORY-KEY>` | Org discovery, solution design doc, JIRA sub-tasks |
+| Design | `/design <STORY-KEY>` | Org discovery, solution design doc, sub-tasks in your PM tool |
 | Build | `/build <STORY-KEY>` | Apex / LWC scaffolding, deployment to sandbox |
 | Test | `/test <STORY-KEY>` | Apex test classes, Jest tests, coverage validation |
-| Release | `/release` | Deployment runbook, handover checklist, JIRA transitions |
+| Release | `/release` | Deployment runbook, handover checklist, PM-tool transitions |
 
 **Example for story ACME-42:**
 
@@ -180,7 +193,19 @@ Invoke agents in the Copilot Chat panel by tagging `@slalom-sdlc` followed by th
 @slalom-sdlc /build ACME-42
 ```
 
-Replace `ACME-42` with the JIRA key of the story you are working on.
+Replace `ACME-42` with the work-item key of the story you are working on (a JIRA key such as `ACME-42`, or an ADO work-item ID such as `#42`).
+
+### Pushing the discovery backlog to your PM tool
+
+Inside `/discover`, two skills write to your PM tool: **`push-backlog`** (create/update epics and stories) and **`sync-pm`** (pull current status back as a read-only snapshot). Because MCP tools are only available when Copilot runs in **agent mode**, these two skills don't run inline — instead the agent **pre-fills the Copilot Chat panel** with a context-enriched prompt. Before pressing Enter:
+
+1. Switch to the **Copilot Chat** panel (it is brought into focus for you).
+2. Make sure **Agent mode** is selected (not Ask or Edit).
+3. Confirm the correct PM tool MCP is listed in the tools section — **Atlassian** for JIRA, **Azure DevOps** for ADO.
+
+Then press **Enter** to run. If the chat panel can't be opened automatically, the prompt is saved to `.sdlc/prompts/{skill}.md` and you're shown how to run it manually in agent mode.
+
+> **PM tool differences.** `push-backlog` builds a three-tier **Epic → Feature → Story** hierarchy in JIRA, and a two-tier **Epic → Story** hierarchy in Azure DevOps (ADO has no Feature tier in this workflow). The backlog workbook uses a single **PM Key** column that holds either a JIRA key or an ADO work-item ID once pushed.
 
 ---
 
@@ -212,10 +237,10 @@ Each agent has a defined remit and will not take actions outside its phase.
 | Agent | In scope | Out of scope |
 |---|---|---|
 | `/refine` | Acceptance criteria, INVEST validation, effort estimate | Technical decisions, code |
-| `/design` | Org discovery, solution design, JIRA sub-tasks | Implementation code, deployments |
+| `/design` | Org discovery, solution design, PM-tool sub-tasks | Implementation code, deployments |
 | `/build` | Code scaffolding, deployment to sandbox | Refinement, design changes |
 | `/test` | Test generation, coverage validation | Implementation changes |
-| `/release` | Deployment runbook, JIRA transitions | Code generation, testing |
+| `/release` | Deployment runbook, PM-tool transitions | Code generation, testing |
 
 ---
 
@@ -265,7 +290,8 @@ artifacts/
 | `@slalom-sdlc` not appearing in chat | Reload VS Code; confirm the extension shows as enabled in the Extensions panel |
 | `/init` fails to fetch standards | Confirm you have access to the `Slalom/salesforce-devops` GitHub repository |
 | Instructions out of date / sync failing | Run **Slalom SDLC: Instruction Status** from the Command Palette. If sign-in is needed, run **Slalom SDLC: Sync Instructions** and approve the GitHub prompt |
-| JIRA transitions not working | Re-connect the Atlassian MCP server via the Tools icon in Copilot Chat |
-| Atlassian server not in Tools list | Confirm `.vscode/mcp.json` exists and reload VS Code |
+| PM tool status updates not working | Re-connect your PM tool MCP (Atlassian for JIRA, Azure DevOps for ADO) via the Tools icon in Copilot Chat |
+| PM tool MCP not in Tools list | Confirm `.vscode/mcp.json` exists and reload VS Code. For ADO, confirm you added the Azure DevOps MCP server entry (it is not scaffolded automatically) |
+| `push-backlog` / `sync-pm` say no tools available | These run in **agent mode** — switch the pre-filled Copilot Chat to Agent mode and confirm the PM tool MCP is connected before pressing Enter |
 | Sandbox deploy fails | Run `sf org list` and confirm the alias in `.sdlc/config.json` is correct |
 | Copilot Chat not responding | Confirm your GitHub Copilot subscription is active and you are signed in |
