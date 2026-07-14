@@ -36,6 +36,27 @@ If any of these are missing, ask for them before proceeding.
 
 ## Step 3 — Create the session note
 
+### 3a — Structured configuration extraction (run before writing the note)
+
+Before writing any section of the session note, do a targeted pass over the **full content** of the session material — including all tables, grids, Q&A sections, picklist tables, field definition grids, permission matrices, and any structured data — to extract the following Salesforce configuration categories:
+
+| Category | Look for | Route to |
+|---|---|---|
+| Custom field definitions | Field label, API name, type, picklist values, required status | Decisions Made or Key Discussion Points |
+| Object record types | Contact, Task, Opportunity, Account record type names | Decisions Made |
+| OWD / sharing model | Public Read/Write, Public Read Only, Private per object | Decisions Made |
+| Persona access rules | Read/Write/View per persona per object | Key Discussion Points or Decisions Made |
+| Role hierarchy | Reporting structure | Decisions Made |
+| Queue configuration | Queue names, object type, member names/roles | Key Discussion Points or Decisions Made |
+| Salesforce edition | Starter / Pro Suite / Enterprise | Decisions Made |
+| Scope flags | Leads in scope? CPQ? Email platform? Data migration? | Decisions Made (if confirmed) or Follow-up Needed (if absent) |
+
+Record every item found in this pass. In Step 4, only items that are **confirmed absent** from this extraction (i.e. not found anywhere in the provided material — not just absent from the narrative) may be proposed as open-question register entries.
+
+> ⚠️ **Do not ask a question whose answer is present in the document.** Answers are often in tables, grids, and structured sections rather than in the narrative. Check all of them before deciding something is "open."
+
+### 3b — Write the session note
+
 Create `artifacts/discovery/01 - Sessions/YYYY-MM-DD - {Session Name}.md` using this template:
 
 ```markdown
@@ -83,7 +104,7 @@ Create `artifacts/discovery/01 - Sessions/YYYY-MM-DD - {Session Name}.md` using 
 
 ## Follow-up Needed
 
-- {open question or item requiring investigation}
+- {open question or item requiring investigation — only include if confirmed absent from the session material after the extraction pass in Step 3a}
 
 ## Candidate Entities for Review
 
@@ -102,6 +123,8 @@ Check idempotency: if a file with the same date and session name already exists 
 ## Step 4 — Queue proposals to registers
 
 For each candidate entity identified (pain points, risks, decisions, assumptions, stakeholders, open questions, requirements), propose additions to the relevant register file in `00 - Registers/`.
+
+> ⚠️ **Open questions only for genuine gaps.** Before proposing an item as an open question, verify it was not found during the extraction pass in Step 3a. Items found in that pass (field definitions, picklist values, record types, OWD settings, access rules, etc.) must be routed to the **Requirements** or **Decisions** register — not the open-questions register. Only items that are confirmed absent from the full session material after Step 3a may be proposed as open questions.
 
 Present the proposals as a table before writing:
 

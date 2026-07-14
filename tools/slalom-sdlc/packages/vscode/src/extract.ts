@@ -88,17 +88,35 @@ export interface PdfImagesResult {
   error?: string;
 }
 
+interface MupdfPixmap {
+  clear(value?: number): void;
+  asPNG(): Uint8Array;
+}
+
+interface MupdfDisplayList {
+  run(device: unknown, matrix: unknown): void;
+}
+
 interface MupdfModule {
   Document: {
     openDocument(data: Uint8Array | ArrayBuffer, magic: string): {
       countPages(): number;
       loadPage(n: number): {
-        toPixmap(matrix: unknown, colorspace: unknown, alpha: boolean, showExtras?: boolean): { asPNG(): Uint8Array };
+        getBounds(): [number, number, number, number];
+        toDisplayList(showExtras?: boolean): MupdfDisplayList;
+        toPixmap(matrix: unknown, colorspace: unknown, alpha: boolean, showExtras?: boolean): MupdfPixmap;
       };
     };
   };
-  Matrix: { scale(sx: number, sy: number): unknown };
+  Matrix: {
+    scale(sx: number, sy: number): unknown;
+    translate(tx: number, ty: number): unknown;
+    concat(one: unknown, two: unknown): unknown;
+    identity: unknown;
+  };
   ColorSpace: { DeviceRGB: unknown };
+  Pixmap: new (colorspace: unknown, bbox: [number, number, number, number], alpha: boolean) => MupdfPixmap;
+  DrawDevice: new (matrix: unknown, pixmap: MupdfPixmap) => unknown;
 }
 
 let mupdfPromise: Promise<MupdfModule> | undefined;
@@ -127,11 +145,19 @@ function pathToImportUrl(p: string): string {
  * Render the pages of a PDF to PNG images so a vision-capable model can
  * interpret diagrams/boards that carry no selectable text.
  */
+/**
+ * Vision models downsample images to an internal resolution (typically
+ * ~1568 px on the longest edge for Claude, ~2048 px for GPT-4V high-res).
+ * Tiles wider than this target are still unreadable after downscaling.
+ * Target ≤1500 px per tile width to keep table text legible.
+ */
+const MAX_TILE_PX = 1500;
+
 export async function extractPdfImages(
   filePath: string,
   opts: { maxPages?: number; scale?: number } = {}
 ): Promise<PdfImagesResult> {
-  const maxPages = opts.maxPages ?? 24;
+  const maxImages = opts.maxPages ?? 24;
   const scale = opts.scale ?? 1.5;
   try {
     const mupdf = await loadMupdf();
@@ -139,11 +165,52 @@ export async function extractPdfImages(
     const doc = mupdf.Document.openDocument(new Uint8Array(buffer), "application/pdf");
     const totalPages = doc.countPages();
     const images: PdfImage[] = [];
-    const limit = Math.min(totalPages, maxPages);
-    for (let i = 0; i < limit; i++) {
+    const pageLimit = Math.min(totalPages, maxImages);
+
+    for (let i = 0; i < pageLimit && images.length < maxImages; i++) {
       const page = doc.loadPage(i);
-      const pixmap = page.toPixmap(mupdf.Matrix.scale(scale, scale), mupdf.ColorSpace.DeviceRGB, false, true);
-      images.push({ page: i + 1, png: pixmap.asPNG() });
+      const bounds = page.getBounds();
+      const pageW = bounds[2] - bounds[0];
+      const pageH = bounds[3] - bounds[1];
+      const deviceW = pageW * scale;
+
+      // Tile any page whose rendered width exceeds the readable pixel budget.
+      // For a Miroboard at 8720 pts × 1.5 scale = 13 080 px: N = 9 tiles of ~1454 px each.
+      const N = Math.max(1, Math.ceil(deviceW / MAX_TILE_PX));
+
+      if (N > 1) {
+        // Wide page: split into N horizontal tiles so each is ≤ MAX_TILE_PX wide.
+        const tilePtsW = pageW / N;
+        const tileDevW = Math.ceil(tilePtsW * scale);
+        const deviceH = Math.ceil(pageH * scale);
+        const dl = page.toDisplayList(true);
+
+        for (let t = 0; t < N && images.length < maxImages; t++) {
+          const tileX0 = bounds[0] + t * tilePtsW;
+          // Build CTM: translate tile origin to (0,0), then scale to device px.
+          const ctm = mupdf.Matrix.concat(
+            mupdf.Matrix.translate(-tileX0, -bounds[1]),
+            mupdf.Matrix.scale(scale, scale)
+          );
+          const px = new mupdf.Pixmap(
+            mupdf.ColorSpace.DeviceRGB,
+            [0, 0, tileDevW, deviceH],
+            false
+          );
+          px.clear(255);
+          const dev = new mupdf.DrawDevice(ctm, px);
+          dl.run(dev, mupdf.Matrix.identity);
+          images.push({ page: i + 1, png: px.asPNG() });
+        }
+      } else {
+        const pixmap = page.toPixmap(
+          mupdf.Matrix.scale(scale, scale),
+          mupdf.ColorSpace.DeviceRGB,
+          false,
+          true
+        );
+        images.push({ page: i + 1, png: pixmap.asPNG() });
+      }
     }
     return { images, totalPages };
   } catch (err) {

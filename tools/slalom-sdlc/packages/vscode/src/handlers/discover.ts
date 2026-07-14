@@ -1786,7 +1786,42 @@ async function runStoriesRefined(ctx: SkillContext): Promise<void> {
 
 const SESSION_SYSTEM = `You are a Salesforce discovery analyst. You are given ALL inputs from a SINGLE workshop session: one or more text sources (notes, transcripts, AI summaries) and optionally one or more images that are rendered pages of a PDF (typically a Miro board or whiteboard export). Treat everything as ONE session and reconcile the inputs together.
 
-If images are provided, read them carefully: transcribe sticky notes, boxes, arrows/flows, columns/swimlanes, and any labels. Fold what you learn from the images into the same analysis as the text — do not analyse them separately.
+If images are provided, read them carefully: transcribe sticky notes, boxes, arrows/flows, columns/swimlanes, table cells, picklist option lists, and any labels. Fold what you learn from the images into the same analysis as the text — do not analyse them separately.
+
+## Step 1 — Structured configuration extraction (do this FIRST, before anything else)
+
+Before populating any other field in the response, do a targeted pass over ALL content — including tables, grids, Q&A sections, picklist tables, field definition grids, and permission matrices — to extract every Salesforce configuration detail present.
+
+For each item you find, capture the FULL detail — do not summarise or omit values. Transcribe every picklist option exactly as written, even if the list is long. Record exactly what is on the board; use \`null\` for anything genuinely not present.
+
+Populate the \`configExtraction\` key in your response with:
+- **fields**: every custom (and notable standard) field you can read — object name, label, API name, field type, ALL picklist/multi-select values (list every option, not a count), whether it is required
+- **recordTypes**: every named record type for any object
+- **owd**: OWD / sharing model per object (Public Read/Write / Public Read Only / Private)
+- **queues**: queue names, which object, who the members are
+- **roleHierarchy**: full reporting structure as a text description (or \`null\`)
+- **edition**: Salesforce edition if mentioned (or \`null\`)
+- **scopeFlags**: Leads in scope, CPQ, email platform name, data migration — each \`true\`/\`false\`/\`"<value>"\`/\`null\`
+- **personaAccess**: per-persona object-level permissions (read/write/create/delete per profile per object)
+
+## Step 2 — Open Questions (do this AFTER filling configExtraction)
+
+After filling \`configExtraction\`, check the following standard categories. For each category that has **no entry** in \`configExtraction\` AND no clear answer anywhere in the session material, write one specific, targeted question in \`## Open Questions\` in the session note.
+
+Do **NOT** write a question for any category you already captured in \`configExtraction\`.
+
+Categories to check:
+1. Picklist values for each custom field (one question per field missing values)
+2. Contact, Task, and Opportunity record types
+3. OWD per key object (Account, Contact, Opportunity, Lead)
+4. Role hierarchy structure (CEO → managers → reps)
+5. Persona object-level access (read/write/create/delete per profile)
+6. Queue names, objects they serve, and queue member lists
+7. Salesforce edition (Starter / Pro Suite / Enterprise)
+8. Lead scope: are Leads in scope for MVP?
+9. Email integration platform
+10. CPQ vs basic Opportunity Products
+11. Data migration requirements
 
 Produce a durable session note and map the durable knowledge to the discovery registers.
 
@@ -1795,13 +1830,52 @@ Return ONLY a single fenced \`\`\`json code block, no prose. Schema:
 {
   "sessionTitle": "short human-readable title for this workshop (e.g. 'Account & Contact Management Workshop')",
   "summary": "ONE sentence describing what this session covered (used in an index table)",
-  "sessionNote": "full markdown body for the session's Discovery Notes.md. Use these sections as H2 headings where you have content: Scope, Business Context, Decisions Captured, Board-derived confirmations (only if images were provided), Open Questions, Risks, MVP Acceptance Criteria, Candidate Backlog (epics/stories), Next Workshop Inputs. Do NOT include a top-level H1 title or a sources line — those are added automatically.",
+  "configExtraction": {
+    "fields": [
+      {
+        "object": "string — Salesforce object API name (e.g. Account, Contact)",
+        "label": "string — field label as shown on the board",
+        "apiName": "string or null — API name if visible (e.g. Service_Interest__c)",
+        "type": "string — field type (Text, Picklist, Multi-Select Picklist, Checkbox, Date, Lookup, etc.)",
+        "picklistValues": ["array of every picklist option, or empty array if not a picklist"],
+        "required": "true | false | null if not specified"
+      }
+    ],
+    "recordTypes": [
+      { "object": "string", "types": ["array of record type names"] }
+    ],
+    "owd": [
+      { "object": "string", "setting": "Public Read/Write | Public Read Only | Private | string" }
+    ],
+    "queues": [
+      { "name": "string", "object": "string", "members": ["array of names or roles"] }
+    ],
+    "roleHierarchy": "text description of the reporting structure, or null",
+    "edition": "Starter | Pro Suite | Enterprise | string | null",
+    "scopeFlags": {
+      "leads": "true | false | null",
+      "cpq": "true | false | null",
+      "emailPlatform": "string | null",
+      "dataMigration": "true | false | null"
+    },
+    "personaAccess": [
+      {
+        "persona": "string — profile or persona name",
+        "object": "string — Salesforce object",
+        "read": "true | false | null",
+        "create": "true | false | null",
+        "edit": "true | false | null",
+        "delete": "true | false | null"
+      }
+    ]
+  },
+  "sessionNote": "full markdown body for the session's Discovery Notes.md. Use these sections as H2 headings where you have content: Scope, Business Context, Decisions Captured, Open Questions, Risks, MVP Acceptance Criteria, Candidate Backlog (epics/stories), Next Workshop Inputs. Do NOT include a top-level H1 title or a sources line — those are added automatically. The Open Questions section must contain one specific question per gap identified in Step 2 above — and must be EMPTY if configExtraction captured everything.",
   "registerUpdates": {
     "Pain Points.md": "markdown bullet list of new pain points to append (or empty string)",
-    "Requirements.md": "markdown to append",
+    "Requirements.md": "context paragraph only — do NOT restate fields here; the code auto-generates a field table from configExtraction",
     "Stakeholders.md": "markdown to append",
     "RAID.md": "markdown to append",
-    "Decisions.md": "markdown to append",
+    "Decisions.md": "markdown to append — include OWD settings, edition, scope decisions, and any other confirmed configuration choices",
     "System Register.md": "markdown to append"
   }
 }
@@ -2026,16 +2100,125 @@ async function processSession(
     return { ok: false, error: `model error: ${String(err)}` };
   }
 
+  type ConfigField = {
+    object?: string;
+    label?: string;
+    apiName?: string | null;
+    type?: string;
+    picklistValues?: string[];
+    required?: boolean | null;
+  };
+  type ConfigExtraction = {
+    fields?: ConfigField[];
+    recordTypes?: Array<{ object?: string; types?: string[] }>;
+    owd?: Array<{ object?: string; setting?: string }>;
+    queues?: Array<{ name?: string; object?: string; members?: string[] }>;
+    roleHierarchy?: string | null;
+    edition?: string | null;
+    scopeFlags?: {
+      leads?: boolean | null;
+      cpq?: boolean | null;
+      emailPlatform?: string | null;
+      dataMigration?: boolean | null;
+    };
+    personaAccess?: Array<{
+      persona?: string;
+      object?: string;
+      read?: boolean | null;
+      create?: boolean | null;
+      edit?: boolean | null;
+      delete?: boolean | null;
+    }>;
+  };
   const parsed = extractJson<{
     sessionTitle?: string;
     summary?: string;
     sessionNote?: string;
+    configExtraction?: ConfigExtraction;
     registerUpdates?: Record<string, string>;
   }>(raw);
 
   if (!parsed) {
     return { ok: false, error: "could not parse the model response" };
   }
+
+  // Convert configExtraction to structured markdown tables and inject into Requirements.md.
+  const cx = parsed.configExtraction;
+  if (cx) {
+    const sections: string[] = [];
+
+    if (cx.fields && cx.fields.length > 0) {
+      const rows = cx.fields.map((f) => {
+        const pv = (f.picklistValues ?? []).join(", ") || "—";
+        const req = f.required === true ? "Yes" : f.required === false ? "No" : "—";
+        return `| ${f.object ?? "—"} | ${f.label ?? "—"} | ${f.apiName ?? "—"} | ${f.type ?? "—"} | ${pv} | ${req} |`;
+      });
+      sections.push(
+        "### Fields\n\n" +
+          "| Object | Label | API Name | Type | Picklist Values | Required |\n" +
+          "| --- | --- | --- | --- | --- | --- |\n" +
+          rows.join("\n")
+      );
+    }
+
+    if (cx.recordTypes && cx.recordTypes.length > 0) {
+      const rows = cx.recordTypes.map(
+        (rt) => `| ${rt.object ?? "—"} | ${(rt.types ?? []).join(", ") || "—"} |`
+      );
+      sections.push(
+        "### Record Types\n\n" +
+          "| Object | Record Types |\n| --- | --- |\n" +
+          rows.join("\n")
+      );
+    }
+
+    if (cx.owd && cx.owd.length > 0) {
+      const rows = cx.owd.map((o) => `| ${o.object ?? "—"} | ${o.setting ?? "—"} |`);
+      sections.push(
+        "### Organisation-Wide Defaults (OWD)\n\n" +
+          "| Object | Setting |\n| --- | --- |\n" +
+          rows.join("\n")
+      );
+    }
+
+    if (cx.queues && cx.queues.length > 0) {
+      const rows = cx.queues.map(
+        (q) =>
+          `| ${q.name ?? "—"} | ${q.object ?? "—"} | ${(q.members ?? []).join(", ") || "—"} |`
+      );
+      sections.push(
+        "### Queues\n\n" +
+          "| Queue Name | Object | Members |\n| --- | --- | --- |\n" +
+          rows.join("\n")
+      );
+    }
+
+    if (cx.personaAccess && cx.personaAccess.length > 0) {
+      const bool = (v: boolean | null | undefined) =>
+        v === true ? "✓" : v === false ? "✗" : "—";
+      const rows = cx.personaAccess.map(
+        (p) =>
+          `| ${p.persona ?? "—"} | ${p.object ?? "—"} | ${bool(p.read)} | ${bool(p.create)} | ${bool(p.edit)} | ${bool(p.delete)} |`
+      );
+      sections.push(
+        "### Persona Access\n\n" +
+          "| Persona | Object | Read | Create | Edit | Delete |\n" +
+          "| --- | --- | --- | --- | --- | --- |\n" +
+          rows.join("\n")
+      );
+    }
+
+    if (sections.length > 0) {
+      // Prepend structured tables before whatever context paragraph the model wrote.
+      const existing = (parsed.registerUpdates ?? {})["Requirements.md"] ?? "";
+      const structured = "### Extracted Configuration\n\n" + sections.join("\n\n");
+      parsed.registerUpdates = {
+        ...(parsed.registerUpdates ?? {}),
+        "Requirements.md": structured + (existing.trim() ? "\n\n" + existing.trim() : ""),
+      };
+    }
+  }
+
 
   const dateStamp = new Date().toISOString().slice(0, 10);
   const rawTitle = (parsed.sessionTitle || path.parse(fileNames[0]).name).trim();
