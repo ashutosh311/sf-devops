@@ -225,9 +225,10 @@ The `slalom-sdlc` VS Code extension records command and feedback usage to the **
 DevOps Log** SharePoint list (via a Power Automate HTTP trigger) for adoption reporting. It only
 sends `Command, Date, User, Project, Story, Model, Tokens, Comment` — **never** prompt or
 response text. It is **Slalom-only** (active only once private-repo instruction sync has
-succeeded) and fully asynchronous (local queue at `~/.slalom-sdlc/usage-queue.json`). Feedback is
-captured via `/feedback <comment>`, Copilot thumbs up/down, and the `/discover` feedback prompt.
-See `tools/slalom-sdlc/README.md` → **Usage Tracking** for detail.
+succeeded — never gated on ambient `GITHUB_TOKEN`/`GH_TOKEN` presence) and fully asynchronous
+(per-item file queue at `~/.slalom-sdlc/usage-queue/`). The endpoint is a CI-injected secret, never
+committed to source. Feedback is captured via `/feedback <comment>`, Copilot thumbs up/down, and
+the `/discover` feedback prompt. See `tools/slalom-sdlc/README.md` → **Usage Tracking** for detail.
 
 ---
 

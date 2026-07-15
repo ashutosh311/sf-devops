@@ -11,6 +11,7 @@ import {
   type EpicStatusMap,
   type SubTaskStatusMap,
   resolveProjectKey,
+  extractStoryKey,
 } from "@sdlc/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 
@@ -166,10 +167,4 @@ function buildMinimalConfig(jiraSite: string, jiraKey: string): SdlcConfig {
     branching:  "gitflow",
     paths:      DEFAULT_PATHS,
   };
-}
-
-function extractStoryKey(text: string, projectKey: string): string | undefined {
-  const pattern = new RegExp(`\\b${projectKey}-\\d+\\b`, "i");
-  const match = text.match(pattern);
-  return match?.[0].toUpperCase();
 }

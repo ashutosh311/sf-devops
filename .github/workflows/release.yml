@@ -103,12 +103,26 @@ jobs:
         run: node scripts/sync-version.mjs --version "${{ steps.version.outputs.version }}"
 
       - name: Build packages
+        env:
+          # SAS URL for the usage-tracking Power Automate trigger — the credential
+          # itself. Only ever present in this CI env; never committed. Compiled
+          # into the vscode package's dist/extension.js at build time via
+          # esbuild's `define` (see packages/vscode/esbuild.mjs and
+          # packages/vscode/src/usage.ts). Requires a repo secret named
+          # USAGE_TRACKING_ENDPOINT_URL under Settings → Secrets and variables →
+          # Actions. If unset, this compiles in "" and usage tracking stays off.
+          SLALOM_SDLC_USAGE_ENDPOINT: ${{ secrets.USAGE_TRACKING_ENDPOINT_URL }}
         run: pnpm -r build
 
       - name: Typecheck
         run: pnpm -r typecheck
 
       - name: Package VS Code extension (VSIX)
+        env:
+          # Same secret as the "Build packages" step above — this step re-runs
+          # esbuild (via the package script's `pnpm build`) before invoking vsce,
+          # so it needs the env var again for the final VSIX to have it compiled in.
+          SLALOM_SDLC_USAGE_ENDPOINT: ${{ secrets.USAGE_TRACKING_ENDPOINT_URL }}
         run: pnpm --filter slalom-sdlc package
 
       - name: Package CLI binaries

@@ -21,21 +21,32 @@ import type { InstructionSyncService } from "./sync";
 // extracted from the prompt with a strict `KEY-<number>` regex only; `Comment`
 // is populated exclusively for user-entered feedback.
 //
-// SLALOM-ONLY: tracking is inert unless private-repo access is proven (the daily
-// instruction sync has succeeded) or an explicit endpoint override is set. A
-// client-distributed VSIX therefore never phones home.
+// SLALOM-ONLY: tracking is inert unless BOTH (a) the build-time endpoint secret was
+// injected (client/local builds compile in "") and (b) private-repo access is
+// proven — the daily instruction sync has actually succeeded at least once. Token
+// *presence* (GITHUB_TOKEN/GH_TOKEN/etc.) is never treated as proof of access. A
+// client-distributed VSIX therefore never phones home. See isEnabled() below.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Power Automate HTTP trigger for the "Salesforce DevOps Log" SharePoint list.
- *  Baked in at build time (like the instruction templates) so it is compiled into
- *  dist/extension.js and not written to any client repo. Override with the env var
- *  below for local testing / headless use. */
-const USAGE_ENDPOINT_URL =
-  "https://default9ca75128a2444596877bf24828e476.e2.environment.api.powerplatform.com" +
-  "/powerautomate/automations/direct/workflows/1769101b661f4dedb84aac98cb7cbd1a" +
-  "/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0" +
-  "&sig=qNWLrDrSlsWrN6qJ98guY4ASGeV6Fnyzp3Pyv0M5QMU";
+/** Power Automate HTTP trigger endpoint for the "Salesforce DevOps Log" SharePoint
+ *  list. The SAS `sig=` in this URL IS the credential — it must never be committed
+ *  to source or appear as a literal here. It is injected at build time via esbuild's
+ *  `define` (see esbuild.mjs), sourced from the `SLALOM_SDLC_USAGE_ENDPOINT` env var
+ *  that only exists inside the release workflow (backed by a GitHub Actions secret).
+ *  Local/dev builds compile this in as `""`, which keeps tracking disabled
+ *  regardless of sync status (see isEnabled()).
+ *
+ *  Residual risk: because the value is still compiled into dist/extension.js, it
+ *  remains extractable from a distributed .vsix by anyone who unzips it — this is
+ *  an accepted trade-off of a SAS-URL-as-bearer-token design (see README).
+ *
+ *  The `__USAGE_ENDPOINT_URL__` global is declared ambiently in src/global.d.ts. */
+const USAGE_ENDPOINT_URL: string =
+  typeof __USAGE_ENDPOINT_URL__ === "string" ? __USAGE_ENDPOINT_URL__ : "";
 
+/** Local-developer-only override for manual testing of the queue/flush pipeline —
+ *  a deliberate, explicit action by whoever runs the extension, never something a
+ *  client build would have set. Distinct from the build-time var above. */
 const ENDPOINT_ENV_OVERRIDE = "SLALOM_SDLC_USAGE_URL";
 
 /** The exact JSON body posted to the endpoint — mirrors the SharePoint columns. */
@@ -55,10 +66,10 @@ interface QueuedItem {
   entry: UsageEntry;
 }
 
-const QUEUE_DIR = path.join(os.homedir(), ".slalom-sdlc");
-const QUEUE_FILE = path.join(QUEUE_DIR, "usage-queue.json");
+const QUEUE_DIR = path.join(os.homedir(), ".slalom-sdlc", "usage-queue");
 
-/** Hard caps so a long offline stretch can never grow the queue unbounded. */
+/** Hard caps so a long offline stretch (or multiple windows) can never grow the
+ *  queue directory unbounded. */
 const MAX_QUEUE_ITEMS = 500;
 const MAX_ITEM_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
@@ -67,12 +78,8 @@ function resolveEndpoint(): string {
   return override && override.length > 0 ? override : USAGE_ENDPOINT_URL;
 }
 
-/** Strict story-key extraction — the ONLY thing pulled out of a user prompt. */
-export function extractStoryKey(text: string, projectKey: string): string {
-  if (!projectKey) return "";
-  const match = text.match(new RegExp(`\\b${projectKey}-\\d+\\b`, "i"));
-  return match ? match[0].toUpperCase() : "";
-}
+/** Strict story-key extraction lives in @sdlc/core (see extractStoryKey) — import
+ *  it directly from there, not from this module. */
 
 export class UsageTracker {
   private flushing = false;
@@ -83,10 +90,16 @@ export class UsageTracker {
     private readonly syncService: InstructionSyncService
   ) {}
 
-  /** Slalom-only gate. Active when an explicit endpoint override is set, or when
-   *  the daily instruction sync has ever succeeded (which proves the user can read
-   *  the private Slalom/salesforce-devops repo). */
+  /** Slalom-only gate. Requires BOTH a resolvable endpoint (build-time secret present,
+   *  or an explicit local-testing override) AND proof of private-repo read access —
+   *  i.e. the daily instruction sync has actually downloaded a release asset from
+   *  the private Slalom/salesforce-devops repo at least once. This intentionally
+   *  does NOT consult GITHUB_TOKEN/GH_TOKEN/SLALOM_SDLC_GITHUB_TOKEN or any other
+   *  ambient token — a client build may well have one of those set (e.g. their own
+   *  CI) with zero access to Slalom's private repo, so token *presence* must never
+   *  be treated as proof of being a Slalom consultant. */
   isEnabled(): boolean {
+    if (!resolveEndpoint()) return false;
     if (process.env[ENDPOINT_ENV_OVERRIDE]?.trim()) return true;
     try {
       return this.syncService.getStatus().lastSuccessfulSync != null;
@@ -172,64 +185,122 @@ export class UsageTracker {
   }
 
   // ── Queue ────────────────────────────────────────────────────────────────
+  //
+  // One file per event under ~/.slalom-sdlc/usage-queue/, named with a unique
+  // id (timestamp + random suffix). This avoids the classic "read whole array,
+  // rewrite whole array" race: with a single JSON file, two VS Code windows
+  // enqueuing/flushing concurrently can silently clobber each other's writes
+  // (last-write-wins data loss). A per-item file makes enqueue a single atomic
+  // file create, and flush a per-file POST + per-file delete — at worst two
+  // windows racing to flush the SAME file both POST it once (an acceptable
+  // duplicate row), but nothing is ever silently dropped.
 
   private async enqueue(entry: UsageEntry): Promise<void> {
-    const items = this.readQueue();
-    items.push({ id: randomId(), entry });
-    this.writeQueue(items);
+    try {
+      fs.mkdirSync(QUEUE_DIR, { recursive: true });
+      const id = randomId();
+      const file = path.join(QUEUE_DIR, `${id}.json`);
+      const item: QueuedItem = { id, entry };
+      fs.writeFileSync(file, JSON.stringify(item), { encoding: "utf-8", flag: "wx" });
+    } catch {
+      // If we can't persist, drop silently — tracking must never disrupt the user.
+    }
+    this.pruneQueue();
   }
 
-  private readQueue(): QueuedItem[] {
+  private listQueueFiles(): string[] {
     try {
-      const raw = fs.readFileSync(QUEUE_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as QueuedItem[]) : [];
+      return fs
+        .readdirSync(QUEUE_DIR)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => path.join(QUEUE_DIR, f));
     } catch {
       return [];
     }
   }
 
-  private writeQueue(items: QueuedItem[]): void {
-    // Prune stale items, then keep only the most recent MAX_QUEUE_ITEMS.
-    const cutoff = Date.now() - MAX_ITEM_AGE_MS;
-    let pruned = items.filter((it) => {
-      const t = Date.parse(it.entry.Date);
-      return Number.isNaN(t) || t >= cutoff;
-    });
-    if (pruned.length > MAX_QUEUE_ITEMS) {
-      pruned = pruned.slice(pruned.length - MAX_QUEUE_ITEMS);
-    }
+  private readQueueItem(file: string): QueuedItem | undefined {
     try {
-      fs.mkdirSync(QUEUE_DIR, { recursive: true });
-      fs.writeFileSync(QUEUE_FILE, JSON.stringify(pruned), "utf-8");
+      return JSON.parse(fs.readFileSync(file, "utf-8")) as QueuedItem;
     } catch {
-      // If we can't persist, drop silently — tracking must never disrupt the user.
+      return undefined;
     }
   }
 
-  /** Best-effort background flush. Sends each queued item; keeps failures for retry. */
+  /** Age- and count-cap housekeeping. Stale/overflow files are deleted outright —
+   *  best-effort, never throws. */
+  private pruneQueue(): void {
+    const cutoff = Date.now() - MAX_ITEM_AGE_MS;
+    const files = this.listQueueFiles();
+    const withStats = files
+      .map((file) => {
+        let mtimeMs = 0;
+        try {
+          mtimeMs = fs.statSync(file).mtimeMs;
+        } catch {
+          // file may have just been deleted by another window — ignore
+        }
+        return { file, mtimeMs };
+      })
+      .sort((a, b) => a.mtimeMs - b.mtimeMs); // oldest first
+
+    for (const { file, mtimeMs } of withStats) {
+      if (mtimeMs < cutoff) {
+        this.tryUnlink(file);
+      }
+    }
+
+    const remaining = this.listQueueFiles();
+    if (remaining.length > MAX_QUEUE_ITEMS) {
+      const sorted = remaining
+        .map((file) => ({ file, mtimeMs: this.safeMtime(file) }))
+        .sort((a, b) => a.mtimeMs - b.mtimeMs);
+      const excess = sorted.length - MAX_QUEUE_ITEMS;
+      for (let i = 0; i < excess; i++) {
+        this.tryUnlink(sorted[i].file);
+      }
+    }
+  }
+
+  private safeMtime(file: string): number {
+    try {
+      return fs.statSync(file).mtimeMs;
+    } catch {
+      return 0;
+    }
+  }
+
+  private tryUnlink(file: string): void {
+    try {
+      fs.unlinkSync(file);
+    } catch {
+      // already gone (e.g. another window flushed/pruned it first) — fine
+    }
+  }
+
+  /** Best-effort background flush. POSTs each queued file's contents; deletes on
+   *  success, leaves it in place for retry on failure. */
   async flush(): Promise<void> {
     if (this.flushing || !this.isEnabled()) return;
     this.flushing = true;
     try {
-      const pending = this.readQueue();
-      if (pending.length === 0) return;
+      const files = this.listQueueFiles();
+      if (files.length === 0) return;
 
       const endpoint = resolveEndpoint();
-      const sent = new Set<string>();
-      for (const item of pending) {
+      for (const file of files) {
+        const item = this.readQueueItem(file);
+        if (!item) {
+          // Corrupt/unreadable — remove rather than retry forever.
+          this.tryUnlink(file);
+          continue;
+        }
         try {
           const ok = await postJson(endpoint, item.entry);
-          if (ok) sent.add(item.id);
+          if (ok) this.tryUnlink(file);
         } catch {
-          // network/endpoint error — leave the item queued for the next flush
+          // network/endpoint error — leave the file queued for the next flush
         }
-      }
-
-      if (sent.size > 0) {
-        // Re-read to preserve anything enqueued while we were posting.
-        const current = this.readQueue().filter((it) => !sent.has(it.id));
-        this.writeQueue(current);
       }
     } finally {
       this.flushing = false;

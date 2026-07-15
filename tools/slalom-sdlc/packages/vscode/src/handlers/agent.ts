@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
-import { renderPrompt, CACHE_CURRENT_DIR, resolveProjectKey } from "@sdlc/core";
+import { renderPrompt, CACHE_CURRENT_DIR, resolveProjectKey, extractStoryKey } from "@sdlc/core";
 import { requireConfig } from "../config";
-import { extractStoryKey as extractStoryKeyShared } from "../usage";
 
 const PHASE_COMMANDS = new Set(["discover", "design", "build", "test", "release"]);
 
@@ -87,8 +86,4 @@ export async function handleAgent(
       stream.markdown(`⛔ Model error: ${String(err)}`);
     }
   }
-}
-
-function extractStoryKey(text: string, projectKey: string): string {
-  return extractStoryKeyShared(text, projectKey);
 }

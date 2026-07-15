@@ -33,6 +33,14 @@ const ctx = await esbuild.context({
   target: "node18",
   sourcemap: true,
   minify: false,
+  define: {
+    // Usage-tracking endpoint (a SAS URL — the credential itself). ONLY ever
+    // present in the release workflow's env, backed by a GitHub Actions secret.
+    // Never committed; local/dev builds compile in "" (tracking disabled). See
+    // src/usage.ts for the consuming code and src/global.d.ts for the ambient
+    // declaration that keeps `tsc --noEmit` happy without esbuild.
+    __USAGE_ENDPOINT_URL__: JSON.stringify(process.env.SLALOM_SDLC_USAGE_ENDPOINT ?? ""),
+  },
 });
 
 if (watch) {

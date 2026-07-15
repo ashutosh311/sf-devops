@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
-import { resolveProjectKey } from "@sdlc/core";
+import { resolveProjectKey, extractStoryKey } from "@sdlc/core";
 import { loadConfig, getWorkspaceRoot } from "../config";
-import { extractStoryKey, trackFeedback } from "../usage";
+import { trackFeedback } from "../usage";
 
 /**
  * `/feedback <text>` — records free-text feedback as a "Feedback" usage entry.

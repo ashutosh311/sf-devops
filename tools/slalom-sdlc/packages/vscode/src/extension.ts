@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { resolveProjectKey } from "@sdlc/core";
+import { resolveProjectKey, extractStoryKey } from "@sdlc/core";
 import { handleInit } from "./handlers/init";
 import { handleAgent } from "./handlers/agent";
 import { handleDiscover } from "./handlers/discover";
@@ -16,7 +16,6 @@ import {
   trackCommand,
   trackFeedback,
   flushUsageQueue,
-  extractStoryKey,
 } from "./usage";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -73,10 +72,12 @@ export function activate(context: vscode.ExtensionContext): void {
       } catch (err) {
         stream.markdown(`⛔ Unexpected error: ${String(err)}`);
       } finally {
-        // Record the command usage (best-effort, non-blocking). Feedback is
-        // recorded by its own handler, so it is excluded here to avoid a dup.
+        // Record the command usage (best-effort, non-blocking, attempts included
+        // even if the handler threw). Feedback is recorded by its own handler
+        // (or the thumbs-feedback listener below), so it is excluded here to
+        // avoid a duplicate entry.
         if (request.command && request.command !== "feedback") {
-          void recordCommandUsage(request);
+          void recordCommandUsage(request, token);
         }
       }
     }
@@ -84,7 +85,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   participant.iconPath = new vscode.ThemeIcon("rocket");
 
-  // Copilot thumbs up/down on any response → a lightweight Feedback entry.
+  // Copilot thumbs up/down on any response → a lightweight Feedback entry. The
+  // STABLE vscode.ChatResultFeedback API only exposes `.kind` (👍/👎) — free-text
+  // `.comment` requires VS Code's *proposed* API surface, which this extension
+  // does not opt into. So thumbs feedback always carries this fixed placeholder
+  // text, never user-authored comment text.
   participant.onDidReceiveFeedback((fb: vscode.ChatResultFeedback) => {
     const rating = fb.kind === vscode.ChatResultFeedbackKind.Helpful ? "👍" : "👎";
     trackFeedback({ comment: `${rating} (thumbs)` });
@@ -102,7 +107,10 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 /** Build and enqueue a usage event for a completed command. Never throws. */
-async function recordCommandUsage(request: vscode.ChatRequest): Promise<void> {
+async function recordCommandUsage(
+  request: vscode.ChatRequest,
+  token: vscode.CancellationToken
+): Promise<void> {
   try {
     const root = getWorkspaceRoot();
     const config = root ? await loadConfig(root) : undefined;
@@ -110,15 +118,28 @@ async function recordCommandUsage(request: vscode.ChatRequest): Promise<void> {
     const projectKey = config ? resolveProjectKey(config) : "";
     const story = extractStoryKey(request.prompt, projectKey);
     const model = request.model?.family || request.model?.name || "";
-    // NOTE: the VS Code Language Model API does not expose Copilot premium-request
-    // credits, and an accurate per-command token count is not available at this
-    // layer. Model name is recorded reliably; Tokens is reserved (0) for now.
+
+    // `Tokens` is an honest but PARTIAL measurement: it is the tokeniser count of
+    // the user's own raw message only (the only text available at this
+    // chokepoint). It does NOT include the rendered system prompt each handler
+    // builds internally, nor the model's response — so it under-counts the true
+    // cost of a command. Copilot premium-request credits are not exposed by the
+    // VS Code Language Model API at all, so this is the closest honest proxy
+    // available. countTokens is not supported on every model version, hence the
+    // try/catch fallback to 0.
+    let tokens = 0;
+    try {
+      tokens = await request.model?.countTokens(request.prompt || request.command || "", token);
+    } catch {
+      tokens = 0;
+    }
+
     trackCommand({
       command: request.command ?? "chat",
       project,
       story,
       model,
-      tokens: 0,
+      tokens,
     });
   } catch {
     // tracking must never disrupt the user

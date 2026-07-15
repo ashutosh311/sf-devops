@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { renderPrompt, CACHE_CURRENT_DIR, type SdlcConfig, resolveProjectKey } from "@sdlc/core";
+import { renderPrompt, CACHE_CURRENT_DIR, type SdlcConfig, resolveProjectKey, extractStoryKey } from "@sdlc/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { readBacklogWorkbook, type BacklogStory, type BacklogEpic } from "../backlog";
 
@@ -42,7 +42,7 @@ export async function handleDesign(
   const ctx: DesignCtx = { root, config, request, stream, token };
 
   // If the user already typed a PM key in the prompt → skip menu, PM mode
-  const inlineKey = extractJiraKey(request.prompt, resolveProjectKey(config));
+  const inlineKey = extractStoryKey(request.prompt, resolveProjectKey(config));
   if (inlineKey) {
     return runAgent(ctx, request.prompt.trim());
   }
@@ -304,7 +304,3 @@ async function runAgent(ctx: DesignCtx, userMessage: string): Promise<void> {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function extractJiraKey(text: string, projectKey: string): string | undefined {
-  const pattern = new RegExp(`\\b${projectKey}-\\d+\\b`, "i");
-  return text.match(pattern)?.[0].toUpperCase();
-}

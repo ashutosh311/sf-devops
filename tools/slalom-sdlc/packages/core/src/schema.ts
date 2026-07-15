@@ -81,6 +81,19 @@ export function resolveProjectKey(config: SdlcConfig): string {
   return config.project.jiraKey ?? config.project.name;
 }
 
+/**
+ * Extracts a story/work-item key (e.g. `PROJ-123`) from free text using a strict
+ * `<PROJECT_KEY>-<digits>` match. This is intentionally the ONLY thing ever pulled
+ * out of a user's chat prompt for usage-tracking purposes — no other prompt content
+ * is inspected or retained. Shared across all handlers so the pattern only needs to
+ * be correct in one place.
+ */
+export function extractStoryKey(text: string, projectKey: string): string {
+  if (!projectKey || !text) return "";
+  const match = text.match(new RegExp(`\\b${projectKey}-\\d+\\b`, "i"));
+  return match ? match[0].toUpperCase() : "";
+}
+
 // ── ADO status maps ───────────────────────────────────────────────────────────
 
 export const AdoStatusMapSchema = z.object({
