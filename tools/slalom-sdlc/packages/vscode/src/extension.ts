@@ -126,12 +126,16 @@ async function recordCommandUsage(
     // cost of a command. Copilot premium-request credits are not exposed by the
     // VS Code Language Model API at all, so this is the closest honest proxy
     // available. countTokens is not supported on every model version, hence the
-    // try/catch fallback to 0.
+    // try/catch fallback to 0. A no-argument command (e.g. "/about") has an empty
+    // prompt — report 0 rather than falling back to tokenising the command
+    // keyword itself, which would misrepresent "no message" as "some tokens".
     let tokens = 0;
-    try {
-      tokens = await request.model?.countTokens(request.prompt || request.command || "", token);
-    } catch {
-      tokens = 0;
+    if (request.prompt) {
+      try {
+        tokens = await request.model?.countTokens(request.prompt, token);
+      } catch {
+        tokens = 0;
+      }
     }
 
     trackCommand({

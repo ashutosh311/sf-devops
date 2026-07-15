@@ -6,6 +6,7 @@ import * as os from "node:os";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import type { InstructionSyncService } from "./sync";
+import { githubGet } from "./github";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Command & feedback usage tracking.
@@ -178,27 +179,70 @@ export class UsageTracker {
 
   // ── Identity ───────────────────────────────────────────────────────────────
 
+  // Resolve a real identifiable user, preferring an actual email address over a
+  // username/display label. Tried in order, each silent (never prompts) and
+  // best-effort (a failure just falls through to the next source):
+  //   1. Local git identity's email — cheapest, no network call, usually a real
+  //      corporate address.
+  //   2. VS Code's built-in Microsoft/Entra session — the same identity system
+  //      behind SharePoint/Power BI; only present if signed in with a Microsoft
+  //      account (e.g. via an Azure extension). Its account.label is typically
+  //      already the UPN/email.
+  //   3. GitHub's verified primary email via the REST API — requires the
+  //      `user:email` scope; requested silently, so it's a no-op if the user
+  //      hasn't already granted it (never triggers a consent prompt).
+  //   4. The existing GitHub session label (username, not an email) — same
+  //      session the instruction sync already uses.
+  //   5. Local git user.name, then the literal string "unknown".
   private async resolveUser(): Promise<string> {
     if (this.cachedUser) return this.cachedUser;
 
-    // 1. Reuse the existing silent GitHub session (same one the sync uses).
+    const gitEmail = await this.gitUserEmail();
+    if (gitEmail) return this.cacheUser(gitEmail);
+
+    try {
+      const msSession = await vscode.authentication.getSession("microsoft", ["email"], {
+        silent: true,
+      });
+      const msLabel = msSession?.account?.label?.trim();
+      if (msLabel && msLabel.includes("@")) return this.cacheUser(msLabel);
+    } catch {
+      // Microsoft auth provider unavailable or no cached session — fall through.
+    }
+
+    try {
+      const ghEmail = await this.resolveGitHubEmail();
+      if (ghEmail) return this.cacheUser(ghEmail);
+    } catch {
+      // GitHub email lookup failed (scope not granted, API error, offline) — fall through.
+    }
+
     try {
       const session = await vscode.authentication.getSession("github", ["repo"], {
         silent: true,
       });
       const label = session?.account?.label?.trim();
-      if (label) {
-        this.cachedUser = label;
-        return label;
-      }
+      if (label) return this.cacheUser(label);
     } catch {
       // fall through
     }
 
-    // 2. Fall back to the local git identity.
     const gitName = await this.gitUserName();
-    this.cachedUser = gitName || "unknown";
-    return this.cachedUser;
+    return this.cacheUser(gitName || "unknown");
+  }
+
+  private cacheUser(value: string): string {
+    this.cachedUser = value;
+    return value;
+  }
+
+  private gitUserEmail(): Promise<string> {
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? os.homedir();
+    return new Promise((resolve) => {
+      execFile("git", ["config", "user.email"], { cwd }, (err, stdout) => {
+        resolve(err ? "" : stdout.trim());
+      });
+    });
   }
 
   private gitUserName(): Promise<string> {
@@ -208,6 +252,25 @@ export class UsageTracker {
         resolve(err ? "" : stdout.trim());
       });
     });
+  }
+
+  // Requests the `user:email` scope silently (no-op if not already granted) and
+  // fetches the account's verified primary email via GitHub's REST API. Distinct
+  // from the `repo`-scoped session used elsewhere: VS Code treats different scope
+  // sets as potentially different sessions, so this is a separate silent lookup.
+  private async resolveGitHubEmail(): Promise<string | undefined> {
+    const session = await vscode.authentication.getSession("github", ["user:email"], {
+      silent: true,
+    });
+    const token = session?.accessToken;
+    if (!token) return undefined;
+
+    const emails = await githubGet<Array<{ email: string; primary: boolean; verified: boolean }>>(
+      "/user/emails",
+      token
+    );
+    const primary = emails.find((e) => e.primary && e.verified) ?? emails.find((e) => e.verified);
+    return primary?.email;
   }
 
   // ── Queue ────────────────────────────────────────────────────────────────
