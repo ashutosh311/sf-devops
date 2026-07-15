@@ -49,6 +49,32 @@ const USAGE_ENDPOINT_URL: string =
  *  client build would have set. Distinct from the build-time var above. */
 const ENDPOINT_ENV_OVERRIDE = "SLALOM_SDLC_USAGE_URL";
 
+/** Opt-in verbose debug logging for diagnosing why a queued entry isn't reaching the
+ *  endpoint. OFF by default (zero extra I/O for normal use). When set to any truthy
+ *  value, enqueue()/flush() append one line per event to DEBUG_LOG_PATH. The log
+ *  NEVER contains the full endpoint URL (only its hostname — the `sig=` SAS token
+ *  is the credential and must never be written to disk in plain text) nor any entry
+ *  payload contents. See README → "Debugging tracking". */
+const DEBUG_ENV_VAR = "SLALOM_SDLC_USAGE_DEBUG";
+
+function isDebugEnabled(): boolean {
+  const v = process.env[DEBUG_ENV_VAR]?.trim().toLowerCase();
+  return !!v && v !== "0" && v !== "false";
+}
+
+const DEBUG_LOG_PATH = path.join(os.homedir(), ".slalom-sdlc", "usage-queue", ".debug.log");
+
+/** Best-effort append-only debug log write — never throws, never disrupts tracking. */
+function writeDebugLog(line: string): void {
+  if (!isDebugEnabled()) return;
+  try {
+    fs.mkdirSync(path.dirname(DEBUG_LOG_PATH), { recursive: true });
+    fs.appendFileSync(DEBUG_LOG_PATH, `${new Date().toISOString()} ${line}\n`, "utf-8");
+  } catch {
+    // debug logging must never disrupt tracking or the user
+  }
+}
+
 /** The exact JSON body posted to the endpoint — mirrors the SharePoint columns. */
 export interface UsageEntry {
   Command: string;
@@ -196,13 +222,18 @@ export class UsageTracker {
   // duplicate row), but nothing is ever silently dropped.
 
   private async enqueue(entry: UsageEntry): Promise<void> {
+    let id = "unknown";
     try {
       fs.mkdirSync(QUEUE_DIR, { recursive: true });
-      const id = randomId();
+      id = randomId();
       const file = path.join(QUEUE_DIR, `${id}.json`);
       const item: QueuedItem = { id, entry };
       fs.writeFileSync(file, JSON.stringify(item), { encoding: "utf-8", flag: "wx" });
-    } catch {
+      writeDebugLog(`enqueue ok id=${id} command=${entry.Command}`);
+    } catch (e) {
+      writeDebugLog(
+        `enqueue error id=${id} command=${entry.Command} error=${e instanceof Error ? e.message : String(e)}`
+      );
       // If we can't persist, drop silently — tracking must never disrupt the user.
     }
     this.pruneQueue();
@@ -281,25 +312,56 @@ export class UsageTracker {
   /** Best-effort background flush. POSTs each queued file's contents; deletes on
    *  success, leaves it in place for retry on failure. */
   async flush(): Promise<void> {
-    if (this.flushing || !this.isEnabled()) return;
+    if (this.flushing) {
+      writeDebugLog("flush-skip reason=already-flushing");
+      return;
+    }
+    if (!this.isEnabled()) {
+      writeDebugLog("flush-skip reason=not-enabled");
+      return;
+    }
     this.flushing = true;
     try {
       const files = this.listQueueFiles();
-      if (files.length === 0) return;
+      if (files.length === 0) {
+        writeDebugLog("flush-skip reason=empty-queue");
+        return;
+      }
 
       const endpoint = resolveEndpoint();
+      let endpointHost = "unresolved";
+      try {
+        endpointHost = new URL(endpoint).hostname;
+      } catch {
+        // logged as part of the per-file postJson error below
+      }
+      writeDebugLog(`flush-attempt count=${files.length} host=${endpointHost}`);
+
       for (const file of files) {
         const item = this.readQueueItem(file);
         if (!item) {
           // Corrupt/unreadable — remove rather than retry forever.
+          writeDebugLog(`flush-error file=${path.basename(file)} error=unreadable-item`);
           this.tryUnlink(file);
           continue;
         }
         try {
-          const ok = await postJson(endpoint, item.entry);
-          if (ok) this.tryUnlink(file);
-        } catch {
-          // network/endpoint error — leave the file queued for the next flush
+          const result = await postJson(endpoint, item.entry);
+          if (result.ok) {
+            writeDebugLog(`flush-success id=${item.id} status=${result.status ?? "?"}`);
+            this.tryUnlink(file);
+          } else {
+            writeDebugLog(
+              `flush-error id=${item.id} status=${result.status ?? "n/a"} error=${result.error ?? "non-2xx"}`
+            );
+          }
+        } catch (e) {
+          // Should not normally happen — postJson resolves rather than rejects —
+          // but guard defensively so one bad file can never abort the whole flush.
+          writeDebugLog(
+            `flush-error id=${item.id} error=${e instanceof Error ? e.message : String(e)}`
+          );
+          // leave the file queued for the next flush
         }
       }
     } finally {
@@ -350,13 +412,19 @@ export function flushUsageQueue(): void {
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-function postJson(endpoint: string, body: unknown): Promise<boolean> {
-  return new Promise((resolve, reject) => {
+interface PostResult {
+  ok: boolean;
+  status?: number;
+  error?: string;
+}
+
+function postJson(endpoint: string, body: unknown): Promise<PostResult> {
+  return new Promise((resolve) => {
     let url: URL;
     try {
       url = new URL(endpoint);
     } catch (e) {
-      reject(e);
+      resolve({ ok: false, error: e instanceof Error ? e.message : String(e) });
       return;
     }
 
@@ -376,11 +444,13 @@ function postJson(endpoint: string, body: unknown): Promise<boolean> {
       (res) => {
         const status = res.statusCode ?? 0;
         res.resume(); // drain
-        resolve(status >= 200 && status < 300);
+        resolve({ ok: status >= 200 && status < 300, status });
       }
     );
 
-    req.on("error", reject);
+    req.on("error", (e: NodeJS.ErrnoException) => {
+      resolve({ ok: false, error: e.code ?? e.message });
+    });
     req.write(payload);
     req.end();
   });

@@ -271,6 +271,29 @@ force-enable tracking for manual verification of the queue/flush pipeline. This 
 explicit action taken by whoever runs the extension — never something a client environment would
 have set for itself.
 
+### Debugging tracking
+
+If a queue file is created under `~/.slalom-sdlc/usage-queue/` but never disappears, the flush
+(the POST to Power Automate) is failing — by design this fails silently in normal operation so
+tracking can never disrupt a user. To see why, opt in to verbose logging:
+
+```
+SLALOM_SDLC_USAGE_DEBUG=1 code
+```
+
+This appends one line per event to `~/.slalom-sdlc/usage-queue/.debug.log` — `enqueue`,
+`flush-skip` (not enabled / already flushing / empty queue), `flush-attempt`, `flush-success`
+(with HTTP status), and `flush-error` (with HTTP status or the underlying Node error code, e.g.
+`ENOTFOUND`, `ECONNREFUSED`, `ETIMEDOUT`). Watch it live with:
+
+```
+tail -f ~/.slalom-sdlc/usage-queue/.debug.log
+```
+
+The log **never contains the full endpoint URL or its `sig=` SAS token** (only the hostname) and
+never contains entry payload contents — it is safe to share for troubleshooting. The log file
+itself is only ever created when `SLALOM_SDLC_USAGE_DEBUG` is set; normal usage has zero extra I/O.
+
 ---
 
 ## For Slalom Delivery Teams: Publishing an Update
