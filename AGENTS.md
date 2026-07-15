@@ -219,6 +219,16 @@ pipeline-scripts/
 
 **Salesforce API version:** `62.0` (set in `sfdx-project.json`). Use this version in all `.js-meta.xml` files.
 
+### Usage tracking (VS Code extension)
+
+The `slalom-sdlc` VS Code extension records command and feedback usage to the **Salesforce
+DevOps Log** SharePoint list (via a Power Automate HTTP trigger) for adoption reporting. It only
+sends `Command, Date, User, Project, Story, Model, Tokens, Comment` — **never** prompt or
+response text. It is **Slalom-only** (active only once private-repo instruction sync has
+succeeded) and fully asynchronous (local queue at `~/.slalom-sdlc/usage-queue.json`). Feedback is
+captured via `/feedback <comment>`, Copilot thumbs up/down, and the `/discover` feedback prompt.
+See `tools/slalom-sdlc/README.md` → **Usage Tracking** for detail.
+
 ---
 
 ## Useful Commands

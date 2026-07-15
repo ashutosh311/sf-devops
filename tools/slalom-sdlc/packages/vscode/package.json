@@ -72,6 +72,10 @@
           {
             "name": "release",
             "description": "Run the release agent for a set of stories"
+          },
+          {
+            "name": "feedback",
+            "description": "Send feedback about the tooling  —  usage: /feedback <your comment>"
           }
         ]
       }

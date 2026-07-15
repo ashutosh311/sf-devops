@@ -24,6 +24,7 @@ import {
   type BacklogManifest,
 } from "../backlog-md";
 import { extractFileText, extractPdfImages } from "../extract";
+import { trackFeedback } from "../usage";
 import { pushBacklogAdoTemplate, pushBacklogJiraTemplate, syncPmAdoTemplate, syncPmJiraTemplate } from "@sdlc/core";
 import type { SdlcConfig } from "@sdlc/core";
 
@@ -489,6 +490,13 @@ function appendFeedback(ctx: SkillContext, command: string, rating: string, comm
     );
   }
   fs.appendFileSync(p, line);
+
+  // Also push the feedback to the usage log (SharePoint) so /discover feedback is
+  // visible alongside command usage. Best-effort, non-blocking, Slalom-only.
+  trackFeedback({
+    comment: `discover/${command} — ${rating}: ${comment || "—"}`,
+    project: ctx.config.project?.name ?? "",
+  });
 }
 
 /** Append a feedback-driven adjustment block to the preferences file. */

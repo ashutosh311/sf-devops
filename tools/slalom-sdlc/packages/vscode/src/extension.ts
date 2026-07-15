@@ -1,16 +1,27 @@
 import * as vscode from "vscode";
+import { resolveProjectKey } from "@sdlc/core";
 import { handleInit } from "./handlers/init";
 import { handleAgent } from "./handlers/agent";
 import { handleDiscover } from "./handlers/discover";
 import { handleDesign } from "./handlers/design";
 import { handleRefine } from "./handlers/refine";
+import { handleFeedback } from "./handlers/feedback";
 import { handleForceSync, handleSyncStatus } from "./handlers/sync";
 import { InstructionSyncService } from "./sync";
 import { maybeShowSyncNudge } from "./syncNudge";
 import { maybeOfferExtensionUpdate, isNewerVersion } from "./extensionUpdate";
+import { loadConfig, getWorkspaceRoot } from "./config";
+import {
+  initUsageTracker,
+  trackCommand,
+  trackFeedback,
+  flushUsageQueue,
+  extractStoryKey,
+} from "./usage";
 
 export function activate(context: vscode.ExtensionContext): void {
   const syncService = new InstructionSyncService();
+  initUsageTracker(context, syncService);
 
   // Kick off a background sync on activation — fire and forget, never blocks activation.
   // Once it settles, check whether sync is silently stuck and nudge the user if so.
@@ -20,6 +31,9 @@ export function activate(context: vscode.ExtensionContext): void {
     } catch {
       // errors recorded in metadata.json
     }
+    // Flush any usage events queued in a previous session now that the sync gate
+    // (private-repo access) has had a chance to settle. Fire and forget.
+    flushUsageQueue();
     try {
       await maybeShowSyncNudge(syncService, context);
     } catch {
@@ -45,6 +59,8 @@ export function activate(context: vscode.ExtensionContext): void {
           await handleInit(request, chatContext, stream);
         } else if (request.command === "about") {
           stream.markdown(buildAboutText(context, syncService));
+        } else if (request.command === "feedback") {
+          await handleFeedback(request, stream);
         } else if (request.command === "discover") {
           await handleDiscover(request, chatContext, stream, token);
         } else if (request.command === "refine") {
@@ -56,11 +72,23 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       } catch (err) {
         stream.markdown(`⛔ Unexpected error: ${String(err)}`);
+      } finally {
+        // Record the command usage (best-effort, non-blocking). Feedback is
+        // recorded by its own handler, so it is excluded here to avoid a dup.
+        if (request.command && request.command !== "feedback") {
+          void recordCommandUsage(request);
+        }
       }
     }
   );
 
   participant.iconPath = new vscode.ThemeIcon("rocket");
+
+  // Copilot thumbs up/down on any response → a lightweight Feedback entry.
+  participant.onDidReceiveFeedback((fb: vscode.ChatResultFeedback) => {
+    const rating = fb.kind === vscode.ChatResultFeedbackKind.Helpful ? "👍" : "👎";
+    trackFeedback({ comment: `${rating} (thumbs)` });
+  });
 
   context.subscriptions.push(
     participant,
@@ -71,6 +99,30 @@ export function activate(context: vscode.ExtensionContext): void {
       handleSyncStatus(syncService)
     )
   );
+}
+
+/** Build and enqueue a usage event for a completed command. Never throws. */
+async function recordCommandUsage(request: vscode.ChatRequest): Promise<void> {
+  try {
+    const root = getWorkspaceRoot();
+    const config = root ? await loadConfig(root) : undefined;
+    const project = config?.project?.name ?? "";
+    const projectKey = config ? resolveProjectKey(config) : "";
+    const story = extractStoryKey(request.prompt, projectKey);
+    const model = request.model?.family || request.model?.name || "";
+    // NOTE: the VS Code Language Model API does not expose Copilot premium-request
+    // credits, and an accurate per-command token count is not available at this
+    // layer. Model name is recorded reliably; Tokens is reserved (0) for now.
+    trackCommand({
+      command: request.command ?? "chat",
+      project,
+      story,
+      model,
+      tokens: 0,
+    });
+  } catch {
+    // tracking must never disrupt the user
+  }
 }
 
 export function deactivate(): void {}
@@ -142,6 +194,7 @@ Run \`/init\` again at any time to update the config — existing files are pres
 | \`/build PROJ-42\` | Build agent — scaffolds Apex, LWC, config; reviews with you; deploys to your sandbox |
 | \`/test PROJ-42\` | Test agent — generates test classes and JEST tests, validates coverage |
 | \`/release\` | Release agent — deployment notes, checklist, JIRA transitions |
+| \`/feedback <comment>\` | Send feedback about the tooling — logged to help improve the agents |
 
 ---
 

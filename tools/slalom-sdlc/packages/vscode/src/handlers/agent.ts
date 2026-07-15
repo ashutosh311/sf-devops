@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { renderPrompt, CACHE_CURRENT_DIR, resolveProjectKey } from "@sdlc/core";
 import { requireConfig } from "../config";
+import { extractStoryKey as extractStoryKeyShared } from "../usage";
 
 const PHASE_COMMANDS = new Set(["discover", "design", "build", "test", "release"]);
 
@@ -88,8 +89,6 @@ export async function handleAgent(
   }
 }
 
-function extractStoryKey(text: string, projectKey: string): string | undefined {
-  const pattern = new RegExp(`\\b${projectKey}-\\d+\\b`, "i");
-  const match = text.match(pattern);
-  return match?.[0].toUpperCase();
+function extractStoryKey(text: string, projectKey: string): string {
+  return extractStoryKeyShared(text, projectKey);
 }

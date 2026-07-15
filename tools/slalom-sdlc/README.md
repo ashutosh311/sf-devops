@@ -67,6 +67,7 @@ The `@slalom-sdlc` (VS Code / GitHub Copilot) column is the supported invocation
 | `@slalom-sdlc /build PROJ-42` | `/mcp__slalom-sdlc__build PROJ-42` | Scaffold Apex/LWC/config, deploy to sandbox |
 | `@slalom-sdlc /test PROJ-42` | `/mcp__slalom-sdlc__test PROJ-42` | Generate test classes, validate coverage |
 | `@slalom-sdlc /release` | `/mcp__slalom-sdlc__release` | Deployment notes, checklist, PM-tool transitions |
+| `@slalom-sdlc /feedback <comment>` | — | Send feedback about the tooling (VS Code only) — logged to the usage list |
 
 ### Typical sprint workflow
 
@@ -187,6 +188,54 @@ Slalom's delivery procedures (the instruction templates that drive each agent) a
 This means:
 - Consultants on Slalom projects get continuously updated, best-practice instructions
 - Clients who receive a VSIX get a point-in-time snapshot with no route to subsequent Slalom IP
+
+---
+
+## Usage Tracking
+
+The VS Code extension records **command and feedback usage** so Slalom can understand adoption
+by person, project, and agent. Events are pushed to a Power Automate HTTP trigger that writes to
+the **Salesforce DevOps Log** SharePoint list (surfaced in Power BI).
+
+### What is captured
+
+Each event is a single row with these fields only:
+
+| Field | Example | Notes |
+|---|---|---|
+| `Command` | `build`, `refine`, `Feedback` | The agent command, or `Feedback` for feedback entries |
+| `Date` | `2026-07-15T12:34:00Z` | ISO 8601 timestamp |
+| `User` | `jane.doe` | GitHub session label, falling back to git `user.name` |
+| `Project` | `protas-sc` | From `.sdlc/config.json` |
+| `Story` | `PSC-42` | Extracted from the prompt via a strict `KEY-<number>` regex only |
+| `Model` | `gpt-4o` | The active Copilot model family |
+| `Tokens` | `0` | Reserved — see limitation below |
+| `Comment` | free text | Populated only for `Feedback` entries |
+
+**Privacy.** Request prompts and model responses are **never** transmitted — only the fields
+above. The single exception is `Comment`, which is the feedback text a user deliberately submits
+via `/feedback`, Copilot thumbs up/down, or the `/discover` feedback prompt.
+
+**Credits/tokens limitation.** The VS Code Language Model API does not expose Copilot
+premium-request credits, and an accurate per-command token count is not available at the chat
+layer. `Model` is recorded reliably; `Tokens` is reserved (`0`) for future enrichment.
+
+### Slalom-only gate
+
+Tracking is **inert unless private-repo access is proven** — specifically, it activates only once
+the daily instruction sync has succeeded (which requires read access to the private
+`Slalom/salesforce-devops` repo). A client-distributed VSIX therefore never phones home. The
+endpoint URL is a build-time constant compiled into the bundle (never written to a client repo).
+
+### Reliability & storage
+
+Events are appended to a local queue at `~/.slalom-sdlc/usage-queue.json` and flushed in the
+background — pushing is asynchronous and never blocks a command. Failed pushes are retained and
+retried on the next flush and on the next activation. The queue is capped (500 items / 14 days).
+
+### Overriding the endpoint (testing/headless)
+
+Set `SLALOM_SDLC_USAGE_URL` to override the built-in endpoint (also force-enables tracking).
 
 ---
 
