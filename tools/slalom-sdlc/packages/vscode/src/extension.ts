@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "node:path";
 import { resolveProjectKey, extractStoryKey } from "@sdlc/core";
 import { handleInit } from "./handlers/init";
 import { handleAgent } from "./handlers/agent";
@@ -114,7 +115,13 @@ async function recordCommandUsage(
   try {
     const root = getWorkspaceRoot();
     const config = root ? await loadConfig(root) : undefined;
-    const project = config?.project?.name ?? "";
+    // Works for either ALM tool (JIRA or ADO) since project.name is a top-level
+    // required field independent of alm. If .sdlc/config.json is missing or fails
+    // validation for any reason, fall back to the workspace folder name so
+    // `Project` is still a useful label rather than blank — this is a display
+    // fallback only; story-key extraction below still requires a validated
+    // projectKey, since a folder name has no real project-key semantics.
+    const project = config?.project?.name || (root ? path.basename(root) : "");
     const projectKey = config ? resolveProjectKey(config) : "";
     const story = extractStoryKey(request.prompt, projectKey);
     const model = request.model?.family || request.model?.name || "";
