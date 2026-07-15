@@ -7,6 +7,7 @@ import { handleRefine } from "./handlers/refine";
 import { handleForceSync, handleSyncStatus } from "./handlers/sync";
 import { InstructionSyncService } from "./sync";
 import { maybeShowSyncNudge } from "./syncNudge";
+import { maybeOfferExtensionUpdate, isNewerVersion } from "./extensionUpdate";
 
 export function activate(context: vscode.ExtensionContext): void {
   const syncService = new InstructionSyncService();
@@ -21,6 +22,11 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     try {
       await maybeShowSyncNudge(syncService, context);
+    } catch {
+      // never let a notification failure affect activation
+    }
+    try {
+      await maybeOfferExtensionUpdate(syncService, context);
     } catch {
       // never let a notification failure affect activation
     }
@@ -77,10 +83,15 @@ function buildAboutText(context: vscode.ExtensionContext, syncService: Instructi
       ? `${status.activeVersion} (synced ${status.lastSuccessfulSync ? new Date(status.lastSuccessfulSync).toLocaleDateString() : "unknown date"})`
       : "bundled (no remote sync yet)";
 
-  return ABOUT_TEXT.replace("{EXTENSION_VERSION}", extensionVersion).replace(
-    "{INSTRUCTIONS_STATUS}",
-    instructionsLine
-  );
+  const latestRelease = syncService.getLatestKnownRelease(context);
+  const updateLine =
+    latestRelease && isNewerVersion(latestRelease.tag, extensionVersion)
+      ? `\n\n⚠️ **Update available:** [${latestRelease.tag}](${latestRelease.htmlUrl}) — this .vsix install never auto-updates; download and reinstall to get it.`
+      : "";
+
+  return ABOUT_TEXT.replace("{EXTENSION_VERSION}", extensionVersion)
+    .replace("{INSTRUCTIONS_STATUS}", instructionsLine)
+    .replace("{UPDATE_STATUS}", updateLine);
 }
 
 const ABOUT_TEXT = `
@@ -88,7 +99,7 @@ const ABOUT_TEXT = `
 
 **\`@slalom-sdlc\`** is a GitHub Copilot Chat participant that brings Slalom's Salesforce delivery process directly into VS Code. Each command activates a purpose-built AI agent that understands a specific phase of the SDLC — from discovery through to release — and works within your project's standards, JIRA board, and Salesforce org without you having to switch context.
 
-**Extension version:** {EXTENSION_VERSION} · **Instructions:** {INSTRUCTIONS_STATUS}
+**Extension version:** {EXTENSION_VERSION} · **Instructions:** {INSTRUCTIONS_STATUS}{UPDATE_STATUS}
 
 ---
 

@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as https from "node:https";
 import * as crypto from "node:crypto";
 import AdmZip from "adm-zip";
 import {
@@ -12,10 +11,13 @@ import {
   type CacheManifest,
   type SyncMetadata,
 } from "@sdlc/core";
+import { getGitHubToken, githubGet, downloadAsset, type GitHubRelease } from "./github";
 
 const INSTRUCTIONS_OWNER = "Slalom";
 const INSTRUCTIONS_REPO  = "salesforce-devops";
 const INSTRUCTIONS_ASSET_NAME = "instructions.zip";
+const VSIX_ASSET_PREFIX = "slalom-sdlc-";
+const VSIX_ASSET_SUFFIX = ".vsix";
 
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -27,11 +29,18 @@ export interface SyncStatus {
   usingCache: boolean;
 }
 
-interface GitHubRelease {
-  tag_name: string;
-  published_at: string;
-  assets: Array<{ id: number; name: string; url: string }>;
+/** A release that ships a real `.vsix` extension build, as opposed to an
+ *  instructions-only release. Consumed by extensionUpdate.ts and the /about command. */
+export interface LatestExtensionRelease {
+  tag: string;
+  htmlUrl: string;
+  vsixAsset: { name: string; url: string; size: number; digest: string | null };
 }
+
+// Read via getLatestKnownRelease() below. Written opportunistically inside runSync() —
+// piggybacks on the release object the daily instruction sync already fetches, so
+// checking for a newer extension build costs zero extra GitHub API calls.
+const LATEST_RELEASE_INFO_KEY = "slalom-sdlc.latestKnownRelease.info";
 
 export class InstructionSyncService {
   private readonly cacheDir = DEFAULT_CACHE_DIR;
@@ -59,6 +68,12 @@ export class InstructionSyncService {
     return { ...meta, usingCache };
   }
 
+  /** Most recent GitHub release the daily sync has observed that ships a `.vsix` — i.e. a
+   *  real extension build. Null until a sync has observed one. */
+  getLatestKnownRelease(context: vscode.ExtensionContext): LatestExtensionRelease | null {
+    return context.globalState.get<LatestExtensionRelease>(LATEST_RELEASE_INFO_KEY) ?? null;
+  }
+
   // ── Private ──────────────────────────────────────────────────────────────
 
   private async runSync(
@@ -70,7 +85,7 @@ export class InstructionSyncService {
     const updatedMeta: SyncMetadata = { ...meta, lastCheck: now, lastError: null };
 
     try {
-      const token = await this.getGitHubToken(context, opts.interactive);
+      const token = await getGitHubToken(context, opts.interactive);
       if (!token) {
         updatedMeta.lastError = "No GitHub token available. Sign in to GitHub in VS Code or set SLALOM_SDLC_GITHUB_TOKEN.";
         writeSyncMetadata(this.currentDir, updatedMeta);
@@ -78,6 +93,27 @@ export class InstructionSyncService {
       }
 
       const release = await this.fetchLatestRelease(token);
+
+      // Record this regardless of how the instructions sync itself turns out — a release
+      // that ships a .vsix means a real extension build exists, which is exactly what the
+      // update nudge/self-updater needs to know about.
+      const vsixAsset = release.assets.find(
+        (a) => a.name.startsWith(VSIX_ASSET_PREFIX) && a.name.endsWith(VSIX_ASSET_SUFFIX)
+      );
+      if (vsixAsset) {
+        const info: LatestExtensionRelease = {
+          tag: release.tag_name,
+          htmlUrl: release.html_url,
+          vsixAsset: {
+            name: vsixAsset.name,
+            url: vsixAsset.url,
+            size: vsixAsset.size,
+            digest: vsixAsset.digest,
+          },
+        };
+        await context.globalState.update(LATEST_RELEASE_INFO_KEY, info);
+      }
+
       const asset = release.assets.find((a) => a.name === INSTRUCTIONS_ASSET_NAME);
       if (!asset) {
         updatedMeta.lastError = `Release ${release.tag_name} has no asset named "${INSTRUCTIONS_ASSET_NAME}".`;
@@ -93,7 +129,7 @@ export class InstructionSyncService {
         return;
       }
 
-      const zipBuffer = await this.downloadAsset(asset.url, token);
+      const zipBuffer = await downloadAsset(asset.url, token);
       const stagingDir = path.join(this.cacheDir, `pending-${Date.now()}`);
       this.extractAndValidate(zipBuffer, stagingDir);
       this.atomicSwap(stagingDir);
@@ -107,79 +143,11 @@ export class InstructionSyncService {
     }
   }
 
-  private async getGitHubToken(
-    context: vscode.ExtensionContext,
-    interactive: boolean
-  ): Promise<string | null> {
-    // 1. VS Code GitHub auth session.
-    //    - Background sync (silent): reuse an existing session only; never prompt.
-    //    - Manual sync (interactive): allow VS Code to prompt the user to sign in / grant the
-    //      `repo` scope once, so the Copilot login can be upgraded to read private releases.
-    try {
-      const session = await vscode.authentication.getSession(
-        "github",
-        ["repo"],
-        interactive ? { createIfNone: true } : { silent: true }
-      );
-      if (session?.accessToken) return session.accessToken;
-    } catch {
-      // auth provider unavailable or user cancelled the prompt — fall through to env vars
-    }
-
-    // 2. Environment variable fallbacks for headless / non-VS Code usage
-    return (
-      process.env.SLALOM_SDLC_GITHUB_TOKEN ??
-      process.env.GITHUB_TOKEN ??
-      process.env.GH_TOKEN ??
-      null
-    );
-  }
-
   private fetchLatestRelease(token: string): Promise<GitHubRelease> {
-    return this.githubGet<GitHubRelease>(
+    return githubGet<GitHubRelease>(
       `/repos/${INSTRUCTIONS_OWNER}/${INSTRUCTIONS_REPO}/releases/latest`,
       token
     );
-  }
-
-  private downloadAsset(assetApiUrl: string, token: string): Promise<Buffer> {
-    // GitHub asset download requires Accept: application/octet-stream + auth
-    const url = new URL(assetApiUrl);
-    return new Promise((resolve, reject) => {
-      const options = {
-        hostname: url.hostname,
-        path: url.pathname + url.search,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/octet-stream",
-          "User-Agent": "slalom-sdlc-vscode",
-        },
-      };
-
-      const follow = (redirectUrl: string) => {
-        const rUrl = new URL(redirectUrl);
-        https.get({ hostname: rUrl.hostname, path: rUrl.pathname + rUrl.search, headers: { "User-Agent": "slalom-sdlc-vscode" } }, collect);
-      };
-
-      const collect = (res: import("node:http").IncomingMessage) => {
-        if (res.statusCode === 302 || res.statusCode === 301) {
-          follow(res.headers.location!);
-          res.resume();
-          return;
-        }
-        if (res.statusCode !== 200) {
-          reject(new Error(`Asset download failed: HTTP ${res.statusCode}`));
-          res.resume();
-          return;
-        }
-        const chunks: Buffer[] = [];
-        res.on("data", (c: Buffer) => chunks.push(c));
-        res.on("end", () => resolve(Buffer.concat(chunks)));
-        res.on("error", reject);
-      };
-
-      https.get(options, collect).on("error", reject);
-    });
   }
 
   private extractAndValidate(zipBuffer: Buffer, stagingDir: string): void {
@@ -239,43 +207,5 @@ export class InstructionSyncService {
     if (fs.existsSync(oldDir)) {
       fs.rmSync(oldDir, { recursive: true, force: true });
     }
-  }
-
-  private githubGet<T>(apiPath: string, token: string): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const options = {
-        hostname: "api.github.com",
-        path: apiPath,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "slalom-sdlc-vscode",
-        },
-      };
-
-      https.get(options, (res) => {
-        if (res.statusCode === 404) {
-          reject(new Error(`GitHub API 404: ${apiPath}. Check repo name and token permissions.`));
-          res.resume();
-          return;
-        }
-        if (res.statusCode !== 200) {
-          reject(new Error(`GitHub API error: HTTP ${res.statusCode} for ${apiPath}`));
-          res.resume();
-          return;
-        }
-        const chunks: Buffer[] = [];
-        res.on("data", (c: Buffer) => chunks.push(c));
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(Buffer.concat(chunks).toString("utf-8")) as T);
-          } catch (e) {
-            reject(new Error(`Failed to parse GitHub API response: ${String(e)}`));
-          }
-        });
-        res.on("error", reject);
-      }).on("error", reject);
-    });
   }
 }
