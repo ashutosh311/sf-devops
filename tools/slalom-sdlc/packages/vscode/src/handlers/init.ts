@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { scaffoldRepo, type SdlcConfig } from "@sdlc/core";
+import { scaffoldRepo, resolveProjectKey, type SdlcConfig } from "@sdlc/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { runVSCodeInterview } from "../interview";
 
@@ -44,12 +44,16 @@ function buildSummary(
   const lines: string[] = [];
 
   lines.push(`## ${isReconfigure ? "Reconfigured" : "Initialised"}: ${config.project.name}\n`);
-  const pmKey = config.alm?.tool === "ADO" ? config.alm.project : (config.alm?.projectKey ?? config.project.jiraKey ?? config.project.name);
-  const pmUrl = config.alm?.tool === "ADO"
-    ? config.alm.organization
-    : (config.alm?.tool === "JIRA" ? config.alm.site : config.project.jiraSite) ?? "";
-  const pmLabel = config.alm?.tool === "ADO" ? "ADO Project" : "JIRA";
-  lines.push(`- **${pmLabel}**: [${pmKey}](${pmUrl})`);
+  const pmKey = resolveProjectKey(config);
+  if (config.alm?.tool === "LOCAL") {
+    lines.push(`- **Work items**: Local files only (prefix \`${pmKey}\`)`);
+  } else {
+    const pmUrl = config.alm?.tool === "ADO"
+      ? config.alm.organization
+      : (config.alm?.tool === "JIRA" ? config.alm.site : config.project.jiraSite) ?? "";
+    const pmLabel = config.alm?.tool === "ADO" ? "ADO Project" : "JIRA";
+    lines.push(`- **${pmLabel}**: [${pmKey}](${pmUrl})`);
+  }
   lines.push(`- **Sandbox org**: \`${config.salesforce.orgs.sandbox}\``);
   lines.push(`- **Phases**: ${config.phases.join(", ")}`);
   lines.push(`- **Sprint length**: ${config.team.sprintLengthWeeks} week(s)\n`);

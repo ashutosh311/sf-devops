@@ -59,11 +59,17 @@ export const AdoAlmSchema = z.object({
   project: z.string().min(1),
 });
 
-export const AlmSchema = z.discriminatedUnion("tool", [JiraAlmSchema, AdoAlmSchema]);
+export const LocalAlmSchema = z.object({
+  tool: z.literal("LOCAL"),
+  /** Local work-item key prefix used to name story folders, e.g. LOCAL → LOCAL-001 */
+  keyPrefix: z.string().optional(),
+});
+
+export const AlmSchema = z.discriminatedUnion("tool", [JiraAlmSchema, AdoAlmSchema, LocalAlmSchema]);
 export type AlmConfig = z.infer<typeof AlmSchema>;
 
 /** Returns the active PM tool. Falls back to "JIRA" if alm is not set. */
-export function resolveAlmTool(config: SdlcConfig): "JIRA" | "ADO" {
+export function resolveAlmTool(config: SdlcConfig): "JIRA" | "ADO" | "LOCAL" {
   return config.alm?.tool ?? "JIRA";
 }
 
@@ -71,6 +77,7 @@ export function resolveAlmTool(config: SdlcConfig): "JIRA" | "ADO" {
 export function resolveProjectKey(config: SdlcConfig): string {
   if (config.alm?.tool === "ADO") return config.alm.project;
   if (config.alm?.tool === "JIRA" && config.alm.projectKey) return config.alm.projectKey;
+  if (config.alm?.tool === "LOCAL") return config.alm.keyPrefix ?? config.project.jiraKey ?? config.project.name;
   return config.project.jiraKey ?? config.project.name;
 }
 
@@ -79,6 +86,7 @@ export function resolveProjectKey(config: SdlcConfig): string {
 export const AdoStatusMapSchema = z.object({
   story: StoryStatusMapSchema,
   epic: EpicStatusMapSchema,
+  subTask: SubTaskStatusMapSchema,
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +150,7 @@ export const SdlcConfigSchema = z.object({
 
 export type SdlcConfig = z.infer<typeof SdlcConfigSchema>;
 export type JiraStatusMap = NonNullable<SdlcConfig["jira"]>["statusMap"];
+export type AdoStatusMap = z.infer<typeof AdoStatusMapSchema>;
 export type Phase = z.infer<typeof PhaseSchema>;
 export type StoryStatusMap = z.infer<typeof StoryStatusMapSchema>;
 export type EpicStatusMap = z.infer<typeof EpicStatusMapSchema>;
@@ -167,3 +176,36 @@ export const DEFAULT_PATHS = {
 export const DEFAULT_STANDARDS = {
   apexCoverageThreshold: 85,
 } satisfies SdlcConfig["standards"];
+
+// Default stage names used when no PM tool is connected (LOCAL mode). Templates
+// still reference {{statusMap.*}} for the conceptual stage labels even though a
+// local project never transitions a remote work item.
+export const DEFAULT_STORY_STATUS_MAP = {
+  backlog: "Backlog",
+  refineInProgress: "In Refinement",
+  readyForDesign: "Ready for Design",
+  designInProgress: "In Design",
+  readyForBuild: "Ready for Build",
+  inDevelopment: "In Development",
+  readyForTest: "Ready for Test",
+  done: "Done",
+} satisfies StoryStatusMap;
+
+export const DEFAULT_EPIC_STATUS_MAP = {
+  notStarted: "To Do",
+  inProgress: "In Progress",
+  done: "Done",
+} satisfies EpicStatusMap;
+
+export const DEFAULT_SUBTASK_STATUS_MAP = {
+  todo: "To Do",
+  inDevelopment: "In Progress",
+  readyForTest: "In Review",
+  done: "Done",
+} satisfies SubTaskStatusMap;
+
+export const DEFAULT_STATUS_MAP = {
+  story: DEFAULT_STORY_STATUS_MAP,
+  epic: DEFAULT_EPIC_STATUS_MAP,
+  subTask: DEFAULT_SUBTASK_STATUS_MAP,
+} satisfies JiraStatusMap;

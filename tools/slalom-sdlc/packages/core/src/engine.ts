@@ -1,5 +1,6 @@
 import Handlebars from "handlebars";
 import type { SdlcConfig } from "./schema.js";
+import { resolveAlmTool, resolveProjectKey, DEFAULT_STATUS_MAP } from "./schema.js";
 import { discoverTemplate } from "./templates/discover.js";
 import { refineTemplate } from "./templates/refine.js";
 import { designTemplate } from "./templates/design.js";
@@ -46,8 +47,46 @@ export function renderPrompt(phase: string, config: SdlcConfig, opts?: RenderOpt
     prerequisiteCheck: (opts?.cacheDir ? readCachedInstruction("prerequisite-check", opts.cacheDir) : null) ?? prerequisiteCheckInstruction,
   };
 
+  // ALM-neutral context so templates can stay tool-agnostic:
+  // - almTool     — "JIRA" | "ADO" | "LOCAL" (defaults to JIRA when alm is absent)
+  // - statusMap    — the active tool's status map (ADO/LOCAL fall back sensibly)
+  // - projectKey   — display-safe project key / identifier for the active tool
+  // - pmToolName   — human name of the active PM tool
+  // - pmMcp        — the MCP that backs the active PM tool
+  // - itemNoun     — what the tool calls a story-level item
+  const almTool = resolveAlmTool(config);
+  const statusMap =
+    almTool === "ADO"
+      ? (config.ado?.statusMap ?? config.jira?.statusMap)
+      : almTool === "LOCAL"
+        ? (config.jira?.statusMap ?? config.ado?.statusMap ?? DEFAULT_STATUS_MAP)
+        : config.jira?.statusMap;
+  const projectKey = resolveProjectKey(config);
+  const pmToolName = almTool === "ADO" ? "Azure DevOps" : almTool === "LOCAL" ? "the PM tool" : "JIRA";
+  const pmMcp = almTool === "ADO" ? "Azure DevOps MCP" : almTool === "LOCAL" ? "a PM MCP" : "Atlassian MCP";
+  const itemNoun = almTool === "ADO" ? "work item" : "story";
+
+  // Fail loudly on misconfiguration: a template that references a status map
+  // ({{statusMap.*}} or the legacy {{jira.statusMap.*}}) with none configured
+  // would otherwise render blank cells silently.
+  if (!statusMap && (raw.includes("{{statusMap.") || raw.includes("{{jira.statusMap."))) {
+    throw new Error(
+      `Template '${phase}' references a status map but none is configured (set jira.statusMap or ado.statusMap).`
+    );
+  }
+
   const compiled = Handlebars.compile(raw, { noEscape: true });
-  return compiled({ ...config, phases: phaseFlags, instructions });
+  return compiled({
+    ...config,
+    phases: phaseFlags,
+    instructions,
+    almTool,
+    statusMap,
+    projectKey,
+    pmToolName,
+    pmMcp,
+    itemNoun,
+  });
 }
 
 export function renderAllPrompts(config: SdlcConfig, opts?: RenderOptions): Record<string, string> {

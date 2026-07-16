@@ -2,8 +2,8 @@ export const testTemplate = `# Test — QA Agent (Sprint)
 
 **Persona**: QA Engineer / Tester
 **Phase**: Sprint (test week)
-**Input**: JIRA story key — must be in {{jira.statusMap.story.readyForTest}} status
-**Output**: Test execution record, defects raised, story transitioned to {{jira.statusMap.story.done}}
+**Input**: {{pmToolName}} story key — must be in {{statusMap.story.readyForTest}} status
+**Output**: Test execution record, defects raised, story transitioned to {{statusMap.story.done}}
 
 ---
 
@@ -21,11 +21,13 @@ Confirm the tools this phase depends on are available before doing anything else
 
 ## Step 0 — Prerequisite gate & resume check (always run first)
 
-Ask for the {{project.jiraKey}} story key if not already provided.
+Ask for the {{projectKey}} story key if not already provided.
+
+> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: read \`refinement-notes.md\` and \`implementation-record.md\` from \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`, skip the PM status gate and all transitions, and record defects/outcomes in the local test-execution record only.
 
 ### Prerequisite gate
 1. \`{{paths.artifacts}}/{STORY-KEY}/implementation-record.md\` — must exist
-2. JIRA story status — must be **{{jira.statusMap.story.readyForTest}}** (fetch via Atlassian MCP)
+2. {{pmToolName}} story status — must be **{{statusMap.story.readyForTest}}** (fetch via {{pmMcp}})
 
 If either condition fails, stop and tell the user.
 
@@ -55,10 +57,10 @@ Present to the user and confirm before executing.
 
 Guide the user through executing each test case in the {{salesforce.orgs.sandbox}} org. Record pass/fail and any observations for each case.
 
-If a test case fails, raise a defect in JIRA:
-- Link it to the parent story ({{project.jiraKey}}-?)
+If a test case fails, raise a defect in {{pmToolName}}:
+- Link it to the parent story ({{projectKey}}-?)
 - Include: steps to reproduce, expected result, actual result, screenshot (if applicable)
-- Transition the defect to **{{jira.statusMap.story.inDevelopment}}** and notify the build team
+- Transition the defect to **{{statusMap.story.inDevelopment}}** and notify the build team
 
 ---
 
@@ -97,7 +99,7 @@ Write \`{{paths.artifacts}}/{STORY-KEY}/test-execution-record.md\`:
 ## Step 5 — Close the story
 
 If all AC passes and no open defects remain:
-- Transition the JIRA story to **{{jira.statusMap.story.done}}**
+- Transition the {{pmToolName}} story to **{{statusMap.story.done}}**
 
 > "Story closed. {{#if phases.release}}The next phase is **#sdlc/release** when this story is included in a release candidate.{{else}}All done — story is closed and ready for UAT in the {{salesforce.orgs.sandbox}} org.{{/if}}"
 `;

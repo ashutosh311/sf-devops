@@ -37,7 +37,7 @@ DISCOVER           DELIVER — Sprint -1                    DELIVER — Sprint  
 | Agent | Phase | Entry gate | Exit gate |
 |---|---|---|---|
 | `#sdlc/discover` | DISCOVER | Workshop notes / client brief | Backlog pushed to JIRA (`push-record.md` exists), current-state synthesis complete, MVP scope approved |
-| `#sdlc/refine` | Sprint -1 (BA / FL) | Story status = **To Do** | Story has Gherkin AC, status = **Ready for Design** |
+| `#sdlc/refine` | Sprint -1 (BA / FL) | An ALM story key (JIRA / ADO, status = **To Do**) **or** local `04 - Backlog/` materials (no PM tool) | Story has Gherkin AC — status = **Ready for Design** (ALM mode) or `refinement-notes.md` written into the backlog story folder (Local mode) |
 | `#sdlc/design` | Sprint -1 (TA / TL) | Story status = **Ready for Design** | `solution-design.md` written, design posted to JIRA, sub-tasks created, status = **Ready for Build** |
 | `#sdlc/build` | Sprint | Story status = **Ready for Build**, solution-design.md exists | Code deployed, PR raised, status = **Ready for Test** |
 | `#sdlc/test` | Sprint +1 | Story status = Ready for Test | Test report written, defects in JIRA, status = Done or Defect |

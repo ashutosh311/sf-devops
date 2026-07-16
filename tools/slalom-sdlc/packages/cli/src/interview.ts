@@ -17,6 +17,7 @@ import {
   fetchJiraStatuses,
   type JiraStatus,
   type JiraStatusMap,
+  type AdoStatusMap,
   DEFAULT_PATHS,
   DEFAULT_STANDARDS,
   TOOL_VERSION,
@@ -44,7 +45,10 @@ export async function promptOutputDir(override?: string): Promise<string> {
 
 export async function collectStatusMapOnly(
   existing: SdlcConfig
-): Promise<JiraStatusMap> {
+): Promise<JiraStatusMap | AdoStatusMap> {
+  if (existing.alm?.tool === "ADO") {
+    return collectAdoStatusMap(existing);
+  }
   return collectStatusMap(
     existing.project.jiraEmail ?? "",
     existing.project.jiraSite ?? "",
@@ -55,6 +59,16 @@ export async function collectStatusMapOnly(
 
 export async function runInterview(existing?: Partial<SdlcConfig>): Promise<InterviewResult> {
   const answers = await collectAnswers(existing);
+
+  if (answers.pmTool === "LOCAL") {
+    return { config: buildLocalConfig(answers) };
+  }
+
+  if (answers.pmTool === "ADO") {
+    const statusMap = await collectAdoStatusMap(existing);
+    return { config: buildAdoConfig(answers, statusMap) };
+  }
+
   const statusMap = await collectStatusMap(
     answers.jiraEmail,
     answers.jiraSite,
@@ -62,7 +76,7 @@ export async function runInterview(existing?: Partial<SdlcConfig>): Promise<Inte
     existing
   );
 
-  return { config: buildConfig(answers, statusMap) };
+  return { config: buildJiraConfig(answers, statusMap) };
 }
 
 // ── Answer collection ─────────────────────────────────────────────────────────
@@ -278,9 +292,48 @@ function placeholderStatusMap(): JiraStatusMap {
   };
 }
 
+// ── Azure DevOps status mapping ───────────────────────────────────────────────
+
+async function collectAdoStatusMap(existing?: Partial<SdlcConfig>): Promise<AdoStatusMap> {
+  console.log("\n── Azure DevOps Workflow ──────────────────────────────────────");
+  console.log("\n  Enter your Azure DevOps work-item states:\n");
+
+  const ex = existing?.ado?.statusMap;
+  const ask = (label: string, def?: string) => input({ message: label, default: def });
+
+  console.log("  User Stories:");
+  const story: AdoStatusMap["story"] = {
+    backlog:          await ask(STORY_GATE_LABELS.backlog,          ex?.story.backlog          ?? "New"),
+    refineInProgress: await ask(STORY_GATE_LABELS.refineInProgress, ex?.story.refineInProgress ?? "In Refinement"),
+    readyForDesign:   await ask(STORY_GATE_LABELS.readyForDesign,   ex?.story.readyForDesign   ?? "Ready for Design"),
+    designInProgress: await ask(STORY_GATE_LABELS.designInProgress, ex?.story.designInProgress ?? "In Design"),
+    readyForBuild:    await ask(STORY_GATE_LABELS.readyForBuild,    ex?.story.readyForBuild    ?? "Ready for Build"),
+    inDevelopment:    await ask(STORY_GATE_LABELS.inDevelopment,    ex?.story.inDevelopment    ?? "Active"),
+    readyForTest:     await ask(STORY_GATE_LABELS.readyForTest,     ex?.story.readyForTest     ?? "Ready for Test"),
+    done:             await ask(STORY_GATE_LABELS.done,             ex?.story.done             ?? "Closed"),
+  };
+
+  console.log("\n  Epics / Features:");
+  const epic: AdoStatusMap["epic"] = {
+    notStarted: await ask(EPIC_GATE_LABELS.notStarted, ex?.epic.notStarted ?? "New"),
+    inProgress: await ask(EPIC_GATE_LABELS.inProgress, ex?.epic.inProgress ?? "Active"),
+    done:       await ask(EPIC_GATE_LABELS.done,       ex?.epic.done       ?? "Closed"),
+  };
+
+  console.log("\n  Tasks:");
+  const subTask: AdoStatusMap["subTask"] = {
+    todo:          await ask(SUBTASK_GATE_LABELS.todo,          ex?.subTask.todo          ?? "To Do"),
+    inDevelopment: await ask(SUBTASK_GATE_LABELS.inDevelopment, ex?.subTask.inDevelopment ?? "In Progress"),
+    readyForTest:  await ask(SUBTASK_GATE_LABELS.readyForTest,  ex?.subTask.readyForTest  ?? "In Review"),
+    done:          await ask(SUBTASK_GATE_LABELS.done,          ex?.subTask.done          ?? "Done"),
+  };
+
+  return { story, epic, subTask };
+}
+
 // ── Config assembly ───────────────────────────────────────────────────────────
 
-function buildConfig(answers: InterviewAnswers, statusMap: JiraStatusMap): SdlcConfig {
+function buildJiraConfig(answers: InterviewAnswers, statusMap: JiraStatusMap): SdlcConfig {
   return {
     version: CONFIG_VERSION,
     generatedAt: new Date().toISOString(),
@@ -290,6 +343,12 @@ function buildConfig(answers: InterviewAnswers, statusMap: JiraStatusMap): SdlcC
       jiraKey:    answers.jiraKey.toUpperCase(),
       jiraSite:   answers.jiraSite,
       jiraEmail:  answers.jiraEmail,
+    },
+    alm: {
+      tool: "JIRA",
+      projectKey: answers.jiraKey.toUpperCase(),
+      site: answers.jiraSite,
+      email: answers.jiraEmail,
     },
     phases: answers.phases as Phase[],
     team: {
@@ -308,13 +367,79 @@ function buildConfig(answers: InterviewAnswers, statusMap: JiraStatusMap): SdlcC
   };
 }
 
+function buildAdoConfig(answers: InterviewAnswers, statusMap: AdoStatusMap): SdlcConfig {
+  return {
+    version: CONFIG_VERSION,
+    generatedAt: new Date().toISOString(),
+    toolVersion: TOOL_VERSION,
+    project: {
+      name: answers.projectName,
+    },
+    alm: {
+      tool: "ADO",
+      organization: answers.adoOrganization,
+      project: answers.adoProject,
+    },
+    phases: answers.phases as Phase[],
+    team: {
+      sprintLengthWeeks:   answers.sprintLengthWeeks,
+      estimationApproach:  answers.estimationApproach,
+    },
+    salesforce: {
+      orgs: { sandbox: answers.orgSandbox },
+    },
+    standards: {
+      apexCoverageThreshold: answers.apexCoverageThreshold,
+    },
+    ado: { statusMap },
+    branching: "gitflow",
+    paths: DEFAULT_PATHS,
+  };
+}
+
+function buildLocalConfig(answers: InterviewAnswers): SdlcConfig {
+  const keyPrefix = (answers.localKeyPrefix || "LOCAL").trim().toUpperCase();
+  return {
+    version: CONFIG_VERSION,
+    generatedAt: new Date().toISOString(),
+    toolVersion: TOOL_VERSION,
+    project: {
+      name: answers.projectName,
+    },
+    alm: {
+      tool: "LOCAL",
+      keyPrefix,
+    },
+    phases: answers.phases as Phase[],
+    team: {
+      sprintLengthWeeks:   answers.sprintLengthWeeks,
+      estimationApproach:  answers.estimationApproach,
+    },
+    salesforce: {
+      orgs: { sandbox: answers.orgSandbox },
+    },
+    standards: {
+      apexCoverageThreshold: answers.apexCoverageThreshold,
+    },
+    // No jira/ado block — LOCAL projects render the built-in DEFAULT_STATUS_MAP
+    // stage labels and never transition a remote work item.
+    branching: "gitflow",
+    paths: DEFAULT_PATHS,
+  };
+}
+
 function resolveExisting(questionId: string, existing?: Partial<SdlcConfig>): unknown {
   if (!existing) return undefined;
+  const alm = existing.alm;
   const map: Record<string, unknown> = {
     projectName:           existing.project?.name,
-    jiraKey:               existing.project?.jiraKey,
-    jiraSite:              existing.project?.jiraSite,
-    jiraEmail:             existing.project?.jiraEmail,
+    pmTool:                alm?.tool ?? "JIRA",
+    jiraKey:               (alm?.tool === "JIRA" ? alm.projectKey : undefined) ?? existing.project?.jiraKey,
+    jiraSite:              (alm?.tool === "JIRA" ? alm.site : undefined) ?? existing.project?.jiraSite,
+    jiraEmail:             (alm?.tool === "JIRA" ? alm.email : undefined) ?? existing.project?.jiraEmail,
+    adoOrganization:       alm?.tool === "ADO" ? alm.organization : undefined,
+    adoProject:            alm?.tool === "ADO" ? alm.project : undefined,
+    localKeyPrefix:        alm?.tool === "LOCAL" ? alm.keyPrefix : undefined,
     phases:                existing.phases,
     sprintLengthWeeks:     existing.team?.sprintLengthWeeks,
     estimationApproach:    existing.team?.estimationApproach,

@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsup && node --test test/*.test.mjs"
   },
   "dependencies": {
     "handlebars": "^4.7.8",

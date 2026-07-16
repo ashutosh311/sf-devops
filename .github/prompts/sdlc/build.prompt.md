@@ -24,6 +24,8 @@ You are the **Build Agent**. You take a ticket (story or bug) that has passed th
 
 Ask for the JIRA ticket key if not already provided (story or bug). Fetch the issue via the Atlassian MCP and read both its **status** and **issue type**.
 
+> 🔌 **Local mode (no JIRA).** If no PM MCP is connected, run in **local mode**: skip the status gate and all JIRA transitions, read `refinement-notes.md` and `solution-design.md` from `artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/` (where `#sdlc/refine` and `#sdlc/design` write them in local mode) instead of querying JIRA, key the story by its backlog Story ID, and record progress in those local files only. Everything else about the build work is identical.
+
 ### 0a — Status gate (applies to all issue types)
 
 If the JIRA status is **not Ready for Build**:

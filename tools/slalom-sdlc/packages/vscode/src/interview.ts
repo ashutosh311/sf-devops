@@ -26,6 +26,10 @@ export async function runVSCodeInterview(
   const answers = await collectAnswers(existing);
   if (!answers) return undefined;
 
+  if (answers.pmTool === "LOCAL") {
+    return buildLocalConfig(answers);
+  }
+
   const statusMap = await collectStatusMap(answers, existing);
   if (!statusMap) return undefined;
 
@@ -347,6 +351,34 @@ function buildConfig(
   };
 }
 
+function buildLocalConfig(answers: InterviewAnswers): SdlcConfig {
+  const keyPrefix = (answers.localKeyPrefix || "LOCAL").trim().toUpperCase();
+  return {
+    version: CONFIG_VERSION,
+    generatedAt: new Date().toISOString(),
+    toolVersion: TOOL_VERSION,
+    project: {
+      name: answers.projectName,
+    },
+    alm: { tool: "LOCAL", keyPrefix },
+    phases: answers.phases as Phase[],
+    team: {
+      sprintLengthWeeks:  answers.sprintLengthWeeks,
+      estimationApproach: answers.estimationApproach,
+    },
+    salesforce: {
+      orgs: { sandbox: answers.orgSandbox },
+    },
+    standards: {
+      apexCoverageThreshold: answers.apexCoverageThreshold,
+    },
+    // No jira/ado block — LOCAL projects render the built-in default stage
+    // labels and never transition a remote work item.
+    branching: "gitflow",
+    paths: DEFAULT_PATHS,
+  };
+}
+
 function resolveExisting(questionId: string, existing?: Partial<SdlcConfig>): unknown {
   if (!existing) return undefined;
   const almTool = existing.alm?.tool ?? (existing.project?.jiraKey ? "JIRA" : undefined);
@@ -358,6 +390,7 @@ function resolveExisting(questionId: string, existing?: Partial<SdlcConfig>): un
     jiraEmail:             existing.project?.jiraEmail ?? (existing.alm?.tool === "JIRA" ? existing.alm.email : undefined),
     adoOrganization:       existing.alm?.tool === "ADO" ? existing.alm.organization : undefined,
     adoProject:            existing.alm?.tool === "ADO" ? existing.alm.project : undefined,
+    localKeyPrefix:        existing.alm?.tool === "LOCAL" ? existing.alm.keyPrefix : undefined,
     phases:                existing.phases,
     sprintLengthWeeks:     existing.team?.sprintLengthWeeks,
     estimationApproach:    existing.team?.estimationApproach,

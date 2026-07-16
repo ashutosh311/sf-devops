@@ -71,7 +71,7 @@ const regenerateCommand = new Command("regenerate")
 // ── reconfigure --jira-only ──────────────────────────────────────────────────
 
 const reconfigureCommand = new Command("reconfigure")
-  .description("Re-map JIRA statuses only and regenerate prompts")
+  .description("Re-map PM-tool statuses only and regenerate prompts")
   .requiredOption("-o, --output <dir>", "Target repo path")
   .action(async (opts: { output: string }) => {
     const outputDir = path.resolve(opts.output);
@@ -82,9 +82,22 @@ const reconfigureCommand = new Command("reconfigure")
       process.exit(1);
     }
 
-    console.log("\n── JIRA Workflow ──────────────────────────────────────────────");
+    if (existing.alm?.tool === "LOCAL") {
+      console.log(
+        "\n  ℹ  This is a LOCAL project (no JIRA / Azure DevOps) — there are no PM-tool\n" +
+        "     statuses to re-map. Regenerating prompts from the existing config...\n"
+      );
+      const updated = { ...existing, generatedAt: new Date().toISOString() };
+      const scaffoldResult = await scaffoldRepo(updated, outputDir);
+      printSummary(updated, outputDir, scaffoldResult, true);
+      return;
+    }
+
     const statusMap = await collectStatusMapOnly(existing);
-    const updated   = { ...existing, jira: { statusMap }, generatedAt: new Date().toISOString() };
+    const updated: typeof existing =
+      existing.alm?.tool === "ADO"
+        ? { ...existing, ado: { statusMap: statusMap as NonNullable<typeof existing.ado>["statusMap"] }, generatedAt: new Date().toISOString() }
+        : { ...existing, jira: { statusMap: statusMap as NonNullable<typeof existing.jira>["statusMap"] }, generatedAt: new Date().toISOString() };
 
     const scaffoldResult = await scaffoldRepo(updated, outputDir);
     printSummary(updated, outputDir, scaffoldResult, true);

@@ -27,7 +27,7 @@ export interface Question<T = unknown> {
 
 export interface InterviewAnswers {
   projectName: string;
-  pmTool: "JIRA" | "ADO";
+  pmTool: "JIRA" | "ADO" | "LOCAL";
   // JIRA-specific (only set when pmTool === "JIRA")
   jiraKey: string;
   jiraSite: string;
@@ -35,6 +35,8 @@ export interface InterviewAnswers {
   // ADO-specific (only set when pmTool === "ADO")
   adoOrganization: string;
   adoProject: string;
+  // LOCAL-specific (only set when pmTool === "LOCAL")
+  localKeyPrefix: string;
   phases: Phase[];
   sprintLengthWeeks: number;
   estimationApproach: EstimationApproach;
@@ -69,11 +71,12 @@ export const QUESTIONS: Question[] = [
   {
     id: "pmTool",
     section: "Project",
-    label: "Project management tool",
+    label: "Where do work items / tickets live?",
     type: "select",
     options: [
       { label: "JIRA (Atlassian)", value: "JIRA" },
       { label: "Azure DevOps", value: "ADO" },
+      { label: "Local files only (no JIRA / Azure DevOps)", value: "LOCAL" },
     ],
     default: "JIRA",
   },
@@ -83,7 +86,7 @@ export const QUESTIONS: Question[] = [
     label: "JIRA project key",
     hint: "e.g. ACME",
     type: "text",
-    when: (a) => (a as Partial<InterviewAnswers>).pmTool !== "ADO",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool === "JIRA",
     validate: (v) =>
       /^[A-Z][A-Z0-9]+$/.test(String(v).trim().toUpperCase())
         ? true
@@ -95,7 +98,7 @@ export const QUESTIONS: Question[] = [
     label: "JIRA site URL",
     hint: "e.g. https://acme.atlassian.net",
     type: "text",
-    when: (a) => (a as Partial<InterviewAnswers>).pmTool !== "ADO",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool === "JIRA",
     validate: (v) => {
       try {
         new URL(String(v));
@@ -110,7 +113,7 @@ export const QUESTIONS: Question[] = [
     section: "Project",
     label: "Atlassian account email",
     type: "text",
-    when: (a) => (a as Partial<InterviewAnswers>).pmTool !== "ADO",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool === "JIRA",
     validate: (v) =>
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).trim())
         ? true
@@ -140,6 +143,19 @@ export const QUESTIONS: Question[] = [
     type: "text",
     when: (a) => (a as Partial<InterviewAnswers>).pmTool === "ADO",
     validate: (v) => (String(v).trim().length > 0 ? true : "Required"),
+  },
+  {
+    id: "localKeyPrefix",
+    section: "Project",
+    label: "Local work-item key prefix",
+    hint: "e.g. LOCAL → LOCAL-001; used to name backlog story folders",
+    type: "text",
+    default: "LOCAL",
+    when: (a) => (a as Partial<InterviewAnswers>).pmTool === "LOCAL",
+    validate: (v) =>
+      /^[A-Z][A-Z0-9]+$/.test(String(v).trim().toUpperCase())
+        ? true
+        : "Must be uppercase letters and numbers (e.g. LOCAL)",
   },
 
   // ── SDLC Phases ──────────────────────────────────────────────────────────
