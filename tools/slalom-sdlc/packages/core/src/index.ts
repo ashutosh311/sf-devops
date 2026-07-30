@@ -8,3 +8,4 @@ export * from "./standards.js";
 export * from "./cache.js";
 export { pushBacklogAdoTemplate, pushBacklogJiraTemplate } from "./templates/push-backlog.js";
 export { syncPmAdoTemplate, syncPmJiraTemplate } from "./templates/sync-pm.js";
+export { dataDictionaryTemplate } from "./templates/data-dictionary.js";

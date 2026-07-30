@@ -1,13 +1,11 @@
 import * as vscode from "vscode";
-import * as fs from "node:fs";
 import * as path from "node:path";
 import { renderPrompt, CACHE_CURRENT_DIR, type SdlcConfig, resolveProjectKey, extractStoryKey } from "@sdlc/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
-import { readBacklogWorkbook, type BacklogStory, type BacklogEpic } from "../backlog";
+import { isDataDictionaryToken, openDataDictionary } from "./data-dictionary";
+import { scanEligibleStories, pickStoryScope, storyFolderPath, type EligibleStory } from "./backlog-scope";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-type DesignMode = "local" | "jira";
 
 interface DesignCtx {
   root: string;
@@ -16,8 +14,6 @@ interface DesignCtx {
   stream: vscode.ChatResponseStream;
   token: vscode.CancellationToken;
 }
-
-type EligibleStory = BacklogStory & { epicLabel: string };
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -41,10 +37,29 @@ export async function handleDesign(
 
   const ctx: DesignCtx = { root, config, request, stream, token };
 
+  // Data dictionary: explicit token → run immediately.
+  if (isDataDictionaryToken(request.prompt)) {
+    return openDataDictionary(root, config, request, stream, "design");
+  }
+
   // If the user already typed a PM key in the prompt → skip menu, PM mode
   const inlineKey = extractStoryKey(request.prompt, resolveProjectKey(config));
   if (inlineKey) {
     return runAgent(ctx, request.prompt.trim());
+  }
+
+  // ── Top-level action menu ────────────────────────────────────────────────────
+  const action = await vscode.window.showQuickPick(
+    [
+      { label: "$(rocket) Design a story", description: "solution design, data model, sub-tasks", value: "design" as const },
+      { label: "$(book) Data Dictionary", description: "build/maintain object-reference docs (Logical fidelity)", value: "data-dictionary" as const },
+    ],
+    { title: "Design Agent", placeHolder: "What would you like to do?", ignoreFocusOut: true }
+  );
+  if (!action) { stream.markdown("Design cancelled."); return; }
+
+  if (action.value === "data-dictionary") {
+    return openDataDictionary(root, config, request, stream, "design");
   }
 
   // ── Mode picker ──────────────────────────────────────────────────────────────
@@ -53,12 +68,12 @@ export async function handleDesign(
       {
         label: "$(folder) Local mode",
         description: "work from backlog + refinement-notes.md — no JIRA required",
-        mode: "local" as DesignMode,
+        mode: "local" as const,
       },
       {
         label: "$(cloud) JIRA mode",
         description: "fetch story status, create sub-tasks, transition in JIRA",
-        mode: "jira" as DesignMode,
+        mode: "jira" as const,
       },
     ],
     {
@@ -123,39 +138,18 @@ async function runJiraMode(ctx: DesignCtx): Promise<void> {
 async function runLocalMode(ctx: DesignCtx): Promise<void> {
   const { root, config, stream } = ctx;
 
-  const backlogPath = path.join(
-    root, config.paths.artifacts, "04 - Backlog", "Backlog Tracker.xlsx"
-  );
-  if (!fs.existsSync(backlogPath)) {
+  const { eligible, backlogPath, backlogExists } = await scanEligibleStories(root, config, {
+    requireFiles: ["refinement-notes.md"],
+    excludeFiles: ["solution-design.md"],
+  });
+
+  if (!backlogExists) {
     stream.markdown(
       `⛔ No backlog found at \`${backlogPath}\`.\n\n` +
       "Run `@slalom-sdlc /discover manage-backlog` to generate the backlog first."
     );
     return;
   }
-
-  const data = await readBacklogWorkbook(backlogPath);
-  const epicMap = new Map<string, BacklogEpic>(
-    (data.epics ?? []).filter((e): e is BacklogEpic & { id: string } => !!e.id).map((e) => [e.id, e])
-  );
-
-  // Find eligible stories: have refinement-notes.md but no solution-design.md yet
-  const eligible: EligibleStory[] = [];
-  for (const story of (data.stories ?? [])) {
-    const key = story.pm_key || story.id;
-    if (!key) continue;
-    const epicId = (story.epic_id || "ungrouped").trim();
-    const base = path.join(
-      root, config.paths.artifacts, "04 - Backlog", "stories", epicId, key
-    );
-    const hasRefinement = fs.existsSync(path.join(base, "refinement-notes.md"));
-    const hasDesign = fs.existsSync(path.join(base, "solution-design.md"));
-    if (hasRefinement && !hasDesign) {
-      const epic = epicMap.get(story.epic_id ?? "");
-      eligible.push({ ...story, epicLabel: epic?.name ?? epicId });
-    }
-  }
-
   if (eligible.length === 0) {
     stream.markdown(
       "ℹ️ No stories are eligible for local design.\n\n" +
@@ -165,74 +159,17 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
     return;
   }
 
-  // ── Scope picker ─────────────────────────────────────────────────────────────
-  const uniqueEpicIds = [...new Set(eligible.map((s) => s.epic_id ?? "ungrouped"))];
-
-  const scopeItems: (vscode.QuickPickItem & { value: string })[] = [
-    {
-      label: "$(checklist) All eligible stories",
-      description: `${eligible.length} story/stories across ${uniqueEpicIds.length} epic(s)`,
-      value: "all",
-    },
-    ...uniqueEpicIds.map((epicId) => {
-      const epicStories = eligible.filter((s) => (s.epic_id ?? "ungrouped") === epicId);
-      const epicLabel = epicStories[0]?.epicLabel ?? epicId;
-      return {
-        label: `$(symbol-class) Epic: ${epicLabel}`,
-        description: `${epicStories.length} story/stories`,
-        value: `epic:${epicId}`,
-      };
-    }),
-    {
-      label: "$(list-ordered) Specific story",
-      description: "pick a single story",
-      value: "story",
-    },
-  ];
-
-  const scopePick = await vscode.window.showQuickPick(scopeItems, {
-    title: "Design Agent — Local Mode",
-    placeHolder: "What would you like to design?",
-    ignoreFocusOut: true,
-  });
-  if (!scopePick) { stream.markdown("Design cancelled."); return; }
-
-  let scoped: EligibleStory[];
-
-  if (scopePick.value === "all") {
-    scoped = eligible;
-  } else if (scopePick.value.startsWith("epic:")) {
-    const epicId = scopePick.value.slice(5);
-    scoped = eligible.filter((s) => (s.epic_id ?? "ungrouped") === epicId);
-  } else {
-    // Specific story picker
-    const storyItems = eligible.map((s) => ({
-      label: `$(symbol-method) ${s.pm_key ?? s.id}`,
-      description: s.user_story?.slice(0, 80) ?? "",
-      detail: `Epic: ${s.epicLabel}`,
-      storyKey: s.pm_key ?? s.id,
-    }));
-    const storyPick = await vscode.window.showQuickPick(storyItems, {
-      title: "Design Agent — Select Story",
-      placeHolder: "Choose a story to design",
-      matchOnDescription: true,
-      ignoreFocusOut: true,
-    });
-    if (!storyPick) { stream.markdown("Design cancelled."); return; }
-    scoped = eligible.filter((s) => (s.pm_key ?? s.id) === storyPick.storyKey);
-  }
+  const scoped = await pickStoryScope(eligible, "Design Agent — Local Mode");
+  if (!scoped) { stream.markdown("Design cancelled."); return; }
 
   // ── Build context message ────────────────────────────────────────────────────
   const storyList = scoped
-    .map((s) => {
-      const key = s.pm_key ?? s.id;
-      const epicId = (s.epic_id ?? "ungrouped").trim();
-      const notesPath = `artifacts/04 - Backlog/stories/${epicId}/${key}/refinement-notes.md`;
-      const designPath = `artifacts/04 - Backlog/stories/${epicId}/${key}/solution-design.md`;
+    .map((s: EligibleStory) => {
+      const folder = path.relative(root, storyFolderPath(root, config, s));
       return (
-        `- **${key}**: ${s.user_story?.slice(0, 100) ?? "(no description)"}\n` +
-        `  Refinement notes: \`${notesPath}\`\n` +
-        `  Write design to: \`${designPath}\``
+        `- **${s.storyKey}**: ${s.user_story?.slice(0, 100) ?? "(no description)"}\n` +
+        `  Refinement notes: \`${path.join(folder, "refinement-notes.md")}\`\n` +
+        `  Write design to: \`${path.join(folder, "solution-design.md")}\``
       );
     })
     .join("\n");

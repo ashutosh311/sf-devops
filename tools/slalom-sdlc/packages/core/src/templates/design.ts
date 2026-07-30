@@ -250,6 +250,15 @@ Once the solution design draft is presented, follow §3–4 of the Org Impact As
 
 Update \`solution-design.md\` with any recommended design adjustments before finalising.
 
+### Update the data dictionary
+
+Once the Data Model section is settled, choose **Data Dictionary** from the Design menu (or run **\`#sdlc/design data-dictionary\`**) for this
+story to capture its objects/fields in the object-reference dictionary at **Logical**
+fidelity (proposed API names/types, intended permission-set access, validation
+rules) — one file per object under \`{{paths.artifacts}}/data-dictionary/objects/\`.
+See \`{{paths.standards}}/data-dictionary.md\`. Link the affected object files from
+the Data Model Changes section of \`solution-design.md\`.
+
 ---
 
 ## Step 4 — Estimation

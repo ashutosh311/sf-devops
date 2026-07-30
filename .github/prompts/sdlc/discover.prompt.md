@@ -36,8 +36,16 @@ Available skills:
 | `#sdlc/discover hub-audit` | `discover/hub-audit.prompt.md` |
 | `#sdlc/discover whats-next` | `discover/whats-next.prompt.md` |
 | `#sdlc/discover registers-to-stories` | `discover/registers-to-stories.prompt.md` |
+| `#sdlc/discover data-dictionary` | `data-dictionary.prompt.md` |
 | `#sdlc/discover set-preferences` _(VS Code only)_ | handled natively in the extension |
 | `#sdlc/discover feedback` _(VS Code only)_ | handled natively in the extension |
+
+> **Menu option — data dictionary.** To capture business entities and their
+> attributes as an object-reference data dictionary, choose **Data Dictionary** from
+> the Discover menu (or run **`#sdlc/discover data-dictionary`**).
+> From discovery it produces **Conceptual** fidelity only — business entity/attribute
+> names, source systems, and ownership; **no** Salesforce `__c` API names, field
+> types, permission sets, or automation. See `devops/standards/data-dictionary.md`.
 
 > ⛔ **Hard boundaries — never cross:**
 > - This agent produces **discovery-phase artefacts only**. No component-level design, field-level data models, or automation logic — those belong exclusively in `#sdlc/design`.

@@ -5,6 +5,8 @@ import { handleInit } from "./handlers/init";
 import { handleAgent } from "./handlers/agent";
 import { handleDiscover } from "./handlers/discover";
 import { handleDesign } from "./handlers/design";
+import { handleBuild } from "./handlers/build";
+import { handleTest } from "./handlers/test";
 import { handleRefine } from "./handlers/refine";
 import { handleFeedback } from "./handlers/feedback";
 import { handleForceSync, handleSyncStatus } from "./handlers/sync";
@@ -67,6 +69,10 @@ export function activate(context: vscode.ExtensionContext): void {
           await handleRefine(request, chatContext, stream, token);
         } else if (request.command === "design") {
           await handleDesign(request, chatContext, stream, token);
+        } else if (request.command === "build") {
+          await handleBuild(request, chatContext, stream, token);
+        } else if (request.command === "test") {
+          await handleTest(request, chatContext, stream, token);
         } else {
           await handleAgent(request, chatContext, stream, token);
         }
@@ -221,9 +227,9 @@ Run \`/init\` again at any time to update the config — existing files are pres
 | \`/about\` | Show this help |
 | \`/init\` | Set up or reconfigure the SDLC for this project |
 | \`/discover\` | Discovery agent — runs a 4-phase engagement (Prepare→Learn→Ideate→Plan); use \`/discover <skill>\` for targeted tasks (e.g. \`process-session\`, \`manage-backlog\`, \`push-backlog\`) |
-| \`/refine PROJ-42\` | Refines a JIRA story — acceptance criteria, open questions, effort estimate |
-| \`/design PROJ-42\` | Technical design agent — solution approach, data model, component breakdown, sub-tasks |
-| \`/build PROJ-42\` | Build agent — scaffolds Apex, LWC, config; reviews with you; deploys to your sandbox |
+| \`/refine PROJ-42\` | Refines a JIRA story — acceptance criteria, open questions, effort estimate; menu offers **Data Dictionary** |
+| \`/design PROJ-42\` | Technical design agent — solution approach, data model, component breakdown, sub-tasks; menu offers **Data Dictionary** |
+| \`/build PROJ-42\` | Build agent — scaffolds Apex, LWC, config; reviews with you; deploys to your sandbox; menu offers **Data Dictionary** |
 | \`/test PROJ-42\` | Test agent — generates test classes and JEST tests, validates coverage |
 | \`/release\` | Release agent — deployment notes, checklist, JIRA transitions |
 | \`/feedback <comment>\` | Send feedback about the tooling — logged to help improve the agents |

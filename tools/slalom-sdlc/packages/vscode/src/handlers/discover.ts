@@ -27,6 +27,7 @@ import { extractFileText, extractPdfImages } from "../extract";
 import { trackFeedback } from "../usage";
 import { pushBacklogAdoTemplate, pushBacklogJiraTemplate, syncPmAdoTemplate, syncPmJiraTemplate } from "@sdlc/core";
 import type { SdlcConfig } from "@sdlc/core";
+import { openDataDictionary } from "./data-dictionary";
 
 // ── Skill catalogue ─────────────────────────────────────────────────────────
 
@@ -49,7 +50,8 @@ type Skill =
   | "prep-workshop"
   | "hub-audit"
   | "whats-next"
-  | "registers-to-stories";
+  | "registers-to-stories"
+  | "data-dictionary";
 
 interface SkillMenuItem extends vscode.QuickPickItem {
   skill: Skill;
@@ -73,6 +75,7 @@ const MENU: SkillMenuItem[] = [
   { skill: "compose-deliverable", label: "$(file) Compose a deliverable", description: "client-facing document" },
   { skill: "hub-audit", label: "$(checklist) Audit the knowledge hub", description: "completeness + phase-gate readiness" },
   { skill: "registers-to-stories", label: "$(list-unordered) Registers to stories", description: "convert register entries to user stories" },
+  { skill: "data-dictionary", label: "$(book) Data Dictionary", description: "build object-reference docs (Conceptual fidelity — business entities)" },
   { skill: "feedback", label: "$(comment) Give feedback", description: "rate the last command / leave a note" },
   { skill: "whats-next", label: "$(question) What's next?", description: "orientation + recommended next step" },
 ];
@@ -118,6 +121,7 @@ export async function handleDiscover(
     case "feedback": return runFeedback(ctx);
     case "push-backlog":
     case "sync-pm": return runDeferred(ctx, skill);
+    case "data-dictionary": return openDataDictionary(ctx.root, ctx.config, ctx.request, ctx.stream, "discover");
     default: return runAdvisory(ctx, skill);
   }
 }

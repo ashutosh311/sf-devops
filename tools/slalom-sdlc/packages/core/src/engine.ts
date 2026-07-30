@@ -7,6 +7,7 @@ import { designTemplate } from "./templates/design.js";
 import { buildTemplate } from "./templates/build.js";
 import { testTemplate } from "./templates/test.js";
 import { releaseTemplate } from "./templates/release.js";
+import { dataDictionaryTemplate } from "./templates/data-dictionary.js";
 import deploymentInstruction          from "../../../../../devops/instructions/deployment.md";
 import orgImpactAssessmentInstruction from "../../../../../devops/instructions/org-impact-assessment.md";
 import prerequisiteCheckInstruction   from "../../../../../devops/instructions/prerequisite-check.md";
@@ -24,6 +25,9 @@ export const PHASE_TEMPLATES: Record<string, string> = {
   build: buildTemplate,
   test: testTemplate,
   release: releaseTemplate,
+  // Cross-cutting sub-command (not an SDLC phase gated by config.phases) —
+  // registered here so it renders through the same Handlebars/cache pipeline.
+  "data-dictionary": dataDictionaryTemplate,
 };
 
 export interface RenderOptions {

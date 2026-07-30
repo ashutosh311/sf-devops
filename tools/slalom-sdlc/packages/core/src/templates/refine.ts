@@ -330,6 +330,13 @@ Write \`refinement-notes.md\` to the location for the active mode:
 {For brownfield only — changes from current system behaviour}
 \`\`\`
 
+> **Optional — seed the data dictionary.** If the acceptance criteria reference
+> business data (entities and attributes), choose **Data Dictionary** from the Refine menu (or run **\`#sdlc/refine data-dictionary\`**) to
+> capture them at **Inferred** fidelity — business attribute names only. This stays
+> strictly business-level: **no** Salesforce field types, API-name decisions,
+> permission sets, or automation (those remain \`#sdlc/design\`'s remit). See
+> \`{{paths.standards}}/data-dictionary.md\`.
+
 ### 4b — Present for review
 
 Present a consolidated review of all stories in the session:

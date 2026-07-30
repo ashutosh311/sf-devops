@@ -82,6 +82,7 @@ When asked to build a new LWC component, follow these steps in order:
 | OmniStudio (OmniScript, IP, DR, DataRaptor) | `devops/standards/omniscript.md` |
 | Declarative config (flows, validation rules, permissions) | `devops/standards/configuration.md` |
 | Data model (objects, fields, relationships) | `devops/standards/data-model.md` |
+| Data dictionary (object-reference docs) | `devops/standards/data-dictionary.md` |
 | Git (branching, commits, PRs) | `devops/standards/git.md` |
 
 ## Non-Negotiable Rules

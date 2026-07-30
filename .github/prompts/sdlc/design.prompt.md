@@ -311,6 +311,16 @@ Key scenarios the #sdlc/test agent should cover.
 
 Flag any gap in `artifacts/hl-system-architecture.md` if this story's design reveals one.
 
+### Update the data dictionary
+
+Once the Data Model section is settled, choose **Data Dictionary** from the Design
+menu (or run **`#sdlc/design data-dictionary`**) for this story to capture its
+objects/fields in the object-reference dictionary at **Logical** fidelity (proposed
+API names/types, intended permission-set access, validation rules) — one file per
+object under `artifacts/data-dictionary/objects/`. See
+`devops/standards/data-dictionary.md`. Link the affected object files from the Data
+Model Changes section above.
+
 ---
 
 ## Step 4 — Estimation

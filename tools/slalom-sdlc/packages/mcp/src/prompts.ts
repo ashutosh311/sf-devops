@@ -114,7 +114,6 @@ function noPhaseResponse(phase: string, enabledPhases: string[]) {
     }],
   };
 }
-
 function errorResponse(err: unknown) {
   return {
     messages: [{

@@ -240,6 +240,13 @@ Write `refinement-notes.md` to the location for the active mode, with the INVEST
 
 Record the mode and the context sources used at the top of the file.
 
+> **Menu option — seed the data dictionary.** If the acceptance criteria reference
+> business data (entities and attributes), choose **Data Dictionary** from the Refine
+> menu (or run **`#sdlc/refine data-dictionary`**) to capture them at **Inferred**
+> fidelity — business attribute names only. This stays strictly business-level:
+> **no** Salesforce field types, API-name decisions, permission sets, or automation
+> (those remain `#sdlc/design`'s remit). See `devops/standards/data-dictionary.md`.
+
 ### 4b — Present for review
 
 > "Here is a summary of all refinement work this session. Please review before I apply any PM-tool updates (ALM mode):"

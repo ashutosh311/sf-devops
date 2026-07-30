@@ -137,6 +137,7 @@ Always read the applicable standard from `devops/standards/` before generating c
 | OmniStudio (OmniScript, IP, DR) | `devops/standards/omniscript.md` |
 | Flows, validation rules, permission sets | `devops/standards/configuration.md` |
 | Custom objects or fields | `devops/standards/data-model.md` |
+| Data dictionary (object-reference docs) | `devops/standards/data-dictionary.md` |
 | Branching, commits, PRs | `devops/standards/git.md` |
 
 ### 2. Run the Apex framework checklist

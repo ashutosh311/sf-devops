@@ -17,6 +17,7 @@ Prescriptive standards for Salesforce projects. Each document is structured for 
 | [omniscript.md](omniscript.md) | OmniScript design, IP/DR patterns, DataRaptor rules, Apex testing wrappers |
 | [configuration.md](configuration.md) | Metadata naming, profiles vs permission sets, validation rules, flows |
 | [data-model.md](data-model.md) | Object/field naming, relationships, indexing, external IDs, governance |
+| [data-dictionary.md](data-dictionary.md) | Object-reference data dictionary format, one file per object, fidelity ladder (Discover→Refine→Design→Build) |
 | [ux-accessibility.md](ux-accessibility.md) | WCAG 2.1 conformance, SLDS usage, progressive disclosure, mobile, i18n |
 | [git.md](git.md) | GitFlow branching, rebase conventions, PR rules, Conventional Commits |
 

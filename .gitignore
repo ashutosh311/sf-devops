@@ -52,3 +52,16 @@ Thumbs.db
 .sfdx
 .sf
 bulk-output.json
+
+# Added by Illuminated Cloud
+.localdev/
+/IlluminatedCloud/
+/.illuminatedCloud/
+**/tsconfig*.json
+**/*.tsbuildinfo
+**/graphql.config.yml
+
+# Local AI tooling state (personal, not project config)
+.air/
+.claude/
+.codex/

@@ -255,7 +255,16 @@ Once the user confirms the deployment is working:
    - Validated: {date}
    ```
 
-2. Transition the JIRA ticket to **Ready for Test**.
+2. **Update the data dictionary.** Choose **Data Dictionary** from the Build menu
+   (or run **`#sdlc/build data-dictionary`**) for the objects you built or changed to
+   bring the object-reference dictionary to **Physical** fidelity — reconciled
+   against **both** the deployed metadata under
+   `force-app/main/default/objects/**` **and** the live org (Salesforce DX MCP).
+   This fills authoritative API names, types, help text, permission-set field
+   access, and validation rules. See `devops/standards/data-dictionary.md`. Note the
+   objects promoted to Physical in `implementation-record.md`.
+
+3. Transition the JIRA ticket to **Ready for Test**.
 
 > "Build complete for {KEY}. The next phase is **#sdlc/test** — QA picks up tickets in Ready for Test status."
 
