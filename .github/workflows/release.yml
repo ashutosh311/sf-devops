@@ -139,7 +139,17 @@ jobs:
           ls packages/cli/binaries/*
           ls -lh dist/release packages/vscode/*.vsix packages/cli/binaries/*
 
-      - name: Publish GitHub Release
+      # GitHub's "immutable releases" feature locks a release's assets and tag as
+      # soon as it's published — asset uploads are only allowed while a release is
+      # still a draft. softprops/action-gh-release creates the release object and
+      # then uploads assets in separate API calls, so if it created the release
+      # already published, the asset uploads land on an immutable release and fail
+      # ("Cannot upload asset ... to an immutable release"). Create as a draft here
+      # (mutable, assets attach fine) and publish it explicitly in the next step —
+      # this repo has no downstream workflow keyed on release.prereleased, so
+      # publishing via a separate step (which fires release.published either way)
+      # doesn't lose anything.
+      - name: Create GitHub Release (draft)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -151,6 +161,7 @@ jobs:
             - **`slalom-sdlc-*`** — standalone CLI binaries (macOS/Windows/Linux) for headless or non-VS Code use.
             - **`instructions.zip`** — the instruction bundle the installed extension downloads automatically on its daily background sync.
               Every file is checksum-validated against `manifest.json` before activation.
+          draft: true
           prerelease: ${{ steps.version.outputs.prerelease }}
           make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
           files: |
@@ -158,3 +169,9 @@ jobs:
             tools/slalom-sdlc/dist/release/manifest.json
             tools/slalom-sdlc/packages/vscode/*.vsix
             tools/slalom-sdlc/packages/cli/binaries/*
+
+      - name: Publish GitHub Release
+        working-directory: .
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh release edit "${{ steps.version.outputs.tag }}" --draft=false --repo "${{ github.repository }}"
