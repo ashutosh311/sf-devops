@@ -338,6 +338,27 @@ Any tag matching `vX.Y.Z-<suffix>` (e.g. `-rc.1`, `-beta.2`) skips the "must be 
 - This repo's release history predates this scheme: earlier releases used an `instructions-v*` tag (e.g. `instructions-v0.5.0`) and only shipped the instruction bundle, with each package's version bumped and committed by hand. Those old tags and releases stay as-is. The current workflow only triggers on the new `vX.Y.Z` pattern (no prefix), and the next release should continue the same numeric sequence — e.g. if `instructions-v0.5.0` was the last one shipped, tag the next release `v0.6.0`, not `v0.1.0`.
 - `vX.Y.Z-<suffix>` tags (e.g. `v1.3.0-rc.1`) are pipeline dry runs, not real releases — see [Dry-running a release before merging](#dry-running-a-release-before-merging). They don't count against the numeric sequence above; the next *real* release still picks up from the last plain `vX.Y.Z` tag.
 
+### What to bump — MAJOR.MINOR.PATCH conventions
+
+The version is a promise about the tool's **public surface**: `.sdlc/config.json` schema, the scaffolded `artifacts/` layout, phase commands and their menus, CLI flags, and MCP tool signatures. Judge every release against that surface, not against lines-of-code changed.
+
+| Tier | Bump when… | Examples |
+|------|------------|----------|
+| **MAJOR** | An existing project or integration breaks — someone must edit config, migrate files, or relearn a command to keep working | Rename/remove a `config.json` field; remove or rename a phase command; change an MCP tool signature; a scaffold/path change with no migration path for already-scaffolded projects |
+| **MINOR** | New capability, backward-compatible — existing projects keep working untouched | A new sub-command or menu option (e.g. `data-dictionary`); a new optional config field with a sensible default; a new CLI flag; additive template behavior |
+| **PATCH** | Fix or polish, no interface change | Prompt wording fixes; bug fixes; typo corrections in an instruction; a purely mechanical, scaffold-only path change with no behavioral effect |
+
+**While the tool is pre-1.0 (`0.y.z`):** there is no stability guarantee — by SemVer convention, any `0.y` release is allowed to include a breaking change. To keep that honest without freezing progress, this repo treats `0.y.z` as:
+
+- **MINOR (`0.y.0`)** — "may include a breaking change" (per the MAJOR criteria above), called out explicitly in the release notes.
+- **PATCH (`0.y.z`)** — "safe, no breaking change."
+
+Don't cut `v1.0.0` by accident. Do it deliberately, once `.sdlc/config.json`'s schema and the set of phase commands are stable enough to promise "no breaking change without a major bump" going forward.
+
+**Keep two things separate from the product version:**
+- `manifest.json`'s `schemaVersion` field (currently `"1"`) versions the **instructions-sync protocol** between the extension and the instruction bundle — bump it only if the bundle's *format or validation* changes, never for content changes. Conflating it with the product version risks breaking older extensions' auto-sync.
+- Pre-release dry-run tags (`vX.Y.Z-rc.N`) validate the pipeline and don't count against the sequence — see above.
+
 ---
 
 ## Development
