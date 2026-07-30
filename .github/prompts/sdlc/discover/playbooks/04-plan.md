@@ -26,7 +26,7 @@ Prepare the backlog and supporting materials for implementation. This is primari
 
 Transform solution directions into a structured backlog at the epic, feature, and story level.
 
-- Use `#sdlc/discover manage-backlog` to seed `artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` from validated pain points and requirements in `00 - Registers/`
+- Use `#sdlc/discover manage-backlog` to seed `artifacts/04 - Backlog/Backlog Tracker.xlsx` from validated pain points and requirements in `00 - Registers/`
 - Review and edit the Excel file — adjust story titles, sizes, and priorities
 - Work through one epic at a time; ensure traceability: pain point → solution direction → story
 - Use `#sdlc/discover analyze` in coverage mode to validate pain-point-to-story linkage
@@ -36,7 +36,7 @@ Transform solution directions into a structured backlog at the epic, feature, an
 Define what's in and what's out — keep it tight.
 
 - Use prioritized pain points and focus areas to define MVP boundaries
-- Document explicitly in `artifacts/discovery/04 - Backlog/MVP Scope.md`
+- Document explicitly in `artifacts/04 - Backlog/MVP Scope.md`
 - Reference decision register for borderline scope decisions
 - Get stakeholder sign-off on scope boundaries
 

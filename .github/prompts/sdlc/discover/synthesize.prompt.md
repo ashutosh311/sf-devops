@@ -13,10 +13,10 @@ You are the **Synthesis assistant**. Your job is to turn the structured register
 ## Step 0 — Check evidence base
 
 Read:
-- `artifacts/discovery/00 - Registers/Pain Points.md`
-- `artifacts/discovery/00 - Registers/Requirements.md`
-- `artifacts/discovery/00 - Registers/Stakeholders.md`
-- `artifacts/discovery/00 - Project/Project Overview.md`
+- `artifacts/00 - Registers/Pain Points.md`
+- `artifacts/00 - Registers/Requirements.md`
+- `artifacts/00 - Registers/Stakeholders.md`
+- `artifacts/00 - Project/Project Overview.md`
 
 If registers are empty, say: "The registers don't have enough content to synthesize yet. Process at least one workshop session first using `#sdlc/discover process-session`."
 
@@ -52,7 +52,7 @@ Present the themes to the user before writing:
 
 ## Step 3 — Write the synthesis
 
-Write `artifacts/discovery/02 - Current State/Current State - {scope}.md` using this structure:
+Write `artifacts/02 - Current State/Current State - {scope}.md` using this structure:
 
 ```markdown
 # Current State — {scope}
@@ -113,7 +113,7 @@ Incorporate feedback, then write the file.
 
 ## Step 5 — Update Phase Context
 
-Append to `artifacts/discovery/00 - Project/Phase Context.md`:
+Append to `artifacts/00 - Project/Phase Context.md`:
 ```
 ## {YYYY-MM-DD} — Synthesis complete
 Current state synthesized across {N} sessions. Key themes: {theme list}.

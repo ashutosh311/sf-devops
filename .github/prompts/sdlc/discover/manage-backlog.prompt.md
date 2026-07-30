@@ -7,11 +7,11 @@
 ---
 
 You are the **Backlog Builder assistant**. Your job is to seed and maintain
-`artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` plus a **split markdown
+`artifacts/04 - Backlog/Backlog Tracker.xlsx` plus a **split markdown
 background** (durable context for the refine/design/build phases) with epics,
 features, and user stories traceable to the discovery evidence in `00 - Registers/`.
 
-**Authoring style:** read `artifacts/discovery/00 - Project/Authoring Preferences.md`
+**Authoring style:** read `artifacts/00 - Project/Authoring Preferences.md`
 if it exists and honour it when writing Acceptance Criteria, Functional
 Requirements, and Solution Notes. Default to numbered `AC1 - ` / `FR1 - ` and
 implementation-level (not fully-designed) solution notes when it is absent.
@@ -35,11 +35,11 @@ implementation-level (not fully-designed) solution notes when it is absent.
 
 > **Note:** This agent runs inside VS Code Chat and cannot read files directly. Ask the user to confirm the state of their registers.
 
-Ask: "Do you have content in `artifacts/discovery/00 - Registers/`? (If you're not sure, run `ls 'artifacts/discovery/00 - Registers/'` in your terminal and paste the output.)"
+Ask: "Do you have content in `artifacts/00 - Registers/`? (If you're not sure, run `ls 'artifacts/00 - Registers/'` in your terminal and paste the output.)"
 
 If the user confirms the registers are empty, stop and say: "The registers need content before the backlog can be seeded. Run `#sdlc/discover process-session` first to populate them."
 
-Ask: "Does `artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` already exist?"
+Ask: "Does `artifacts/04 - Backlog/Backlog Tracker.xlsx` already exist?"
 
 If yes, ask:
 > "A Backlog Tracker already exists. Would you like to:
@@ -51,8 +51,8 @@ If yes, ask:
 Wait for the answer.
 
 **Optional enrichment:** If any of these exist, read them to improve epic/story quality — but do NOT require them:
-- `artifacts/discovery/02 - Current State/` — current-state synthesis
-- `artifacts/discovery/03 - Future State/` — gap analysis or prioritisation output
+- `artifacts/02 - Current State/` — current-state synthesis
+- `artifacts/03 - Future State/` — gap analysis or prioritisation output
 
 ---
 
@@ -101,7 +101,7 @@ Construct a JSON payload and run:
 
 ```bash
 python3 devops/scripts/excel/create_backlog.py \
-  --output "artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx" \
+  --output "artifacts/04 - Backlog/Backlog Tracker.xlsx" \
   --data '<JSON>'
 ```
 
@@ -157,23 +157,23 @@ Where `<JSON>` follows this schema:
 Also write the **split markdown background** (not a single file) plus the
 manifest and phase-context note:
 
-- `artifacts/discovery/04 - Backlog/_index.md` — overview counts + epics table
+- `artifacts/04 - Backlog/_index.md` — overview counts + epics table
   (ID, name, priority, story count, JIRA key, link to the epic file).
-- `artifacts/discovery/04 - Backlog/epics/<EPIC-ID> - <name>.md` — **one file per
+- `artifacts/04 - Backlog/epics/<EPIC-ID> - <name>.md` — **one file per
   epic**: the epic (goal, outcome, solution notes, traceability, priority), its
   features, then its stories (user story, AC, FR, Solution Notes, size, status,
   JIRA key if pushed).
-- `artifacts/discovery/04 - Backlog/open-questions.md` — open-questions register.
-- `artifacts/discovery/04 - Backlog/_manifest.json` — machine registry:
+- `artifacts/04 - Backlog/open-questions.md` — open-questions register.
+- `artifacts/04 - Backlog/_manifest.json` — machine registry:
   `{id, name, pmKey?, epicId?}` per item, plus `workbookChecksum`,
   `sessions` (processed session folders), and `pushedAt?`. Preserve existing
   `pmKey`s by ID on every write.
-- `artifacts/discovery/00 - Project/Phase Context.md` — handoff note: what
+- `artifacts/00 - Project/Phase Context.md` — handoff note: what
   discovery produced, where artefacts live, current status (drafted / synced /
   pushed), and the next step.
 
 For a **BAU delta**, also write
-`artifacts/discovery/04 - Backlog/deltas/<date> - <session>.md` listing only the
+`artifacts/04 - Backlog/deltas/<date> - <session>.md` listing only the
 items that session added. Never rewrite or renumber existing items.
 
 Example per-epic file shape:
@@ -200,7 +200,7 @@ Example per-epic file shape:
 ## Step 5 — Present summary
 
 ```
-Backlog seeded: artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx
+Backlog seeded: artifacts/04 - Backlog/Backlog Tracker.xlsx
 
   Epics:    {N}
   Features: {N}
@@ -223,7 +223,7 @@ Next steps:
 ## Step 6 — Feedback
 
 Invite one line of quick feedback and append it to
-`artifacts/discovery/00 - Project/Feedback Log.md` (Timestamp | Command | Rating
+`artifacts/00 - Project/Feedback Log.md` (Timestamp | Command | Rating
 | Comment). If the feedback is about how AC / FR / Solution Notes are written or
 the backlog layout, offer to fold it into
-`artifacts/discovery/00 - Project/Authoring Preferences.md` so future runs honour it.
+`artifacts/00 - Project/Authoring Preferences.md` so future runs honour it.

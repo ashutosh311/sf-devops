@@ -296,16 +296,15 @@ The discovery agent has targeted sub-commands. Run \`/discover\` on its own to b
 .sdlc/
   config.json               ← project config written by /init
 artifacts/
-  discovery/
-    00 - Project/           ← project overview, phase context, timeline
-    00 - Inbox/             ← drop raw files here first
-    00 - Registers/         ← pain points, stakeholders, systems, RAID
-    01 - Sessions/          ← processed workshop notes
-    02 - Current State/     ← synthesized narratives
-    03 - Future State/      ← solution directions, MVP scope
-    04 - Backlog/           ← Backlog Tracker.xlsx + epic-story-list.md
-      pushed/               ← archived Excel after JIRA push
-    06 - Reference/         ← client docs, handover materials
+  00 - Project/           ← project overview, phase context, timeline
+  00 - Inbox/             ← drop raw files here first
+  00 - Registers/         ← pain points, stakeholders, systems, RAID
+  01 - Sessions/          ← processed workshop notes
+  02 - Current State/     ← synthesized narratives
+  03 - Future State/      ← solution directions, MVP scope
+  04 - Backlog/           ← Backlog Tracker.xlsx + epic-story-list.md
+    pushed/               ← archived Excel after JIRA push
+  06 - Reference/         ← client docs, handover materials
   {STORY-KEY}/
     sf-discovery.md         ← discovery notes
     solution-design.md      ← technical design

@@ -40,7 +40,7 @@ Read the relevant sources based on the deliverable type:
 
 ### Executive Findings Readout
 
-Write `artifacts/discovery/03 - Future State/Executive Findings Readout.md`:
+Write `artifacts/03 - Future State/Executive Findings Readout.md`:
 
 ```markdown
 # Executive Findings Readout
@@ -83,7 +83,7 @@ Write `artifacts/discovery/03 - Future State/Executive Findings Readout.md`:
 
 ### MVP Scope Definition
 
-Write `artifacts/discovery/04 - Backlog/MVP Scope.md`:
+Write `artifacts/04 - Backlog/MVP Scope.md`:
 
 ```markdown
 # MVP Scope

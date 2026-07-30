@@ -3,7 +3,7 @@
 **Persona**: BA / Functional Lead / Solution Architect
 **Phase**: DISCOVER (Prepare → Learn → Ideate → Plan)
 **Input**: Any combination of: workshop notes, transcripts, client brief, existing documents
-**Output**: Structured discovery artifacts in `artifacts/discovery/`
+**Output**: Structured discovery artifacts in `artifacts/`
 
 ---
 
@@ -97,13 +97,13 @@ The discovery engagement runs through four phases. Each has a playbook with a ch
 
 | What | Where |
 |------|-------|
-| New files to process | `artifacts/discovery/00 - Inbox/` |
-| Pain points, risks, decisions, stakeholders | `artifacts/discovery/00 - Registers/` |
-| Workshop notes | `artifacts/discovery/01 - Sessions/` |
-| Current-state summaries and process diagrams | `artifacts/discovery/02 - Current State/` |
-| Solution directions and future-state vision | `artifacts/discovery/03 - Future State/` |
-| Backlog (Excel + markdown + PM sync) | `artifacts/discovery/04 - Backlog/` |
-| Client documents and reference materials | `artifacts/discovery/06 - Reference/` |
+| New files to process | `artifacts/00 - Inbox/` |
+| Pain points, risks, decisions, stakeholders | `artifacts/00 - Registers/` |
+| Workshop notes | `artifacts/01 - Sessions/` |
+| Current-state summaries and process diagrams | `artifacts/02 - Current State/` |
+| Solution directions and future-state vision | `artifacts/03 - Future State/` |
+| Backlog (Excel + markdown + PM sync) | `artifacts/04 - Backlog/` |
+| Client documents and reference materials | `artifacts/06 - Reference/` |
 
 ## Exit gate
 

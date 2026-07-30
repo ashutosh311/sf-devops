@@ -70,15 +70,15 @@ has already supplied a JIRA story/epic key in their message:
   prompt for the key if missing, then proceed in JIRA mode.
 
 🔌 **Local mode — prerequisite gate.** Require, in the open project:
-- the discovery backlog — `artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx`
+- the discovery backlog — `artifacts/04 - Backlog/Backlog Tracker.xlsx`
   (or the split markdown `04 - Backlog/_index.md` + `epics/`), **and**
-- at least one `artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md`.
+- at least one `artifacts/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md`.
 
 If neither the backlog nor any `refinement-notes.md` exists:
 
 > "⛔ Cannot design locally. No `refinement-notes.md` found under
-> `artifacts/discovery/04 - Backlog/stories/` and no backlog at
-> `artifacts/discovery/04 - Backlog/`. Run `#sdlc/discover stories-refined` first
+> `artifacts/04 - Backlog/stories/` and no backlog at
+> `artifacts/04 - Backlog/`. Run `#sdlc/discover stories-refined` first
 > to generate per-story refinement notes from the reviewed backlog."
 
 Stop. Otherwise continue to the Local-mode resume check below (skip the JIRA
@@ -200,7 +200,7 @@ Stories to design:
   backlog already recorded one).
 - A story is **eligible** when it has acceptance criteria (present in its
   `refinement-notes.md` or the backlog) **and** has no
-  `artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/solution-design.md` yet.
+  `artifacts/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/solution-design.md` yet.
 - Ask: *"Which stories should I design? Provide an epic ID (e.g. `EPIC-02`), a
   list of Story IDs, or say **all** to design every undesigned story."* If the
   user gives no argument, default to **all undesigned eligible stories**.
@@ -309,7 +309,7 @@ Key scenarios the #sdlc/test agent should cover.
 |---|---|---|---|
 ```
 
-Flag any gap in `artifacts/discovery/hl-system-architecture.md` if this story's design reveals one.
+Flag any gap in `artifacts/hl-system-architecture.md` if this story's design reveals one.
 
 ---
 

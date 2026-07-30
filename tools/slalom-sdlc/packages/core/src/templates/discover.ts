@@ -3,7 +3,7 @@ export const discoverTemplate = `# Discover — Discovery Agent
 **Persona**: BA / Functional Lead / Solution Architect
 **Phase**: DISCOVER (Prepare → Learn → Ideate → Plan)
 **Input**: Workshop notes, slides, diagrams, client brief — any combination
-**Output**: Structured discovery artifacts in \`{{paths.artifacts}}/discovery/\`
+**Output**: Structured discovery artifacts in \`{{paths.artifacts}}/\`
 
 ---
 

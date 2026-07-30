@@ -23,7 +23,7 @@ Confirm the tools this phase depends on are available before doing anything else
 
 Ask for the list of story keys to include, or fetch all stories in **{{statusMap.story.done}}** status from {{pmToolName}} for the current sprint.
 
-> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: ask the user for the list of story keys to release (there is no PM status to query), and take release notes from the local artifacts under \`{{paths.artifacts}}/discovery/04 - Backlog/stories/\` and \`{{paths.artifacts}}/{STORY-KEY}/\` rather than the PM tool.
+> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: ask the user for the list of story keys to release (there is no PM status to query), and take release notes from the local artifacts under \`{{paths.artifacts}}/04 - Backlog/stories/\` and \`{{paths.artifacts}}/{STORY-KEY}/\` rather than the PM tool.
 
 Present the release scope:
 

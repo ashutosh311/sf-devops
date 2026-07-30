@@ -267,12 +267,20 @@ All agent outputs are written to the `artifacts/` folder at the root of your pro
 
 ```
 artifacts/
-├── discovery/
-│   ├── capability-map.md
-│   ├── epic-story-list.md
-│   ├── sprint-allocation-plan.md
-│   └── hl-solution-design.md
-└── ACME-42/
+├── 00 - Project/          # Project overview, timeline, phase context
+├── 00 - Inbox/            # Drop raw workshop transcripts/notes here
+├── 00 - Registers/        # Pain points, systems, stakeholders, RAID
+├── 01 - Sessions/         # Processed workshop notes
+├── 02 - Current State/    # Synthesised narratives, process diagrams
+├── 03 - Future State/     # Solution directions, MVP scope
+├── 04 - Backlog/          # Backlog Tracker.xlsx, epics, stories
+│   └── stories/
+│       └── EPIC-1/
+│           └── ACME-42/
+│               ├── refinement-notes.md
+│               └── solution-design.md
+├── 06 - Reference/        # Client documents, handover materials
+└── ACME-42/               # Story-level outputs (sf-discovery, design, tests)
     ├── sf-discovery.md
     ├── solution-design.md
     ├── package.xml

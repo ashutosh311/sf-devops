@@ -5,7 +5,7 @@
 
 **Usage:** `#sdlc/discover sync-jira` _(deprecated — use `sync-pm`)_
 **Phase:** Post-push (after `push-backlog` has been run)
-**Prerequisite:** `artifacts/discovery/04 - Backlog/pushed/push-record.md` exists
+**Prerequisite:** `artifacts/04 - Backlog/pushed/push-record.md` exists
 
 ---
 
@@ -17,7 +17,7 @@ You are the **JIRA Sync assistant**. Your job is to pull the current status of a
 
 ## Step 1 — Check prerequisites
 
-Ask: "Has the backlog been pushed to JIRA already? (Check if `artifacts/discovery/04 - Backlog/pushed/push-record.md` exists by running `cat 'artifacts/discovery/04 - Backlog/pushed/push-record.md'` and paste the contents.)"
+Ask: "Has the backlog been pushed to JIRA already? (Check if `artifacts/04 - Backlog/pushed/push-record.md` exists by running `cat 'artifacts/04 - Backlog/pushed/push-record.md'` and paste the contents.)"
 
 If not pushed yet, say: "The backlog hasn't been pushed to JIRA yet. Run `#sdlc/discover push-backlog` first."
 
@@ -41,7 +41,7 @@ Use `getJiraIssue` or `searchJiraIssuesUsingJql` with the project key.
 
 ## Step 3 — Write the sync file
 
-Write `artifacts/discovery/04 - Backlog/jira-sync.md`:
+Write `artifacts/04 - Backlog/jira-sync.md`:
 
 ```markdown
 # JIRA Sync Snapshot
@@ -95,7 +95,7 @@ If `jira-sync.md` already exists, overwrite it completely (it is a generated sna
 JIRA sync complete — {YYYY-MM-DD HH:MM}
 
 Synced: {N} epics, {N} stories
-File: artifacts/discovery/04 - Backlog/jira-sync.md
+File: artifacts/04 - Backlog/jira-sync.md
 
 Status breakdown:
   Backlog: {N}

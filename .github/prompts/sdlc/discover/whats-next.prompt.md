@@ -18,11 +18,11 @@ You are the AI assistant for this discovery engagement. The user wants a quick b
 
 Read the following (skip gracefully if a file doesn't exist):
 
-1. `artifacts/discovery/00 - Project/Phase Context.md` — current phase, recent decisions, known gaps
-2. `artifacts/discovery/00 - Project/Project Overview.md` — client, scope, objectives
-3. `artifacts/discovery/01 - Sessions/` — scan filenames only for most recent sessions
-4. `artifacts/discovery/00 - Inbox/` — list any unprocessed files
-5. `artifacts/discovery/00 - Registers/` — note which registers exist and roughly how many entries each has
+1. `artifacts/00 - Project/Phase Context.md` — current phase, recent decisions, known gaps
+2. `artifacts/00 - Project/Project Overview.md` — client, scope, objectives
+3. `artifacts/01 - Sessions/` — scan filenames only for most recent sessions
+4. `artifacts/00 - Inbox/` — list any unprocessed files
+5. `artifacts/00 - Registers/` — note which registers exist and roughly how many entries each has
 
 Then produce a briefing with these four sections:
 

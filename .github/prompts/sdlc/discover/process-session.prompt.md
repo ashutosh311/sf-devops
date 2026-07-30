@@ -15,7 +15,7 @@ You are the **Session Processing assistant**. Your job is to turn a single works
 Check in this order:
 
 1. Did the user paste content or attach a file directly?
-2. Is there a new file in `artifacts/discovery/00 - Inbox/`?
+2. Is there a new file in `artifacts/00 - Inbox/`?
 3. Did the user provide a file path?
 
 If no transcript is found, ask: "Where is the session transcript or meeting notes?"
@@ -57,7 +57,7 @@ Record every item found in this pass. In Step 4, only items that are **confirmed
 
 ### 3b — Write the session note
 
-Create `artifacts/discovery/01 - Sessions/YYYY-MM-DD - {Session Name}.md` using this template:
+Create `artifacts/01 - Sessions/YYYY-MM-DD - {Session Name}.md` using this template:
 
 ```markdown
 # YYYY-MM-DD - {Session Name}
@@ -145,11 +145,11 @@ After confirmation, append the approved rows to the correct register tables in `
 
 ## Step 5 — Move source file from Inbox
 
-If the session was sourced from a file in `artifacts/discovery/00 - Inbox/`, move it to `artifacts/discovery/01 - Sessions/` now that processing is complete. This keeps the inbox clear and signals the file has been handled.
+If the session was sourced from a file in `artifacts/00 - Inbox/`, move it to `artifacts/01 - Sessions/` now that processing is complete. This keeps the inbox clear and signals the file has been handled.
 
 Use a bash move:
 ```bash
-mv "artifacts/discovery/00 - Inbox/{filename}" "artifacts/discovery/01 - Sessions/{filename}"
+mv "artifacts/00 - Inbox/{filename}" "artifacts/01 - Sessions/{filename}"
 ```
 
 If the file cannot be moved (e.g. it was pasted content with no file), skip this step silently.
@@ -158,7 +158,7 @@ If the file cannot be moved (e.g. it was pasted content with no file), skip this
 
 ## Step 6 — Update Phase Context
 
-Update `artifacts/discovery/00 - Project/Phase Context.md`:
+Update `artifacts/00 - Project/Phase Context.md`:
 - Add the session to a "Recent Sessions" section
 - Note any key decisions or new gaps surfaced
 
@@ -169,7 +169,7 @@ Update `artifacts/discovery/00 - Project/Phase Context.md`:
 ```
 Session processed: YYYY-MM-DD - {Session Name}
 
-Session note:  artifacts/discovery/01 - Sessions/YYYY-MM-DD - {Session Name}.md
+Session note:  artifacts/01 - Sessions/YYYY-MM-DD - {Session Name}.md
 Source file:   moved from 00 - Inbox/ to 01 - Sessions/{filename}
                (or: no source file — content was pasted directly)
 

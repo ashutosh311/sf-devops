@@ -18,7 +18,7 @@ assembled from the parent epic and feature.
 ## When to run
 
 Run this **after** you have reviewed and edited
-`artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` (or rebuilt it via
+`artifacts/04 - Backlog/Backlog Tracker.xlsx` (or rebuilt it via
 `/discover manage-backlog`). It is safe to re-run — you choose whether to skip or
 overwrite stories that already have notes.
 

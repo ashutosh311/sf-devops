@@ -34,7 +34,7 @@ Present synthesized findings to leadership:
 Validate: Does leadership agree with the prioritization? Are we focused on the right areas?
 
 - Use `#sdlc/discover synthesize` for generating the share-out materials
-- Update `artifacts/discovery/03 - Future State/Focus Areas.md` with validated priorities
+- Update `artifacts/03 - Future State/Focus Areas.md` with validated priorities
 
 ### Root Cause Analysis
 
@@ -52,7 +52,7 @@ Work **with** stakeholders to explore solution directions:
 - Process level: What would an improved process look like?
 - Data level: What data changes would be required?
 
-Document emerging directions in `artifacts/discovery/03 - Future State/Solution Directions.md`.
+Document emerging directions in `artifacts/03 - Future State/Solution Directions.md`.
 
 ### Ideate Readiness Check
 

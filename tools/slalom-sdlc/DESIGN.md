@@ -417,7 +417,15 @@ devops/standards/               full coding standards library
   ux-accessibility.md
   README.md
 artifacts/
-  discovery/
+  00 - Project/
+  00 - Inbox/
+  00 - Registers/
+  01 - Sessions/
+  02 - Current State/
+  03 - Future State/
+  04 - Backlog/
+    pushed/
+  06 - Reference/
   releases/                     (only if release phase is enabled)
 force-app/frameworks/
   trigger-framework/classes/    README placeholder

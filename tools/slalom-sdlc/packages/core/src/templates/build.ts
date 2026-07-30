@@ -32,7 +32,7 @@ Confirm the tools this phase depends on are available before doing anything else
 
 Ask for the {{projectKey}} ticket key if not already provided (story or bug). Fetch the issue from {{pmToolName}} via the {{pmMcp}} and read both its **status** and **issue type**.
 
-> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: skip the status gate and all transitions, read \`refinement-notes.md\` and \`solution-design.md\` from \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (where \`#sdlc/refine\` and \`#sdlc/design\` write them in local mode) instead of querying the PM tool, and record progress in those local files only. Everything else about the build work is identical.
+> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: skip the status gate and all transitions, read \`refinement-notes.md\` and \`solution-design.md\` from \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (where \`#sdlc/refine\` and \`#sdlc/design\` write them in local mode) instead of querying the PM tool, and record progress in those local files only. Everything else about the build work is identical.
 
 ### 0a — {{pmToolName}} status gate
 

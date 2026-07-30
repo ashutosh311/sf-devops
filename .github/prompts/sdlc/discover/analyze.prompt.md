@@ -14,7 +14,7 @@ You are the **Analysis assistant**. Your job is to answer structured analytical 
 
 > **Note:** This agent runs inside VS Code Chat and cannot read files directly. Ask the user to provide register content.
 
-Ask: "Please paste the contents of `artifacts/discovery/00 - Registers/Pain Points.md` and `Requirements.md` (or run `cat 'artifacts/discovery/00 - Registers/Pain Points.md'` and paste the output). If the registers are empty, let me know and I'll suggest running `#sdlc/discover process-session` first."
+Ask: "Please paste the contents of `artifacts/00 - Registers/Pain Points.md` and `Requirements.md` (or run `cat 'artifacts/00 - Registers/Pain Points.md'` and paste the output). If the registers are empty, let me know and I'll suggest running `#sdlc/discover process-session` first."
 
 Wait for the user to provide the register content. If they confirm registers are empty, say: "The registers don't have enough content to analyze yet. Run `#sdlc/discover process-session` first."
 
@@ -41,7 +41,7 @@ Rank pain points by:
 2. **Frequency** (how many sessions / stakeholders mentioned this)
 3. **Objective alignment** (does addressing this directly support a stated objective?)
 
-Produce `artifacts/discovery/02 - Current State/Analysis/Priority Analysis - {YYYY-MM-DD}.md`:
+Produce `artifacts/02 - Current State/Analysis/Priority Analysis - {YYYY-MM-DD}.md`:
 
 ```markdown
 # Pain Point Priority Analysis
@@ -79,7 +79,7 @@ Map each pain point to the project objectives from `Project Overview.md`. Identi
 - Objectives with weak or no coverage (gap — may indicate missing discovery)
 - Pain points with no objective alignment (scope risk)
 
-Produce `artifacts/discovery/02 - Current State/Analysis/Coverage Analysis - {YYYY-MM-DD}.md`.
+Produce `artifacts/02 - Current State/Analysis/Coverage Analysis - {YYYY-MM-DD}.md`.
 
 ---
 
@@ -92,7 +92,7 @@ For the specified pain point or theme:
 4. Identify what evidence supports or contradicts the hypothesis
 5. Note what additional information would confirm it
 
-Write findings to `artifacts/discovery/03 - Future State/Root Cause - {topic}.md`.
+Write findings to `artifacts/03 - Future State/Root Cause - {topic}.md`.
 
 ---
 
@@ -104,13 +104,13 @@ For each solution option provided:
 3. Summarize pros and cons
 4. Recommend a direction with justification
 
-Write findings to `artifacts/discovery/03 - Future State/Option Comparison - {topic}.md`.
+Write findings to `artifacts/03 - Future State/Option Comparison - {topic}.md`.
 
 ---
 
 ## Step 6 — Phase-gate check mode
 
-Read the relevant playbook checklist (`playbooks/0{N}-{phase}.md`) and check each item against current `artifacts/discovery/` content.
+Read the relevant playbook checklist (`playbooks/0{N}-{phase}.md`) and check each item against current `artifacts/` content.
 
 Present a ✅ / ⬜ checklist and state whether the phase gate is met.
 

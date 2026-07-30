@@ -2,7 +2,7 @@
 
 **Usage:** `#sdlc/discover sync-pm`
 **Phase:** Post-push (after `push-backlog` has been run)
-**Prerequisite:** `artifacts/discovery/04 - Backlog/pushed/push-record.md` exists
+**Prerequisite:** `artifacts/04 - Backlog/pushed/push-record.md` exists
 
 ---
 
@@ -24,7 +24,7 @@ Read `.sdlc/config.json`. Check `alm.tool`:
 
 ## Step 1 — Check prerequisites
 
-Read `artifacts/discovery/04 - Backlog/pushed/push-record.md`.
+Read `artifacts/04 - Backlog/pushed/push-record.md`.
 
 If it doesn't exist, say: "The backlog hasn't been pushed to a PM tool yet.
 Run `#sdlc/discover push-backlog` first."
@@ -68,7 +68,7 @@ Default ADO state mapping:
 
 ### A3 — Write pm-sync.md
 
-Write `artifacts/discovery/04 - Backlog/pm-sync.md`:
+Write `artifacts/04 - Backlog/pm-sync.md`:
 
 ```markdown
 # PM Sync Snapshot
@@ -123,7 +123,7 @@ or `searchJiraIssuesUsingJql` for:
 
 ### B2 — Write pm-sync.md
 
-Write `artifacts/discovery/04 - Backlog/pm-sync.md`:
+Write `artifacts/04 - Backlog/pm-sync.md`:
 
 ```markdown
 # PM Sync Snapshot
@@ -172,7 +172,7 @@ PM sync complete — {YYYY-MM-DD HH:MM}
 
 PM tool:  {ADO — <project> | JIRA — <project-key>}
 Synced:   {N} epics, {N} stories
-File:     artifacts/discovery/04 - Backlog/pm-sync.md
+File:     artifacts/04 - Backlog/pm-sync.md
 
 Status breakdown:
   {status}: {N}

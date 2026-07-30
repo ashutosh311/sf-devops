@@ -55,16 +55,15 @@ To Do → [/refine] → Ready for Design → [/design] → Ready for Build → [
 
 ```
 artifacts/
-  discovery/                            # Discovery knowledge hub (from /discover)
-    00 - Project/                       # Project Overview.md, Phase Context.md, Timeline.md
-    00 - Inbox/                         # Raw files to process (drop here first)
-    00 - Registers/                     # Pain points, systems, stakeholders, RAID (markdown tables)
-    01 - Sessions/                      # Processed workshop notes
-    02 - Current State/                 # Synthesized narratives, process diagrams
-    03 - Future State/                  # Solution directions, focus areas, MVP scope
-    04 - Backlog/                       # Backlog Tracker.xlsx, _index.md, epics/<id>.md, open-questions.md
-      pushed/                           # Archived Excel + push-record.md (after JIRA push)
-    06 - Reference/                     # Client documents, handover materials
+  00 - Project/                       # Project Overview.md, Phase Context.md, Timeline.md
+  00 - Inbox/                         # Raw files to process (drop here first)
+  00 - Registers/                     # Pain points, systems, stakeholders, RAID (markdown tables)
+  01 - Sessions/                      # Processed workshop notes
+  02 - Current State/                 # Synthesized narratives, process diagrams
+  03 - Future State/                  # Solution directions, focus areas, MVP scope
+  04 - Backlog/                       # Backlog Tracker.xlsx, _index.md, epics/<id>.md, open-questions.md
+    pushed/                           # Archived Excel + push-record.md (after JIRA push)
+  06 - Reference/                     # Client documents, handover materials
   {STORY-KEY}/                          # Story-level artifacts (from /refine, /build, /test)
     sf-discovery.md
     solution-design.md

@@ -150,7 +150,7 @@ interface SkillContext {
 }
 
 function discoveryDir(ctx: SkillContext, ...segments: string[]): string {
-  return path.join(ctx.root, ctx.config.paths.artifacts, "discovery", ...segments);
+  return path.join(ctx.root, ctx.config.paths.artifacts, ...segments);
 }
 
 const DISCOVERY_FOLDERS = [
@@ -614,7 +614,7 @@ async function runSetup(ctx: SkillContext): Promise<void> {
       (created.length
         ? `**Created:**\n${created.map((c) => `- \`${c}\``).join("\n")}\n\n`
         : `Everything already existed — nothing to create.\n\n`) +
-      `Next: drop workshop notes into \`artifacts/discovery/00 - Inbox/\` and run \`/discover process-session\`.`
+      `Next: drop workshop notes into \`artifacts/00 - Inbox/\` and run \`/discover process-session\`.`
   );
   await promptForFeedback(ctx, "setup");
 }
@@ -1563,7 +1563,7 @@ const REFINEMENT_FILE = "refinement-notes.md";
 
 /**
  * Where a story's refinement-notes.md lives:
- *   artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md
+ *   artifacts/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md
  * Falls back to "ungrouped" when the story has no epic_id.
  */
 function refinementNotesPath(ctx: SkillContext, story: BacklogStory): string {
@@ -1770,7 +1770,7 @@ async function runStoriesRefined(ctx: SkillContext): Promise<void> {
 
   const storiesByKey = new Map(scoped.map((s) => [storyKey(s), s]));
   let msg = `## Stories refined\n\n`;
-  msg += `Wrote **${written.length}** \`refinement-notes.md\` file(s) under \`artifacts/discovery/04 - Backlog/stories/\`.\n\n`;
+  msg += `Wrote **${written.length}** \`refinement-notes.md\` file(s) under \`artifacts/04 - Backlog/stories/\`.\n\n`;
   if (written.length) {
     msg += `| Story | Epic | Path |\n| --- | --- | --- |\n`;
     for (const k of written) {
@@ -1922,7 +1922,7 @@ async function runProcessSession(ctx: SkillContext): Promise<void> {
 
   if (!inboxFiles.length) {
     ctx.stream.markdown(
-      "⛔ `00 - Inbox/` is empty. Drop a workshop transcript or notes file (`.txt`, `.md`, `.docx` or `.pdf`) into `artifacts/discovery/00 - Inbox/` and run this again."
+      "⛔ `00 - Inbox/` is empty. Drop a workshop transcript or notes file (`.txt`, `.md`, `.docx` or `.pdf`) into `artifacts/00 - Inbox/` and run this again."
     );
     return;
   }
@@ -2371,7 +2371,7 @@ function buildDeferredContext(config: SdlcConfig, skill: "push-backlog" | "sync-
 
   const schemaLines = skill === "push-backlog"
     ? [
-        `Spreadsheet location: ${path.join("artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx")}`,
+        `Spreadsheet location: ${path.join("artifacts/04 - Backlog/Backlog Tracker.xlsx")}`,
         ``,
         `Spreadsheet schema (exact column names — do not attempt to discover headers):`,
         `- Epics sheet: ID | Epic Name | Narrative Goal | Business Outcome | Solution Notes | Requirement IDs | Pain Points Addressed | Stakeholder Groups | Priority | Status | Demo Narrative Slice | PM Key | Disregarded`,

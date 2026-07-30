@@ -124,7 +124,7 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
   const { root, config, stream } = ctx;
 
   const backlogPath = path.join(
-    root, config.paths.artifacts, "discovery", "04 - Backlog", "Backlog Tracker.xlsx"
+    root, config.paths.artifacts, "04 - Backlog", "Backlog Tracker.xlsx"
   );
   if (!fs.existsSync(backlogPath)) {
     stream.markdown(
@@ -146,7 +146,7 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
     if (!key) continue;
     const epicId = (story.epic_id || "ungrouped").trim();
     const base = path.join(
-      root, config.paths.artifacts, "discovery", "04 - Backlog", "stories", epicId, key
+      root, config.paths.artifacts, "04 - Backlog", "stories", epicId, key
     );
     const hasRefinement = fs.existsSync(path.join(base, "refinement-notes.md"));
     const hasDesign = fs.existsSync(path.join(base, "solution-design.md"));
@@ -227,8 +227,8 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
     .map((s) => {
       const key = s.pm_key ?? s.id;
       const epicId = (s.epic_id ?? "ungrouped").trim();
-      const notesPath = `artifacts/discovery/04 - Backlog/stories/${epicId}/${key}/refinement-notes.md`;
-      const designPath = `artifacts/discovery/04 - Backlog/stories/${epicId}/${key}/solution-design.md`;
+      const notesPath = `artifacts/04 - Backlog/stories/${epicId}/${key}/refinement-notes.md`;
+      const designPath = `artifacts/04 - Backlog/stories/${epicId}/${key}/solution-design.md`;
       return (
         `- **${key}**: ${s.user_story?.slice(0, 100) ?? "(no description)"}\n` +
         `  Refinement notes: \`${notesPath}\`\n` +

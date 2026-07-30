@@ -25,7 +25,7 @@ Wait for the answer.
 
 ## Step 2 — Read sources
 
-Read the relevant session notes from `artifacts/discovery/01 - Sessions/` and register files from `artifacts/discovery/00 - Registers/`.
+Read the relevant session notes from `artifacts/01 - Sessions/` and register files from `artifacts/00 - Registers/`.
 
 ---
 
@@ -42,7 +42,7 @@ Look for:
 
 ## Step 4 — Write the conflict report
 
-Write `artifacts/discovery/02 - Current State/Conflict Report - {YYYY-MM-DD}.md`:
+Write `artifacts/02 - Current State/Conflict Report - {YYYY-MM-DD}.md`:
 
 ```markdown
 # Conflict Report

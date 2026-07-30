@@ -41,7 +41,7 @@ The outcome is shared understanding on: what the main issues are, where bottlene
 
 **Process notes** — clean up and structure using the session note template
 - Use `#sdlc/discover process-session` to:
-  - Create a structured session note in `artifacts/discovery/01 - Sessions/`
+  - Create a structured session note in `artifacts/01 - Sessions/`
   - Queue candidate pain points, risks, decisions, and stakeholders as reviewable proposals for `00 - Registers/`
 
 **Run conflict detection** — compare what this stakeholder said vs. previous stakeholders

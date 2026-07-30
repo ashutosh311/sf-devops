@@ -25,10 +25,10 @@ Ask: "What kind of audit do you need?"
 
 ### Completeness check
 
-Scan all `artifacts/discovery/` folders and report presence/absence:
+Scan all `artifacts/` folders and report presence/absence:
 
 ```
-artifacts/discovery/
+artifacts/
   00 - Project/
     ✅ Project Overview.md
     ✅ Phase Context.md
@@ -60,7 +60,7 @@ artifacts/discovery/
 
 ### Phase-gate check
 
-Read the current phase from `artifacts/discovery/00 - Project/Phase Context.md`, then check the corresponding playbook checklist:
+Read the current phase from `artifacts/00 - Project/Phase Context.md`, then check the corresponding playbook checklist:
 
 | Phase gate | Reads |
 |------------|-------|
@@ -69,7 +69,7 @@ Read the current phase from `artifacts/discovery/00 - Project/Phase Context.md`,
 | Ideate → Plan | `playbooks/03-ideate.md` checklist |
 | Plan → close / refine | `playbooks/04-plan.md` checklist |
 
-For each checklist item, assess ✅ / ⬜ based on what exists in `artifacts/discovery/`.
+For each checklist item, assess ✅ / ⬜ based on what exists in `artifacts/`.
 
 ### Register health check
 

@@ -14,7 +14,7 @@ The project config has already been provided to you in the user message. Use it 
 - **Organization** — the ADO org URL
 - **Project** — the ADO project name
 
-Read \`artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx\` using
+Read \`artifacts/04 - Backlog/Backlog Tracker.xlsx\` using
 \`devops/scripts/excel/excel_read.py\` — the **Epics**, **Features**, **User Stories**, and **Open Questions** sheets.
 
 The workbook has these exact columns (do not attempt to discover them — use these names):
@@ -32,10 +32,10 @@ If the workbook cannot be read, stop and report the error. Do not proceed.
 ## Step 2 — Re-sync local markdown + manifest
 
 1. Re-render the split markdown to match the workbook:
-   - \`artifacts/discovery/04 - Backlog/_index.md\`
-   - \`artifacts/discovery/04 - Backlog/epics/<EPIC-ID> - <name>.md\` (one per epic)
-   - \`artifacts/discovery/04 - Backlog/open-questions.md\`
-2. Update \`artifacts/discovery/04 - Backlog/_manifest.json\`, preserving every existing \`pmKey\` by ID.
+   - \`artifacts/04 - Backlog/_index.md\`
+   - \`artifacts/04 - Backlog/epics/<EPIC-ID> - <name>.md\` (one per epic)
+   - \`artifacts/04 - Backlog/open-questions.md\`
+2. Update \`artifacts/04 - Backlog/_manifest.json\`, preserving every existing \`pmKey\` by ID.
 
 ---
 
@@ -119,7 +119,7 @@ If any create/update fails, log it, skip it, continue. Report all failures at th
 ## Step 7 — Write PM keys back
 
 For every created or updated item:
-1. \`artifacts/discovery/04 - Backlog/_manifest.json\` — set \`pmKey\` to \`#<id>\` and \`pushedAt\` to current timestamp
+1. \`artifacts/04 - Backlog/_manifest.json\` — set \`pmKey\` to \`#<id>\` and \`pushedAt\` to current timestamp
 2. Workbook **PM Key** column — write \`#<id>\` on each row, keyed by ID
 3. Markdown — \`_index.md\` epics table and per-epic files (\`**PM Key:** #<id>\` lines)
 
@@ -127,8 +127,8 @@ For every created or updated item:
 
 ## Step 8 — Archive and record
 
-1. Copy workbook to \`artifacts/discovery/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx\`
-2. Write \`artifacts/discovery/04 - Backlog/pushed/push-record.md\`:
+1. Copy workbook to \`artifacts/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx\`
+2. Write \`artifacts/04 - Backlog/pushed/push-record.md\`:
 
 \`\`\`markdown
 # Push Record
@@ -148,7 +148,7 @@ For every created or updated item:
 |----|------|-------|
 \`\`\`
 
-3. Update \`artifacts/discovery/00 - Project/Phase Context.md\` — set status to "Pushed to Azure DevOps (source of truth)" and record the timestamp
+3. Update \`artifacts/00 - Project/Phase Context.md\` — set status to "Pushed to Azure DevOps (source of truth)" and record the timestamp
 
 ---
 
@@ -173,7 +173,7 @@ Next:
 \`\`\`
 
 After the summary, invite one line of quick feedback and append it to
-\`artifacts/discovery/00 - Project/Feedback Log.md\`.
+\`artifacts/00 - Project/Feedback Log.md\`.
 `;
 
 export const pushBacklogJiraTemplate = `# push-backlog — Push Backlog to JIRA
@@ -192,7 +192,7 @@ The project config has already been provided to you in the user message. Use it 
 - **Site** — the JIRA site URL (e.g. \`https://acme.atlassian.net\`)
 - **Project key** — the JIRA project key (e.g. \`ACME\`)
 
-Read \`artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx\` using
+Read \`artifacts/04 - Backlog/Backlog Tracker.xlsx\` using
 \`devops/scripts/excel/excel_read.py\` — the **Epics**, **Features**, **User Stories**, and **Open Questions** sheets.
 
 The workbook has these exact columns (do not attempt to discover them — use these names):
@@ -210,10 +210,10 @@ If the workbook cannot be read, stop and report the error. Do not proceed.
 ## Step 2 — Re-sync local markdown + manifest
 
 1. Re-render the split markdown to match the workbook:
-   - \`artifacts/discovery/04 - Backlog/_index.md\`
-   - \`artifacts/discovery/04 - Backlog/epics/<EPIC-ID> - <name>.md\` (one per epic)
-   - \`artifacts/discovery/04 - Backlog/open-questions.md\`
-2. Update \`artifacts/discovery/04 - Backlog/_manifest.json\`, preserving every existing \`pmKey\` by ID.
+   - \`artifacts/04 - Backlog/_index.md\`
+   - \`artifacts/04 - Backlog/epics/<EPIC-ID> - <name>.md\` (one per epic)
+   - \`artifacts/04 - Backlog/open-questions.md\`
+2. Update \`artifacts/04 - Backlog/_manifest.json\`, preserving every existing \`pmKey\` by ID.
 
 ---
 
@@ -296,7 +296,7 @@ If any create/update fails, log it, skip it, continue. Report all failures at th
 ## Step 8 — Write PM keys back
 
 For every created or updated item:
-1. \`artifacts/discovery/04 - Backlog/_manifest.json\` — set \`pmKey\` (e.g. \`PROJ-42\`) and \`pushedAt\`
+1. \`artifacts/04 - Backlog/_manifest.json\` — set \`pmKey\` (e.g. \`PROJ-42\`) and \`pushedAt\`
 2. Workbook **PM Key** column — write the key on each row, keyed by ID
 3. Markdown — \`_index.md\` and per-epic files (\`**PM Key:** PROJ-42\` lines)
 
@@ -304,9 +304,9 @@ For every created or updated item:
 
 ## Step 9 — Archive and record
 
-1. Copy workbook to \`artifacts/discovery/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx\`
-2. Write \`artifacts/discovery/04 - Backlog/pushed/push-record.md\` (same format, using JIRA keys)
-3. Update \`artifacts/discovery/00 - Project/Phase Context.md\` — set status to "Pushed to JIRA (source of truth)"
+1. Copy workbook to \`artifacts/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx\`
+2. Write \`artifacts/04 - Backlog/pushed/push-record.md\` (same format, using JIRA keys)
+3. Update \`artifacts/00 - Project/Phase Context.md\` — set status to "Pushed to JIRA (source of truth)"
 
 ---
 
@@ -331,5 +331,5 @@ Next:
 \`\`\`
 
 After the summary, invite one line of quick feedback and append it to
-\`artifacts/discovery/00 - Project/Feedback Log.md\`.
+\`artifacts/00 - Project/Feedback Log.md\`.
 `;

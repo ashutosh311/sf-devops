@@ -4,7 +4,7 @@ create_backlog.py — Create or update the Backlog Tracker Excel workbook.
 
 Usage:
     python3 devops/scripts/excel/create_backlog.py \
-        --output "artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx" \
+        --output "artifacts/04 - Backlog/Backlog Tracker.xlsx" \
         --data '{"epics": [...], "features": [...], "stories": [...]}'
 
     Or pass --data-file path/to/data.json instead of --data.

@@ -13,7 +13,7 @@ You are the **Refinement Agent**. Your job is to validate stories against INVEST
 > connected — **JIRA** (Atlassian MCP) or **Azure DevOps** (ADO MCP) — and a
 > story key is available, and in **Local mode (no PM tool)** when it is not.
 > Local mode works entirely from the discovery backlog under
-> `artifacts/discovery/04 - Backlog/` (produced by `#sdlc/discover`) plus any
+> `artifacts/04 - Backlog/` (produced by `#sdlc/discover`) plus any
 > chat-pasted materials, keying every story by its backlog **Story ID** (e.g.
 > `STORY-001`). In Local mode the agent still produces the full INVEST + Gherkin
 > AC + `refinement-notes.md` output, but it does **not** fetch, comment on, or
@@ -64,12 +64,12 @@ key:
 
 Require the discovery backlog in the open project:
 
-- `artifacts/discovery/04 - Backlog/_index.md` (or `Backlog Tracker.xlsx`), **and**
-- at least one story folder under `artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/`.
+- `artifacts/04 - Backlog/_index.md` (or `Backlog Tracker.xlsx`), **and**
+- at least one story folder under `artifacts/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/`.
 
 If either is missing (both are required):
 
-> "⛔ Cannot refine locally. The discovery backlog at `artifacts/discovery/04 - Backlog/` is
+> "⛔ Cannot refine locally. The discovery backlog at `artifacts/04 - Backlog/` is
 > incomplete — it needs **both** an `_index.md`/workbook **and** at least one
 > `stories/{EPIC-ID}/{STORY-KEY}/` folder. Run `#sdlc/discover manage-backlog`
 > (then `push-backlog`) first, or connect a PM MCP to refine from JIRA / Azure DevOps."
@@ -81,7 +81,7 @@ Stop until the prerequisite is met.
 Scan for prior refinement work and present a status table.
 
 - **ALM mode:** scan `artifacts/` for story-key folders.
-- 🔌 **Local mode:** scan `artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/`.
+- 🔌 **Local mode:** scan `artifacts/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/`.
 
 ```
 Refinement status:
@@ -136,7 +136,7 @@ Work through each source in order:
 ### 🔌 Local mode — source from the `04 - Backlog` folder
 
 There is no PM tool to query. Build full context by reading across
-`artifacts/discovery/04 - Backlog/`:
+`artifacts/04 - Backlog/`:
 
 1. **The story** — `stories/{EPIC-ID}/{STORY-KEY}/` (per-story folder: story note + dropped materials) and the story row in `_index.md` (or `Backlog Tracker.xlsx`) for title, size, status, epic, feature, and any AC already captured.
 2. **Parent epic & wider requirement** — `epics/{EPIC-ID}.md` for the epic narrative, business goal, and sibling stories; `MVP Scope.md` for whether this story is in the approved MVP.
@@ -236,7 +236,7 @@ All local work happens first. In ALM mode, do not touch the PM tool until the us
 Write `refinement-notes.md` to the location for the active mode, with the INVEST assessment (result per criterion), story-breakdown notes (if any), resolved open questions (or blocker note), Gherkin AC, and the L3 flow (if applicable):
 
 - **ALM mode:** `artifacts/{STORY-KEY}/refinement-notes.md`
-- 🔌 **Local mode:** `artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md` (the same path `#sdlc/design` reads in local mode)
+- 🔌 **Local mode:** `artifacts/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md` (the same path `#sdlc/design` reads in local mode)
 
 Record the mode and the context sources used at the top of the file.
 
@@ -281,6 +281,6 @@ Refinement Status: Sprint {N}
 
 🔌 **Local mode:**
 
-> "Refinement notes written under `artifacts/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/`. No PM-tool actions were taken (local mode). The next phase is **#sdlc/design** — run it in local mode and it reads these `refinement-notes.md` files, keyed by backlog Story ID. Connect a PM MCP if you later want these stories tracked in JIRA / Azure DevOps."
+> "Refinement notes written under `artifacts/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/`. No PM-tool actions were taken (local mode). The next phase is **#sdlc/design** — run it in local mode and it reads these `refinement-notes.md` files, keyed by backlog Story ID. Connect a PM MCP if you later want these stories tracked in JIRA / Azure DevOps."
 
 **Stop here.** Your remit ends at the transition to Ready for Design (or the written notes in Local mode). Do NOT suggest implementation approaches, assess technical complexity, produce solution designs, create sub-tasks, scaffold metadata, or deploy to any org.

@@ -5,7 +5,7 @@
 
 ---
 
-You are picking up immediately after setup finished. The registers in `artifacts/discovery/00 - Registers/` are populated. The goal is to produce a reviewed `Backlog Tracker.xlsx` ready for the user to review before pushing to JIRA.
+You are picking up immediately after setup finished. The registers in `artifacts/00 - Registers/` are populated. The goal is to produce a reviewed `Backlog Tracker.xlsx` ready for the user to review before pushing to JIRA.
 
 Run the following three stages **in order**. After each stage, pause and ask the user to confirm before continuing.
 
@@ -13,7 +13,7 @@ Run the following three stages **in order**. After each stage, pause and ask the
 
 ## Stage 1 — Synthesize current state
 
-Run `#sdlc/discover synthesize` (full current state mode) to produce a narrative current-state document in `artifacts/discovery/02 - Current State/`.
+Run `#sdlc/discover synthesize` (full current state mode) to produce a narrative current-state document in `artifacts/02 - Current State/`.
 
 When done, present:
 - A 1-paragraph summary of what was synthesized
@@ -44,7 +44,7 @@ Wait for confirmation.
 
 Run `#sdlc/discover manage-backlog` (initialize mode) using the registers and analysis from Stage 2.
 
-Seed `artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` with:
+Seed `artifacts/04 - Backlog/Backlog Tracker.xlsx` with:
 - Epics aligned to the top themes
 - Stories that trace back to specific pain points and requirements
 

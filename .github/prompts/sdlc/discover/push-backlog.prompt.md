@@ -2,7 +2,7 @@
 
 **Usage:** `#sdlc/discover push-backlog`
 **Phase:** Plan (after the backlog has been reviewed in the workbook)
-**Prerequisite:** `artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` exists and has been reviewed
+**Prerequisite:** `artifacts/04 - Backlog/Backlog Tracker.xlsx` exists and has been reviewed
 
 > ⚠️ Once pushed, **the PM tool becomes the source of truth.** The local markdown +
 > manifest are kept as a diff-able mirror. Review carefully before proceeding.
@@ -31,15 +31,15 @@ Read `.sdlc/config.json`. Check `alm.tool`:
 The `.xlsx` is the human review/edit surface. Before anything else, reconcile the
 local markdown + manifest with it so a push always reflects the latest edits.
 
-1. Read `artifacts/discovery/04 - Backlog/Backlog Tracker.xlsx` using
+1. Read `artifacts/04 - Backlog/Backlog Tracker.xlsx` using
    `devops/scripts/excel/excel_read.py` — the **Epics**, **Features**,
    **User Stories**, and **Open Questions** sheets. Each sheet has a stable
    **ID** column (first) and a **PM Key** column (last before Disregarded).
 2. Re-render the split markdown to match:
-   - `artifacts/discovery/04 - Backlog/_index.md` (overview + epics table)
-   - `artifacts/discovery/04 - Backlog/epics/<EPIC-ID> - <name>.md` (one per epic)
-   - `artifacts/discovery/04 - Backlog/open-questions.md`
-3. Update `artifacts/discovery/04 - Backlog/_manifest.json` (the ID + PM-key
+   - `artifacts/04 - Backlog/_index.md` (overview + epics table)
+   - `artifacts/04 - Backlog/epics/<EPIC-ID> - <name>.md` (one per epic)
+   - `artifacts/04 - Backlog/open-questions.md`
+3. Update `artifacts/04 - Backlog/_manifest.json` (the ID + PM-key
    registry), preserving every existing `pmKey` by ID.
 
 If the workbook cannot be read, stop and report the error. Do not proceed.
@@ -115,7 +115,7 @@ If a create/update fails, log it, skip it, and continue. Report all failures.
 
 For every created/updated item, write its `#<id>` key back:
 
-1. `artifacts/discovery/04 - Backlog/_manifest.json` — set `pmKey` on the
+1. `artifacts/04 - Backlog/_manifest.json` — set `pmKey` on the
    matching entry; set `pushedAt` to the current timestamp.
 2. The workbook's **PM Key** column — write `#<id>` on each row, keyed by ID.
 3. The markdown — `_index.md` epics table (PM Key column) and the per-epic
@@ -124,8 +124,8 @@ For every created/updated item, write its `#<id>` key back:
 ### A4 — Archive and record
 
 1. Copy the workbook to
-   `artifacts/discovery/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx`.
-2. Write `artifacts/discovery/04 - Backlog/pushed/push-record.md`:
+   `artifacts/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx`.
+2. Write `artifacts/04 - Backlog/pushed/push-record.md`:
 
 ```markdown
 # Push Record
@@ -146,7 +146,7 @@ For every created/updated item, write its `#<id>` key back:
 |----|------|-------|
 ```
 
-3. Update `artifacts/discovery/00 - Project/Phase Context.md` to note the push,
+3. Update `artifacts/00 - Project/Phase Context.md` to note the push,
    set status to "Pushed to Azure DevOps (source of truth)", and record the timestamp.
 
 ---
@@ -182,13 +182,13 @@ For each item, capture the returned JIRA key (e.g. `PROJ-42`).
 
 For every created/updated item, write its key (e.g. `PROJ-42`) back:
 
-1. `artifacts/discovery/04 - Backlog/_manifest.json` — set `pmKey`; set `pushedAt`.
+1. `artifacts/04 - Backlog/_manifest.json` — set `pmKey`; set `pushedAt`.
 2. The workbook's **PM Key** column — write the key on each row, keyed by ID.
 3. The markdown — `_index.md` epics table and per-epic files (`**PM Key:** PROJ-42`).
 
 ### B4 — Archive and record
 
-1. Copy workbook to `artifacts/discovery/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx`.
+1. Copy workbook to `artifacts/04 - Backlog/pushed/Backlog Tracker - {YYYY-MM-DD}.xlsx`.
 2. Write `push-record.md` (same format as Section A4, using JIRA keys like `PROJ-42`).
 3. Update `Phase Context.md` to note push and set status to "Pushed to JIRA (source of truth)".
 
@@ -219,4 +219,4 @@ Next:
 ## Feedback
 
 After the summary, invite one line of quick feedback and append it to
-`artifacts/discovery/00 - Project/Feedback Log.md`.
+`artifacts/00 - Project/Feedback Log.md`.

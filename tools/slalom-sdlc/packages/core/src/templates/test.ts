@@ -23,7 +23,7 @@ Confirm the tools this phase depends on are available before doing anything else
 
 Ask for the {{projectKey}} story key if not already provided.
 
-> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: read \`refinement-notes.md\` and \`implementation-record.md\` from \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`, skip the PM status gate and all transitions, and record defects/outcomes in the local test-execution record only.
+> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: read \`refinement-notes.md\` and \`implementation-record.md\` from \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`, skip the PM status gate and all transitions, and record defects/outcomes in the local test-execution record only.
 
 ### Prerequisite gate
 1. \`{{paths.artifacts}}/{STORY-KEY}/implementation-record.md\` — must exist

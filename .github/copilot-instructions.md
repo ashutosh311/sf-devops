@@ -142,7 +142,7 @@ These rules apply across all agents and override any other instruction:
 
 The shared JIRA item creation protocol is in `.github/instructions/jira-item-protocol.instructions.md`.
 
-Discovery artifacts live under `artifacts/discovery/` in numbered subfolders (`00 - Project/`, `01 - Sessions/`, `02 - Current State/`, `03 - Future State/`, `04 - Backlog/`). Story artifacts live under `artifacts/{JIRA-KEY}/` — `refinement-notes.md`, `sf-discovery.md`, `solution-design.md`, `test-plan.md`.
+Discovery artifacts live directly under `artifacts/` in numbered subfolders (`00 - Project/`, `00 - Inbox/`, `00 - Registers/`, `01 - Sessions/`, `02 - Current State/`, `03 - Future State/`, `04 - Backlog/`, `06 - Reference/`). Story artifacts live under `artifacts/{JIRA-KEY}/` — `refinement-notes.md`, `sf-discovery.md`, `solution-design.md`, `test-plan.md`.
 
 The `/discover` sub-prompts are under `.github/prompts/sdlc/discover/`. Invoke with `#sdlc/discover <skill>` (e.g. `#sdlc/discover process-session`, `#sdlc/discover push-backlog`). Phase playbooks are at `.github/prompts/sdlc/discover/playbooks/`.
 

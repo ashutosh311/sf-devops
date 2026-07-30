@@ -24,11 +24,11 @@ Ask:
 
 Scan the following for anything related to this stakeholder group or functional area:
 
-- `artifacts/discovery/00 - Registers/Stakeholders.md` — what do we know about these people?
-- `artifacts/discovery/00 - Registers/Pain Points.md` — what pain points have been attributed to this area?
-- `artifacts/discovery/01 - Sessions/` — have we spoken to this group before?
-- `artifacts/discovery/02 - Current State/` — any current-state summaries for this area?
-- `artifacts/discovery/00 - Project/Project Overview.md` — objectives and scope
+- `artifacts/00 - Registers/Stakeholders.md` — what do we know about these people?
+- `artifacts/00 - Registers/Pain Points.md` — what pain points have been attributed to this area?
+- `artifacts/01 - Sessions/` — have we spoken to this group before?
+- `artifacts/02 - Current State/` — any current-state summaries for this area?
+- `artifacts/00 - Project/Project Overview.md` — objectives and scope
 
 ---
 
@@ -44,7 +44,7 @@ Based on the existing knowledge, identify:
 
 ## Step 4 — Write the briefing
 
-Write `artifacts/discovery/01 - Sessions/Prep - {YYYY-MM-DD} - {Session Name}.md`:
+Write `artifacts/01 - Sessions/Prep - {YYYY-MM-DD} - {Session Name}.md`:
 
 ```markdown
 # Workshop Prep — {Session Name}

@@ -67,11 +67,11 @@ Fetch the story from {{pmToolName}} via the {{pmMcp}}. Combine the status with w
 
 There is no PM-tool status in Local mode. Instead, require the discovery backlog and a refined story:
 
-- \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md\` — must exist (produced by \`#sdlc/refine\` in local mode).
+- \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md\` — must exist (produced by \`#sdlc/refine\` in local mode).
 
 If the refinement notes are **missing**:
 
-> "⛔ Cannot design locally. No \`refinement-notes.md\` found at \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`. Run \`#sdlc/refine\` in local mode first to produce the acceptance criteria, or connect the {{pmToolName}} MCP to design from the PM tool."
+> "⛔ Cannot design locally. No \`refinement-notes.md\` found at \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`. Run \`#sdlc/refine\` in local mode first to produce the acceptance criteria, or connect the {{pmToolName}} MCP to design from the PM tool."
 
 Then combine with whether \`.../{STORY-KEY}/solution-design.md\` exists to pick the mode: **missing → Design Mode**; **exists → Review Mode** (gap check only). Local mode never touches a PM tool.
 
@@ -110,7 +110,7 @@ Review Mode never produces new \`{{paths.forceApp}}/\` code, never runs build co
 
 There is no PM tool to query. Build context entirely from the discovery backlog:
 
-1. Load \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md\` — the primary requirements source (the same file \`#sdlc/refine\` writes in local mode).
+1. Load \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md\` — the primary requirements source (the same file \`#sdlc/refine\` writes in local mode).
 2. Read \`epics/{EPIC-ID}.md\` for the parent epic narrative and sibling stories, and \`MVP Scope.md\` for whether this story is in the approved MVP.
 3. Read \`open-questions.md\` for any unresolved questions touching this story, plus any chat-pasted materials.
 4. Present the same context summary as ALM mode (naming the local sources) and wait for confirmation before continuing.
@@ -280,7 +280,7 @@ All local work must be complete and reviewed before touching {{pmToolName}}. �
 Confirm that both \`sf-discovery.md\` and \`solution-design.md\` have been reviewed and accepted by the user.
 
 - **ALM mode:** write them to \`{{paths.artifacts}}/{STORY-KEY}/\`.
-- 🔌 **Local mode:** write them to \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (alongside \`refinement-notes.md\`), then **skip §5b–5c entirely** — take zero PM-tool actions and go to Step 6.
+- 🔌 **Local mode:** write them to \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (alongside \`refinement-notes.md\`), then **skip §5b–5c entirely** — take zero PM-tool actions and go to Step 6.
 
 ### 5b — Scaffold {{pmToolName}} sub-tasks and design comment (pending approval)
 
@@ -314,7 +314,7 @@ Once the user confirms, perform these steps **in order** — every one is mandat
 3. **Cross-link sub-tasks → design.** In each sub-task description, reference the parent story's solution design comment: *"See solution design comment on {STORY-KEY}"* — so a developer landing on a sub-task can find the design.
 4. **Transition {STORY-KEY} to {{statusMap.story.readyForBuild}}** {{#eq almTool "ADO"}}(via \`update_work_item\` setting \`System.State\`){{/eq}} — only after steps 1–3 succeed. If any step fails, do not transition; surface the failure to the user and stop.
 
-🔌 **Local mode.** Skip §5b–5c entirely — take **zero** PM-tool actions. The \`sf-discovery.md\` + \`solution-design.md\` written under \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` are the complete output.
+🔌 **Local mode.** Skip §5b–5c entirely — take **zero** PM-tool actions. The \`sf-discovery.md\` + \`solution-design.md\` written under \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` are the complete output.
 
 ---
 
@@ -326,7 +326,7 @@ Once the user confirms, perform these steps **in order** — every one is mandat
 
 🔌 **Local mode:**
 
-> "Design written under \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (\`solution-design.md\` + \`sf-discovery.md\`). No PM-tool actions were taken (local mode). The next phase is **#sdlc/build** — run it in local mode and it reads these files, keyed by backlog Story ID."
+> "Design written under \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (\`solution-design.md\` + \`sf-discovery.md\`). No PM-tool actions were taken (local mode). The next phase is **#sdlc/build** — run it in local mode and it reads these files, keyed by backlog Story ID."
 
 **Stop here.** Do not begin implementation work, do not scaffold \`{{paths.forceApp}}/\` metadata, and do not invoke \`#sdlc/build\`. Your remit ends at the transition to {{statusMap.story.readyForBuild}} (or the written design in Local mode).
 `;

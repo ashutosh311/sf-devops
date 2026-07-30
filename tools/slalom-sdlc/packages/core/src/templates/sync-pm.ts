@@ -16,7 +16,7 @@ The project config has already been provided to you in the user message. Use:
 
 ## Step 2 — Check prerequisites
 
-Read \`artifacts/discovery/04 - Backlog/pushed/push-record.md\`.
+Read \`artifacts/04 - Backlog/pushed/push-record.md\`.
 
 If it doesn't exist: "The backlog hasn't been pushed to Azure DevOps yet. Run **Push Backlog to PM Tool** first."
 
@@ -42,7 +42,7 @@ WHERE [System.TeamProject] = '{project}'
 
 ## Step 4 — Write pm-sync.md
 
-Write \`artifacts/discovery/04 - Backlog/pm-sync.md\`:
+Write \`artifacts/04 - Backlog/pm-sync.md\`:
 
 \`\`\`markdown
 # PM Sync Snapshot
@@ -84,7 +84,7 @@ PM sync complete — {YYYY-MM-DD HH:MM}
 
 PM tool:  Azure DevOps — {project} ({organization})
 Synced:   {N} epics, {N} stories
-File:     artifacts/discovery/04 - Backlog/pm-sync.md
+File:     artifacts/04 - Backlog/pm-sync.md
 
 Stories with no assignee: {N}
 Stories with no sprint: {N}
@@ -111,7 +111,7 @@ The project config has already been provided to you in the user message. Use:
 
 ## Step 2 — Check prerequisites
 
-Read \`artifacts/discovery/04 - Backlog/pushed/push-record.md\`.
+Read \`artifacts/04 - Backlog/pushed/push-record.md\`.
 
 If it doesn't exist: "The backlog hasn't been pushed to JIRA yet. Run **Push Backlog to PM Tool** first."
 
@@ -131,7 +131,7 @@ Retrieve: Summary, Issue type, Status, Assignee, Sprint, Story points.
 
 ## Step 4 — Write pm-sync.md
 
-Write \`artifacts/discovery/04 - Backlog/pm-sync.md\`:
+Write \`artifacts/04 - Backlog/pm-sync.md\`:
 
 \`\`\`markdown
 # PM Sync Snapshot
@@ -173,7 +173,7 @@ PM sync complete — {YYYY-MM-DD HH:MM}
 
 PM tool:  JIRA — {project_key} ({jira_site})
 Synced:   {N} epics, {N} stories
-File:     artifacts/discovery/04 - Backlog/pm-sync.md
+File:     artifacts/04 - Backlog/pm-sync.md
 
 Stories with no assignee: {N}
 Stories with no sprint: {N}

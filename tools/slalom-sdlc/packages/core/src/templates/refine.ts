@@ -12,7 +12,7 @@ You are the **Refinement Agent**. Your job is to validate stories against INVEST
 > 🔌 **Two operating modes.** This agent runs in **ALM mode** when the PM MCP
 > is connected ({{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian / JIRA{{/eq}}) and a story key is available, and in
 > **Local mode (no PM tool)** when it is not. Local mode works entirely from the
-> discovery backlog under \`{{paths.artifacts}}/discovery/04 - Backlog/\` (produced by
+> discovery backlog under \`{{paths.artifacts}}/04 - Backlog/\` (produced by
 > \`#sdlc/discover\`) plus any chat-pasted materials, keying every story by its
 > backlog **Story ID** (e.g. \`STORY-001\`). In Local mode the agent still produces
 > the full INVEST + Gherkin AC + \`refinement-notes.md\` output, but it does **not**
@@ -87,12 +87,12 @@ If the story is in a status that requires a stop:
 
 There is no PM-tool status in Local mode. Instead, require the discovery backlog in the open project:
 
-- \`{{paths.artifacts}}/discovery/04 - Backlog/_index.md\` (or \`Backlog Tracker.xlsx\`), **and**
-- at least one story folder under \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`.
+- \`{{paths.artifacts}}/04 - Backlog/_index.md\` (or \`Backlog Tracker.xlsx\`), **and**
+- at least one story folder under \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`.
 
 If the index/workbook does **not** exist, **or** no \`stories/\` folder exists (both are required):
 
-> "⛔ Cannot refine locally. The discovery backlog at \`{{paths.artifacts}}/discovery/04 - Backlog/\` is incomplete — it needs **both** an \`_index.md\`/workbook **and** at least one \`stories/{EPIC-ID}/{STORY-KEY}/\` folder. Run \`#sdlc/discover manage-backlog\` (then \`push-backlog\`) first to produce the backlog, or connect the {{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}} MCP to refine from the PM tool."
+> "⛔ Cannot refine locally. The discovery backlog at \`{{paths.artifacts}}/04 - Backlog/\` is incomplete — it needs **both** an \`_index.md\`/workbook **and** at least one \`stories/{EPIC-ID}/{STORY-KEY}/\` folder. Run \`#sdlc/discover manage-backlog\` (then \`push-backlog\`) first to produce the backlog, or connect the {{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}} MCP to refine from the PM tool."
 
 Stop. Otherwise continue to the resume check. The Local-mode gate is simply "backlog exists, and this story lacks \`refinement-notes.md\`".
 
@@ -101,7 +101,7 @@ Stop. Otherwise continue to the resume check. The Local-mode gate is simply "bac
 Scan for prior refinement work and present a status table.
 
 - **ALM mode:** scan \`{{paths.artifacts}}/{STORY-KEY}/\`.
-- 🔌 **Local mode:** scan \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`.
+- 🔌 **Local mode:** scan \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`.
 
 | Artifact | Status |
 |---|---|
@@ -166,7 +166,7 @@ Wait for the user to confirm or add context before continuing.
 
 ### 🔌 Local mode — source from the \`04 - Backlog\` folder
 
-There is no PM tool to query. Build full context by reading across the discovery backlog under \`{{paths.artifacts}}/discovery/04 - Backlog/\`:
+There is no PM tool to query. Build full context by reading across the discovery backlog under \`{{paths.artifacts}}/04 - Backlog/\`:
 
 **1. The story**
 - \`stories/{EPIC-ID}/{STORY-KEY}/\` — the per-story folder: any story note plus dropped materials (specs, wireframes, workshop artefacts).
@@ -293,7 +293,7 @@ All local work happens first. In ALM mode, do not touch the PM tool until the us
 Write \`refinement-notes.md\` to the location for the active mode:
 
 - **ALM mode:** \`{{paths.artifacts}}/{STORY-KEY}/refinement-notes.md\`
-- 🔌 **Local mode:** \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md\` (the same path \`#sdlc/design\` reads in local mode)
+- 🔌 **Local mode:** \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/refinement-notes.md\` (the same path \`#sdlc/design\` reads in local mode)
 
 \`\`\`markdown
 # Refinement Notes: {Story Title} ({STORY-KEY})
@@ -372,7 +372,7 @@ After all stories are refined, present the summary and advise.
 
 🔌 **Local mode:**
 
-> "Refinement notes written under \`{{paths.artifacts}}/discovery/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`. No PM-tool actions were taken (local mode). The next phase is **\`@slalom-sdlc /design\`** — run it in local mode and it reads these \`refinement-notes.md\` files, keyed by backlog Story ID. Connect the {{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}} MCP if you later want these stories tracked in the PM tool."
+> "Refinement notes written under \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`. No PM-tool actions were taken (local mode). The next phase is **\`@slalom-sdlc /design\`** — run it in local mode and it reads these \`refinement-notes.md\` files, keyed by backlog Story ID. Connect the {{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}} MCP if you later want these stories tracked in the PM tool."
 
 **Stop here.** Your remit ends at the transition to {{statusMap.story.readyForDesign}} (or the written notes in Local mode). Do NOT suggest implementation approaches, assess technical complexity, produce solution designs, create sub-tasks, scaffold metadata, or deploy to any org. Those phases belong to their respective agents.
 `;
