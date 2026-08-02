@@ -85,6 +85,14 @@ The `@slalom-sdlc` (VS Code / GitHub Copilot) column is the primary invocation. 
 
 Registering the MCP server directly instead of installing the plugin (see [Development](#development)) gives the same commands as `/mcp__slalom-sdlc__<name>`. The server detects which surface it's running under and every message it prints uses the matching form.
 
+### Interactive prompts in Claude Code
+
+`/init` asks its questions as **native input forms**, not as a conversation. The server drives them over [MCP elicitation](https://modelcontextprotocol.io/specification/server/elicitation) — the same role `showInputBox`/`showQuickPick` play in the VS Code interview — so the model never conducts the interview and can't paraphrase a question, invent a default, or skip a field. Both surfaces walk the same `QUESTIONS` list in `packages/core/src/questions.ts` and hand the answers to the same `buildSdlcConfig`.
+
+Clients that don't advertise the `elicitation` capability (the standalone CLI, older Claude Code builds) fall back automatically: the server hands the model the interview to conduct in conversation, finishing with a `sdlc_scaffold` call. Same questions, same resulting config, softer guarantees.
+
+The phase commands still use plain numbered menus rendered by the agent — elicitation forms are one-shot, and a menu you can answer with "the third one, but only for PROJ-42" is worth more there than a dropdown.
+
 ### Typical sprint workflow
 
 ```

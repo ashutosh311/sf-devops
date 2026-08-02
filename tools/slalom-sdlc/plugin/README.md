@@ -29,7 +29,10 @@ your `PATH`.
 | `/slalom-sdlc:test PROJ-42` | Apex and JEST test classes, coverage validation |
 | `/slalom-sdlc:release` | Deployment notes, go-live checklist, ticket transitions |
 
-Start with `/slalom-sdlc:init` on a project you haven't set up before.
+Start with `/slalom-sdlc:init` on a project you haven't set up before — it asks its
+questions as input forms rather than in chat, and writes the config from your answers
+directly. Re-running it on a configured project pre-fills every field with what's
+already there.
 
 ## Updating
 

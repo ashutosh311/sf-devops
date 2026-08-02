@@ -23,6 +23,12 @@ export interface Question<T = unknown> {
   options?: SelectOption<T>[];
   validate?: (value: T, answers: Partial<InterviewAnswers>) => string | true;
   when?: (answers: Partial<InterviewAnswers>) => boolean;
+  /** Numeric bounds, declared so form-based front ends can enforce them in the widget
+   *  rather than only catching a bad value in `validate` after the fact. */
+  min?: number;
+  max?: number;
+  /** Text sub-type, for front ends whose input widgets understand one. */
+  format?: "email" | "uri";
 }
 
 export interface InterviewAnswers {
@@ -98,6 +104,7 @@ export const QUESTIONS: Question[] = [
     label: "JIRA site URL",
     hint: "e.g. https://acme.atlassian.net",
     type: "text",
+    format: "uri",
     when: (a) => (a as Partial<InterviewAnswers>).pmTool === "JIRA",
     validate: (v) => {
       try {
@@ -113,6 +120,7 @@ export const QUESTIONS: Question[] = [
     section: "Project",
     label: "Atlassian account email",
     type: "text",
+    format: "email",
     when: (a) => (a as Partial<InterviewAnswers>).pmTool === "JIRA",
     validate: (v) =>
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).trim())
@@ -125,6 +133,7 @@ export const QUESTIONS: Question[] = [
     label: "Azure DevOps org URL",
     hint: "e.g. https://dev.azure.com/your-org",
     type: "text",
+    format: "uri",
     when: (a) => (a as Partial<InterviewAnswers>).pmTool === "ADO",
     validate: (v) => {
       try {
@@ -177,6 +186,8 @@ export const QUESTIONS: Question[] = [
     label: "Sprint length (weeks)",
     type: "number",
     default: 2,
+    min: 1,
+    max: 4,
     validate: (v) =>
       Number(v) >= 1 && Number(v) <= 4 ? true : "Must be between 1 and 4",
   },
@@ -207,6 +218,8 @@ export const QUESTIONS: Question[] = [
     label: "Apex test coverage threshold (%)",
     type: "number",
     default: DEFAULT_STANDARDS.apexCoverageThreshold,
+    min: 0,
+    max: 100,
     validate: (v) =>
       Number(v) >= 0 && Number(v) <= 100 ? true : "Must be between 0 and 100",
   },

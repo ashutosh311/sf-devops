@@ -11,14 +11,15 @@ import {
   type SubTaskStatusMap,
   fetchJiraStatuses,
   type JiraStatus,
-  DEFAULT_PATHS,
-  CONFIG_VERSION,
-  TOOL_VERSION,
-  type Phase,
+  buildSdlcConfig,
+  resolveExistingAnswer,
+  DEFAULT_JIRA_STATUS_MAP,
+  ADO_DEFAULT_STATUS_MAP,
+  type StatusMapTriple,
 } from "@sdlc/core";
 
-/** Local type alias for JIRA status map structure used in the interview flow. */
-type JiraStatusMap = { story: StoryStatusMap; epic: EpicStatusMap; subTask: SubTaskStatusMap };
+/** Local alias kept for readability in this file's many status-picking helpers. */
+type JiraStatusMap = StatusMapTriple;
 
 export async function runVSCodeInterview(
   existing?: Partial<SdlcConfig>
@@ -27,13 +28,13 @@ export async function runVSCodeInterview(
   if (!answers) return undefined;
 
   if (answers.pmTool === "LOCAL") {
-    return buildLocalConfig(answers);
+    return buildSdlcConfig(answers);
   }
 
   const statusMap = await collectStatusMap(answers, existing);
   if (!statusMap) return undefined;
 
-  return buildConfig(answers, statusMap);
+  return buildSdlcConfig(answers, statusMap);
 }
 
 // ── Answer collection ─────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ async function collectAnswers(
   for (const q of QUESTIONS) {
     if (q.when && !q.when(answers)) continue;
 
-    const existingValue = resolveExisting(q.id, existing);
+    const existingValue = resolveExistingAnswer(q.id, existing);
     const def = existingValue ?? q.default;
 
     switch (q.type) {
@@ -128,21 +129,6 @@ async function collectAnswers(
 
 // ── JIRA status mapping ───────────────────────────────────────────────────────
 
-const ADO_DEFAULT_STATUS_MAP: JiraStatusMap = {
-  story: {
-    backlog: "New",
-    refineInProgress: "Active",
-    readyForDesign: "Active",
-    designInProgress: "Active",
-    readyForBuild: "Active",
-    inDevelopment: "Active",
-    readyForTest: "In Review",
-    done: "Closed",
-  },
-  epic: { notStarted: "New", inProgress: "In Progress", done: "Closed" },
-  subTask: { todo: "New", inDevelopment: "Active", readyForTest: "In Review", done: "Closed" },
-};
-
 async function collectStatusMap(
   answers: InterviewAnswers,
   existing?: Partial<SdlcConfig>
@@ -174,7 +160,7 @@ async function collectStatusMap(
     ignoreFocusOut: true,
   });
 
-  if (!useManual || useManual === "Use defaults") return placeholderStatusMap();
+  if (!useManual || useManual === "Use defaults") return DEFAULT_JIRA_STATUS_MAP;
   return mapStatusesManually(existing);
 }
 
@@ -290,14 +276,6 @@ async function pickSubTaskStatuses(
   return { todo, inDevelopment, readyForTest, done };
 }
 
-function placeholderStatusMap(): JiraStatusMap {
-  return {
-    story:   { backlog: "Backlog", refineInProgress: "In Refinement", readyForDesign: "Ready for Design", designInProgress: "In Design", readyForBuild: "Ready for Build", inDevelopment: "In Development", readyForTest: "Ready for Test", done: "Done" },
-    epic:    { notStarted: "To Do", inProgress: "In Progress", done: "Done" },
-    subTask: { todo: "To Do", inDevelopment: "In Progress", readyForTest: "In Review", done: "Done" },
-  };
-}
-
 async function collectAdoStatusMap(existing?: Partial<SdlcConfig>): Promise<JiraStatusMap | undefined> {
   const exAdoStatusMap = existing?.ado?.statusMap as JiraStatusMap | undefined;
   const choice = await vscode.window.showQuickPick(["Use ADO defaults", "Customise status names"], {
@@ -309,93 +287,4 @@ async function collectAdoStatusMap(existing?: Partial<SdlcConfig>): Promise<Jira
   if (!choice) return undefined;
   if (choice === "Use ADO defaults") return exAdoStatusMap ?? ADO_DEFAULT_STATUS_MAP;
   return mapStatusesManually(existing, exAdoStatusMap ?? ADO_DEFAULT_STATUS_MAP);
-}
-
-// ── Config assembly ───────────────────────────────────────────────────────────
-
-function buildConfig(
-  answers: InterviewAnswers,
-  statusMap: JiraStatusMap
-): SdlcConfig {
-  const isAdo = answers.pmTool === "ADO";
-  return {
-    version: CONFIG_VERSION,
-    generatedAt: new Date().toISOString(),
-    toolVersion: TOOL_VERSION,
-    project: {
-      name: answers.projectName,
-      // Keep legacy JIRA fields for backward compat with older tooling
-      ...(isAdo ? {} : {
-        jiraKey:   answers.jiraKey.toUpperCase(),
-        jiraSite:  answers.jiraSite,
-        jiraEmail: answers.jiraEmail,
-      }),
-    },
-    alm: isAdo
-      ? { tool: "ADO", organization: answers.adoOrganization, project: answers.adoProject }
-      : { tool: "JIRA", site: answers.jiraSite, projectKey: answers.jiraKey.toUpperCase(), email: answers.jiraEmail },
-    phases: answers.phases as Phase[],
-    team: {
-      sprintLengthWeeks:  answers.sprintLengthWeeks,
-      estimationApproach: answers.estimationApproach,
-    },
-    salesforce: {
-      orgs: { sandbox: answers.orgSandbox },
-    },
-    standards: {
-      apexCoverageThreshold: answers.apexCoverageThreshold,
-    },
-    ...(isAdo ? { ado: { statusMap } } : { jira: { statusMap } }),
-    branching: "gitflow",
-    paths: DEFAULT_PATHS,
-  };
-}
-
-function buildLocalConfig(answers: InterviewAnswers): SdlcConfig {
-  const keyPrefix = (answers.localKeyPrefix || "LOCAL").trim().toUpperCase();
-  return {
-    version: CONFIG_VERSION,
-    generatedAt: new Date().toISOString(),
-    toolVersion: TOOL_VERSION,
-    project: {
-      name: answers.projectName,
-    },
-    alm: { tool: "LOCAL", keyPrefix },
-    phases: answers.phases as Phase[],
-    team: {
-      sprintLengthWeeks:  answers.sprintLengthWeeks,
-      estimationApproach: answers.estimationApproach,
-    },
-    salesforce: {
-      orgs: { sandbox: answers.orgSandbox },
-    },
-    standards: {
-      apexCoverageThreshold: answers.apexCoverageThreshold,
-    },
-    // No jira/ado block — LOCAL projects render the built-in default stage
-    // labels and never transition a remote work item.
-    branching: "gitflow",
-    paths: DEFAULT_PATHS,
-  };
-}
-
-function resolveExisting(questionId: string, existing?: Partial<SdlcConfig>): unknown {
-  if (!existing) return undefined;
-  const almTool = existing.alm?.tool ?? (existing.project?.jiraKey ? "JIRA" : undefined);
-  const map: Record<string, unknown> = {
-    projectName:           existing.project?.name,
-    pmTool:                almTool,
-    jiraKey:               existing.project?.jiraKey ?? (existing.alm?.tool === "JIRA" ? existing.alm.projectKey : undefined),
-    jiraSite:              existing.project?.jiraSite ?? (existing.alm?.tool === "JIRA" ? existing.alm.site : undefined),
-    jiraEmail:             existing.project?.jiraEmail ?? (existing.alm?.tool === "JIRA" ? existing.alm.email : undefined),
-    adoOrganization:       existing.alm?.tool === "ADO" ? existing.alm.organization : undefined,
-    adoProject:            existing.alm?.tool === "ADO" ? existing.alm.project : undefined,
-    localKeyPrefix:        existing.alm?.tool === "LOCAL" ? existing.alm.keyPrefix : undefined,
-    phases:                existing.phases,
-    sprintLengthWeeks:     existing.team?.sprintLengthWeeks,
-    estimationApproach:    existing.team?.estimationApproach,
-    orgSandbox:            existing.salesforce?.orgs.sandbox,
-    apexCoverageThreshold: existing.standards?.apexCoverageThreshold,
-  };
-  return map[questionId];
 }

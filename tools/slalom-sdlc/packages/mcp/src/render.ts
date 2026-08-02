@@ -1,6 +1,6 @@
 import { renderPrompt, CACHE_CURRENT_DIR } from "@sdlc/core";
 import { requireConfig } from "./config.js";
-import { buildAboutText, INIT_PROMPT } from "./about.js";
+import { buildAboutText, INIT_DISPATCH } from "./about.js";
 
 export const PHASES = ["discover", "refine", "design", "build", "test", "release"] as const;
 export type Phase = (typeof PHASES)[number];
@@ -29,7 +29,7 @@ export async function renderCommand(
   storyKey?: string
 ): Promise<RenderResult> {
   if (command === "about") return { ok: true, text: buildAboutText(mcpVersion) };
-  if (command === "init")  return { ok: true, text: INIT_PROMPT };
+  if (command === "init")  return { ok: true, text: INIT_DISPATCH };
 
   try {
     const { config } = await requireConfig();

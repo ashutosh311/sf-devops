@@ -60,6 +60,10 @@ The repo-root `.claude-plugin/marketplace.json` publishes that plugin. Its sourc
 
 `core` contains all the logic; `vscode`, `mcp`, and `cli` are thin front ends that call into it. When adding a new SDLC command/phase, the work almost always starts in `packages/core/src/`, then gets exposed from each front end (`packages/vscode/src/handlers/`, `packages/mcp/src/tools.ts` + `prompts.ts`, `packages/cli/src/index.ts`).
 
+### The `/init` interview
+
+`packages/core/src/questions.ts` (`QUESTIONS`) is the single question list, and `config-builder.ts` (`buildSdlcConfig`) is the single answers→config assembler. Every front end walks the same list and calls the same builder — only the widget layer differs: `packages/vscode/src/interview.ts` uses `showInputBox`/`showQuickPick`, `packages/mcp/src/elicit.ts` uses MCP elicitation forms. Add a question to `QUESTIONS` and both surfaces pick it up (the MCP side asks anything it hasn't explicitly grouped in a final catch-all form). Never assemble an `SdlcConfig` anywhere else — doing so is how `sdlc_scaffold` ended up JIRA-only while the VS Code path had supported ADO and LOCAL for months.
+
 ### Prompt rendering pipeline
 
 1. `/init` (via `sdlc_scaffold` in the MCP, or the VS Code interview) writes `.sdlc/config.json` into the *client* project — JIRA key/site, status-name mappings, sprint length, org alias, enabled phases. Schema is `packages/core/src/schema.ts`.

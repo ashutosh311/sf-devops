@@ -1,6 +1,7 @@
 export * from "./version.js";
 export * from "./schema.js";
 export * from "./questions.js";
+export * from "./config-builder.js";
 export * from "./jira.js";
 export * from "./engine.js";
 export * from "./scaffold.js";
