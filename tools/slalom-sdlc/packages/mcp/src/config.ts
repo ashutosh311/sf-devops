@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SdlcConfigSchema, type SdlcConfig } from "@sdlc/core";
+import { cmd } from "./surface.js";
 
 // Shared server reference — set in index.ts after McpServer is created.
 let _server: Server | null = null;
@@ -57,7 +58,7 @@ export async function requireConfig(): Promise<{ config: SdlcConfig; root: strin
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       throw new Error(
-        "No .sdlc/config.json found in this project. Run /mcp__slalom-sdlc__init to set up the project first."
+        `No .sdlc/config.json found in this project. Run ${cmd("init")} to set up the project first.`
       );
     }
     throw err;
@@ -66,7 +67,7 @@ export async function requireConfig(): Promise<{ config: SdlcConfig; root: strin
   const parsed = SdlcConfigSchema.safeParse(JSON.parse(raw));
   if (!parsed.success) {
     throw new Error(
-      "Invalid .sdlc/config.json — run /mcp__slalom-sdlc__init to reconfigure the project."
+      `Invalid .sdlc/config.json — run ${cmd("init")} to reconfigure the project.`
     );
   }
 

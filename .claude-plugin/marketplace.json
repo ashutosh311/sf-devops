@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "slalom",
+  "description": "Slalom UK&I delivery tooling for Claude Code",
+  "owner": {
+    "name": "Slalom UK&I"
+  },
+  "plugins": [
+    {
+      "name": "slalom-sdlc",
+      "description": "Slalom's Agentic SDLC for Salesforce — phase agents for discovery, refinement, design, build, test, and release, driven by your project's JIRA board, org, and coding standards.",
+      "author": {
+        "name": "Slalom UK&I"
+      },
+      "category": "development",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/Slalom/salesforce-devops.git",
+        "path": "plugin",
+        "ref": "plugin-dist"
+      },
+      "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/slalom-sdlc"
+    }
+  ]
+}

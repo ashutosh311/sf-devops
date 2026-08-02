@@ -16,7 +16,7 @@ const server = new McpServer({
 setServer(server.server);
 
 registerPrompts(server, MCP_VERSION);
-registerTools(server);
+registerTools(server, MCP_VERSION);
 
 const transport = new StdioServerTransport();
 

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Two distinct things live side by side here:
 
 1. **A Salesforce consulting delivery repo** (Slalom UK&I) — `force-app/` (SFDX metadata), `devops/standards/` (prescriptive coding standards), `artifacts/` (generated SDLC deliverables), `manifests/`, `config/`, `pipeline-scripts/` (Bitbucket CI). This is the shape a client project takes after running the SDLC tooling below.
-2. **`tools/slalom-sdlc/`** — the actual software product: a pnpm/TypeScript monorepo that implements the "Agentic SDLC" — phase-based AI agents (`/discover`, `/refine`, `/design`, `/build`, `/test`, `/release`) shipped as a VS Code/GitHub Copilot extension (primary, supported) and an experimental Claude Code MCP server. **Most Claude Code work in this repo happens inside `tools/slalom-sdlc/`.**
+2. **`tools/slalom-sdlc/`** — the actual software product: a pnpm/TypeScript monorepo that implements the "Agentic SDLC" — phase-based AI agents (`/discover`, `/refine`, `/design`, `/build`, `/test`, `/release`) shipped as a VS Code/GitHub Copilot extension (primary, supported) and as a Claude Code plugin wrapping the MCP server. **Most Claude Code work in this repo happens inside `tools/slalom-sdlc/`.**
 
 Full behavioral rules for AI agents operating on a *client* project (non-negotiable Apex/LWC rules, commit/branch format, standards-file routing) are in [AGENTS.md](AGENTS.md) and its GitHub Copilot equivalent `.github/copilot-instructions.md` — read those before generating Apex, LWC, OmniStudio, or config metadata under `force-app/`.
 
@@ -50,9 +50,13 @@ packages/
   core/     @sdlc/core   — single source of truth: config schema (Zod), Handlebars prompt templates,
                             scaffold logic, JIRA client, standards loader, instruction-cache reader
   vscode/   slalom-sdlc  — VS Code extension, GitHub Copilot chat participant (@slalom-sdlc) — PRIMARY, SUPPORTED
-  mcp/      slalom-sdlc-mcp — Claude Code MCP server — EXPERIMENTAL, shares core but no auto-instruction-sync
+  mcp/      slalom-sdlc-mcp — Claude Code MCP server, shipped inside the plugin (no daily instruction sync of its own)
   cli/      @sdlc/cli    — standalone init/reconfigure CLI, packaged as native binaries
+plugin/     Claude Code plugin source (manifest, .mcp.json, commands/) — the built
+            server is added by scripts/package-plugin.mjs, never committed
 ```
+
+The repo-root `.claude-plugin/marketplace.json` publishes that plugin. Its source points at the **`plugin-dist` branch**, which `.github/workflows/release.yml` republishes on every `vX.Y.Z` tag with the assembled plugin (including the built `server/server.js`). `plugin-dist` is CI-owned: never commit to it, merge it, or delete it.
 
 `core` contains all the logic; `vscode`, `mcp`, and `cli` are thin front ends that call into it. When adding a new SDLC command/phase, the work almost always starts in `packages/core/src/`, then gets exposed from each front end (`packages/vscode/src/handlers/`, `packages/mcp/src/tools.ts` + `prompts.ts`, `packages/cli/src/index.ts`).
 
@@ -71,7 +75,7 @@ Two "instructions" locations exist and are not interchangeable:
 - Templates and instructions are compiled into the extension bundle (`dist/extension.js`), not shipped as plain files in the client's repo — this is deliberate IP protection (see `tools/slalom-sdlc/README.md`).
 - The **VS Code extension only** (`packages/vscode/src/sync.ts`) checks GitHub Releases on `Slalom/salesforce-devops` daily and populates `~/.slalom-sdlc/instructions-cache/current/` (validated against `manifest.json` via SHA-256 checksums, see `packages/core/src/cache.ts`).
 - `engine.ts`'s `renderPrompt`/instruction lookups prefer `readCachedTemplate`/`readCachedInstruction` from that cache dir and fall back to the bundled constant if absent or invalid.
-- The MCP server and CLI **never perform the sync themselves** — they only benefit from a warm cache if the VS Code extension already populated it on the same machine. On their own they always run on whatever was bundled at their last build. Keep this asymmetry in mind when changing anything under `devops/instructions/` or the cache logic — a fix that "just works" in `vscode` needs a separate build/release for `mcp`/`cli` users to see it.
+- The MCP server and CLI **never perform the sync themselves** — they only benefit from a warm cache if the VS Code extension already populated it on the same machine. On their own they always run on whatever was bundled at their last build. Keep this asymmetry in mind when changing anything under `devops/instructions/` or the cache logic — a fix that "just works" in `vscode` needs a separate build/release for `mcp`/`cli` users to see it. For plugin users the release itself is the fix: every release rebuilds and republishes the plugin, so `claude plugin update slalom-sdlc@slalom` picks up new instructions.
 - `scripts/package-instructions.mjs` packages `devops/instructions/*.md` + the phase templates into `instructions.zip` (with a checksummed `manifest.json`) for upload to a GitHub Release — this is the file the sync mechanism above downloads.
 
 ### JIRA integration

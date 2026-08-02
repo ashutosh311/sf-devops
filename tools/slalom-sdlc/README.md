@@ -4,7 +4,7 @@ AI-assisted SDLC agents for Salesforce delivery, built by Slalom UK&I.
 
 Each slash command activates a purpose-built AI agent for a specific delivery phase — discovery, refinement, design, build, test, and release. The agents work within the project's PM tool — **JIRA (Atlassian) or Azure DevOps (ADO)** — Salesforce org, and Slalom coding standards without the consultant needing to switch context. You pick the PM tool once during `/init` and every agent adapts to it.
 
-The **primary, fully-supported experience is the VS Code extension running on GitHub Copilot** (`@slalom-sdlc`). A Claude Code MCP server is also included as an **experimental bonus** for teams that prefer Claude Code — it shares the same engine and standards, but is not the supported delivery path and does not receive automatic instruction updates (see [Instruction Updates](#instruction-updates)).
+The **primary, fully-supported experience is the VS Code extension running on GitHub Copilot** (`@slalom-sdlc`). A **Claude Code plugin** is also published for teams that prefer Claude Code — it shares the same engine and standards, installs from a marketplace in this repo, and updates with `claude plugin update` (see [Instruction Updates](#instruction-updates)).
 
 ---
 
@@ -36,38 +36,54 @@ The **primary, fully-supported experience is the VS Code extension running on Gi
 
 This runs a short setup interview and scaffolds the project with config, standards, and MCP configs.
 
-### Claude Code (MCP) — experimental bonus
+### Claude Code (plugin)
 
-> Not the supported delivery path. Provided for teams already standardised on Claude Code. Instruction auto-update is **not** available here (instructions fall back to those bundled at build time).
+> Not the primary delivery path, but a supported install. Requires Node.js 20+ on your `PATH` and read access to `Slalom/salesforce-devops`.
 
 ```bash
-cd tools/slalom-sdlc/packages/mcp
-./setup.sh
+claude plugin marketplace add Slalom/salesforce-devops
+claude plugin install slalom-sdlc@slalom
 ```
 
-Then from any Salesforce project:
+Restart Claude Code, then from any Salesforce project:
 
 ```
-/mcp__slalom-sdlc__init
+/slalom-sdlc:init
+```
+
+To update later:
+
+```bash
+claude plugin update slalom-sdlc@slalom
+```
+
+Use the `plugin@marketplace` form — `claude plugin update slalom-sdlc` on its own does not resolve.
+
+If you previously registered the MCP server by hand with `packages/mcp/setup.sh`, remove it first so you don't end up with the same tools twice:
+
+```bash
+claude mcp remove slalom-sdlc
 ```
 
 ---
 
 ## Commands
 
-The `@slalom-sdlc` (VS Code / GitHub Copilot) column is the supported invocation. The Claude Code (MCP) column is the equivalent experimental command.
+The `@slalom-sdlc` (VS Code / GitHub Copilot) column is the primary invocation. The Claude Code column is the equivalent plugin command.
 
-| VS Code (supported) | Claude Code (MCP, experimental) | What it does |
+| VS Code | Claude Code | What it does |
 |---|---|---|
-| `@slalom-sdlc /about` | `/mcp__slalom-sdlc__about` | Tool overview and command list |
-| `@slalom-sdlc /init` | `/mcp__slalom-sdlc__init` | Set up or reconfigure a project |
-| `@slalom-sdlc /discover` | `/mcp__slalom-sdlc__discover` | Map requirements, identify unknowns, draft epics and stories |
-| `@slalom-sdlc /refine PROJ-42` | `/mcp__slalom-sdlc__refine PROJ-42` | Refine a story — AC, open questions, effort estimate |
-| `@slalom-sdlc /design PROJ-42` | `/mcp__slalom-sdlc__design PROJ-42` | Technical design — solution, data model, sub-tasks |
-| `@slalom-sdlc /build PROJ-42` | `/mcp__slalom-sdlc__build PROJ-42` | Scaffold Apex/LWC/config, deploy to sandbox |
-| `@slalom-sdlc /test PROJ-42` | `/mcp__slalom-sdlc__test PROJ-42` | Generate test classes, validate coverage |
-| `@slalom-sdlc /release` | `/mcp__slalom-sdlc__release` | Deployment notes, checklist, PM-tool transitions |
+| `@slalom-sdlc /about` | `/slalom-sdlc:about` | Tool overview and command list |
+| `@slalom-sdlc /init` | `/slalom-sdlc:init` | Set up or reconfigure a project |
+| `@slalom-sdlc /discover` | `/slalom-sdlc:discover` | Map requirements, identify unknowns, draft epics and stories |
+| `@slalom-sdlc /refine PROJ-42` | `/slalom-sdlc:refine PROJ-42` | Refine a story — AC, open questions, effort estimate |
+| `@slalom-sdlc /design PROJ-42` | `/slalom-sdlc:design PROJ-42` | Technical design — solution, data model, sub-tasks |
+| `@slalom-sdlc /build PROJ-42` | `/slalom-sdlc:build PROJ-42` | Scaffold Apex/LWC/config, deploy to sandbox |
+| `@slalom-sdlc /test PROJ-42` | `/slalom-sdlc:test PROJ-42` | Generate test classes, validate coverage |
+| `@slalom-sdlc /release` | `/slalom-sdlc:release` | Deployment notes, checklist, PM-tool transitions |
 | `@slalom-sdlc /feedback <comment>` | — | Send feedback about the tooling (VS Code only) — logged to the usage list |
+
+Registering the MCP server directly instead of installing the plugin (see [Development](#development)) gives the same commands as `/mcp__slalom-sdlc__<name>`. The server detects which surface it's running under and every message it prints uses the matching form.
 
 ### Typical sprint workflow
 
@@ -126,7 +142,9 @@ Slalom's delivery procedures improve over time. Rather than requiring everyone t
 
 Instructions are cached at `~/.slalom-sdlc/instructions-cache/current/`.
 
-> **Auto-update is a VS Code feature.** Only the VS Code extension performs the GitHub sync. The Claude Code MCP server and CLI read from the same local cache if the VS Code extension has populated it, but on their own they always fall back to the instructions bundled at build time — they never sync.
+> **The daily GitHub sync is a VS Code feature.** Only the VS Code extension polls for new instruction bundles. The Claude Code plugin and the CLI read from the same local cache if the extension has populated it, but neither syncs on its own.
+>
+> The Claude Code plugin doesn't need to. Every release republishes the plugin with a freshly built server bundle, and the templates and instructions are compiled into that bundle — so `claude plugin update slalom-sdlc@slalom` updates the agent instructions as a side effect. The CLI is the one surface with no update path of its own: it always runs whatever was bundled when its binary was built.
 
 ### Authentication
 
@@ -155,11 +173,21 @@ Open the VS Code Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`):
 
 ## Distribution
 
-### For Slalom consultants
+### For Slalom consultants — VS Code
 
 Install the `.vsix` extension. The extension connects to the private `Slalom/salesforce-devops` GitHub repo using your Copilot login and keeps instructions up to date automatically.
 
 **Required:** Active GitHub Copilot subscription, GitHub account with access to `Slalom/salesforce-devops`.
+
+### For Slalom consultants — Claude Code
+
+The plugin is published from a marketplace declared at `.claude-plugin/marketplace.json` in this repo's root. Nothing is downloaded from Releases: Claude Code clones the plugin, so repo access *is* the access control, the same way Copilot login gates the VSIX.
+
+The marketplace entry points at the **`plugin-dist` branch**, a generated branch holding only the assembled plugin — manifest, slash commands, and the built `server/server.js`. The release workflow republishes it on every `vX.Y.Z` tag. `main` holds the plugin *source* at `tools/slalom-sdlc/plugin/`; no build output is ever committed there.
+
+**Required:** Node.js 20+ on `PATH`, GitHub account with access to `Slalom/salesforce-devops`.
+
+`slalom-sdlc-plugin.zip` is attached to each release for manual or air-gapped install, but the marketplace route is the normal one — it's the only one that updates.
 
 ### For client teams and non-Slalom users
 
@@ -298,7 +326,7 @@ itself is only ever created when `SLALOM_SDLC_USAGE_DEBUG` is set; normal usage 
 
 ## For Slalom Delivery Teams: Publishing an Update
 
-Releases are fully automated and tag-driven — there is no version to bump and no release script to run yourself. Every release ships the same three assets together: the VS Code extension (`.vsix`), the standalone CLI binaries, and the instruction bundle (`instructions.zip` + `manifest.json`).
+Releases are fully automated and tag-driven — there is no version to bump and no release script to run yourself. Every release ships the same four artefacts together: the VS Code extension (`.vsix`), the standalone CLI binaries, the instruction bundle (`instructions.zip` + `manifest.json`), and the Claude Code plugin.
 
 1. Edit whatever needs to change (instruction markdown in `devops/instructions/`, templates in `packages/core/src/templates/`, extension code, etc.) and merge it into `main` as normal.
 2. Tag the merged commit with the version you want to release and push the tag:
@@ -308,8 +336,10 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-3. `.github/workflows/release.yml` picks up the tag, verifies it's actually reachable from `main`, builds and typechecks every package, stamps `v1.2.3` into each package's `package.json` and `TOOL_VERSION` (this stamping happens only in the CI working tree — nothing is committed back to the repo), packages the VSIX / CLI binaries / instruction bundle, and publishes them all as one GitHub Release.
-4. All consultants with the extension pick up the new instructions within 24 hours automatically. Anyone installing a fresh `.vsix` or CLI binary gets `v1.2.3` baked in.
+3. `.github/workflows/release.yml` picks up the tag, verifies it's actually reachable from `main`, builds and typechecks every package, stamps `v1.2.3` into each package's `package.json` and `TOOL_VERSION` (this stamping happens only in the CI working tree — nothing is committed back to the repo), packages the VSIX / CLI binaries / instruction bundle / plugin, republishes the `plugin-dist` branch, and publishes the assets as one GitHub Release.
+4. All consultants with the extension pick up the new instructions within 24 hours automatically. Claude Code users get it on their next `claude plugin update slalom-sdlc@slalom`. Anyone installing a fresh `.vsix` or CLI binary gets `v1.2.3` baked in.
+
+> `plugin-dist` is written by CI only. Don't commit to it, don't merge it into `main`, and don't delete it — deleting it breaks `claude plugin install`/`update` for everyone until the next release recreates it.
 
 If a release run fails for an infrastructure reason (not a code problem), re-run it without re-tagging via **Actions → Release → Run workflow**, supplying the existing tag.
 
@@ -324,7 +354,7 @@ git tag v1.3.0-rc.1
 git push origin v1.3.0-rc.1
 ```
 
-Any tag matching `vX.Y.Z-<suffix>` (e.g. `-rc.1`, `-beta.2`) skips the "must be on main" check and runs the full pipeline — build, typecheck, package VSIX/CLI binaries/instructions — from that commit. It still publishes a real GitHub Release so you can download and inspect the actual assets, but as a **prerelease, not marked "latest"** — so it's never picked up by the VS Code extension's background sync or by anyone just grabbing the latest release. Once you're confident, merge as normal and tag the merged commit with the real `vX.Y.Z` version.
+Any tag matching `vX.Y.Z-<suffix>` (e.g. `-rc.1`, `-beta.2`) skips the "must be on main" check and runs the full pipeline — build, typecheck, package VSIX/CLI binaries/instructions — from that commit. It still publishes a real GitHub Release so you can download and inspect the actual assets, but as a **prerelease, not marked "latest"** — so it's never picked up by the VS Code extension's background sync or by anyone just grabbing the latest release. For the same reason it does **not** republish `plugin-dist`: the plugin is assembled and verified, but a dry run can never become what Claude Code users install. Once you're confident, merge as normal and tag the merged commit with the real `vX.Y.Z` version.
 
 ---
 
@@ -386,10 +416,15 @@ tools/slalom-sdlc/
 │   ├── vscode/     slalom-sdlc — VS Code extension (GitHub Copilot chat participant)
 │   ├── mcp/        slalom-sdlc-mcp — Claude Code MCP server
 │   └── cli/        @sdlc/cli — standalone CLI for init/reconfigure
+├── plugin/         Claude Code plugin source — manifest, .mcp.json, commands/
+│                   (the built server is added at package time, never committed)
 └── scripts/
     ├── sync-version.mjs           — stamps a version into every package.json + TOOL_VERSION (release workflow only)
-    └── package-instructions.mjs   — release asset builder
+    ├── package-instructions.mjs   — release asset builder
+    └── package-plugin.mjs         — assembles plugin/ + the built MCP server into dist/plugin/
 ```
+
+The repo-root `.claude-plugin/marketplace.json` is the other half of the plugin — it's what `claude plugin marketplace add Slalom/salesforce-devops` reads.
 
 ### Local builds
 
@@ -440,6 +475,7 @@ If a reload doesn't seem to pick up your rebuild (VS Code can be sticky about re
 | `pnpm package` | Build CLI native binaries (macOS/Windows/Linux) |
 | `node scripts/sync-version.mjs --version x.x.x` | Stamp a real version locally (uncommitted) — release workflow does this automatically from the tag |
 | `node scripts/package-instructions.mjs --version x.x.x` | Build the instruction bundle for a GitHub Release |
+| `node scripts/package-plugin.mjs --version x.x.x` | Assemble the Claude Code plugin into `dist/plugin/` |
 
 ### Architecture references
 

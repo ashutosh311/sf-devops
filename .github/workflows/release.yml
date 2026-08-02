@@ -1,9 +1,9 @@
 name: Release
 
 # Builds and publishes every Slalom SDLC release asset — the VS Code extension
-# (VSIX), standalone CLI binaries, and the instruction bundle — from a single
-# git tag. The tag is the only source of truth for the release version: no
-# package.json bump, no local script to run or remember.
+# (VSIX), standalone CLI binaries, the instruction bundle, and the Claude Code
+# plugin — from a single git tag. The tag is the only source of truth for the
+# release version: no package.json bump, no local script to run or remember.
 #
 # Release process:
 #   1. Merge your changes into main.
@@ -131,13 +131,77 @@ jobs:
       - name: Package instruction bundle
         run: node scripts/package-instructions.mjs --version "${{ steps.version.outputs.version }}"
 
+      - name: Package Claude Code plugin
+        run: node scripts/package-plugin.mjs --version "${{ steps.version.outputs.version }}"
+
       - name: Verify assets
         run: |
           test -f dist/release/instructions.zip
           test -f dist/release/manifest.json
+          test -f dist/release/slalom-sdlc-plugin.zip
+          test -f dist/plugin/server/server.js
+          test -f dist/plugin/.mcp.json
           ls packages/vscode/*.vsix
           ls packages/cli/binaries/*
           ls -lh dist/release packages/vscode/*.vsix packages/cli/binaries/*
+
+      # Claude Code installs plugins by cloning, not by downloading an asset, so the
+      # built server bundle has to exist at a git ref. `plugin-dist` is that ref: a
+      # branch holding only the assembled plugin, republished here on every release.
+      # The marketplace entry in the repo-root .claude-plugin/marketplace.json points
+      # at it, so `claude plugin update slalom-sdlc` picks this up with no other moving
+      # parts. Skipped for pre-releases — a dry-run tag must never become what plugin
+      # users install, exactly like `make_latest: false` on the release itself.
+      - name: Publish plugin to plugin-dist branch
+        if: steps.version.outputs.prerelease != 'true'
+        working-directory: .
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          REMOTE="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          WORK="$RUNNER_TEMP/plugin-dist"
+
+          # Reuse the existing branch where there is one so consumers' clones can
+          # fast-forward; create it from scratch on the first release.
+          if git ls-remote --exit-code --heads "$REMOTE" plugin-dist >/dev/null 2>&1; then
+            git clone --depth 1 --branch plugin-dist "$REMOTE" "$WORK"
+          else
+            mkdir -p "$WORK"
+            git -C "$WORK" init -q -b plugin-dist
+            git -C "$WORK" remote add origin "$REMOTE"
+          fi
+
+          rm -rf "$WORK/plugin"
+          cp -R tools/slalom-sdlc/dist/plugin "$WORK/plugin"
+
+          cat > "$WORK/README.md" <<EOF
+          # plugin-dist
+
+          Generated branch — do not edit by hand, and do not merge it into \`main\`.
+
+          It holds the built Claude Code plugin (\`plugin/\`) for the current release,
+          republished by \`.github/workflows/release.yml\` on every \`vX.Y.Z\` tag. The
+          plugin source lives at \`tools/slalom-sdlc/plugin/\` on \`main\`; the bundled
+          server at \`plugin/server/server.js\` is built from \`tools/slalom-sdlc/packages/mcp\`.
+
+          Install: \`claude plugin marketplace add ${GITHUB_REPOSITORY}\`
+
+          Current release: ${TAG}
+          EOF
+
+          git -C "$WORK" config user.name  "github-actions[bot]"
+          git -C "$WORK" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$WORK" add -A
+
+          if git -C "$WORK" diff --cached --quiet; then
+            echo "plugin-dist already matches ${TAG} — nothing to publish."
+            exit 0
+          fi
+
+          git -C "$WORK" commit -q -m "release: slalom-sdlc plugin ${TAG}"
+          git -C "$WORK" push origin plugin-dist
+          echo "Published plugin ${TAG} to plugin-dist."
 
       # GitHub's "immutable releases" feature locks a release's assets and tag as
       # soon as it's published — asset uploads are only allowed while a release is
@@ -161,12 +225,16 @@ jobs:
             - **`slalom-sdlc-*`** — standalone CLI binaries (macOS/Windows/Linux) for headless or non-VS Code use.
             - **`instructions.zip`** — the instruction bundle the installed extension downloads automatically on its daily background sync.
               Every file is checksum-validated against `manifest.json` before activation.
+            - **`slalom-sdlc-plugin.zip`** — the Claude Code plugin, for manual or air-gapped install.
+              Normally you don't need this file: `claude plugin marketplace add Slalom/salesforce-devops`
+              then `claude plugin install slalom-sdlc@slalom`, and `claude plugin update slalom-sdlc` thereafter.
           draft: true
           prerelease: ${{ steps.version.outputs.prerelease }}
           make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
           files: |
             tools/slalom-sdlc/dist/release/instructions.zip
             tools/slalom-sdlc/dist/release/manifest.json
+            tools/slalom-sdlc/dist/release/slalom-sdlc-plugin.zip
             tools/slalom-sdlc/packages/vscode/*.vsix
             tools/slalom-sdlc/packages/cli/binaries/*
 

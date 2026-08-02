@@ -506,6 +506,16 @@ The IP rows are unchanged from the VSIX matrix — templates and instructions st
    > **✅ Decision (v0.1):** Setup script from the internal repo. No registry required. Access is gated by existing Bitbucket/GitHub repo permissions. Each developer clones once, builds locally, and registers via `claude mcp add`. Full steps in [§15](#15-getting-started--installing-the-mcp-server).
    >
    > *Graduate to a private registry when the tool is rolled out to client machines that should not have repo access, or when version pinning across a large team becomes a requirement.*
+   >
+   > **⛔ Superseded — Claude Code plugin.** Claude Code plugins and plugin marketplaces didn't exist when the v0.1 decision was taken; they solve install *and* update together and make the registry question moot. The server now ships as the `slalom-sdlc` plugin, declared in the repo-root `.claude-plugin/marketplace.json` and published to the generated `plugin-dist` branch by the release workflow:
+   >
+   > ```bash
+   > claude plugin marketplace add Slalom/salesforce-devops
+   > claude plugin install slalom-sdlc@slalom
+   > claude plugin update  slalom-sdlc@slalom     # thereafter
+   > ```
+   >
+   > Access control is unchanged in substance — Claude Code clones the plugin, so read access to the internal repo is still the gate. The clone-and-build path in [§15](#15-getting-started--installing-the-mcp-server) survives as the *development* workflow only; `packages/mcp/setup.sh` says so at the top. See `README.md` → Distribution for the shipping model.
 
 3. **Root resolution across hosts** — confirm Claude Code advertises `roots`; verify the `${workspaceFolder}` expansion in `.mcp.json` env actually resolves (fall back to cwd if not).
    > *Open. The server now implements `roots/list` → `SDLC_PROJECT_ROOT` → `cwd` fallback chain. Needs validation against a live client project.*

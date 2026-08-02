@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
-# Slalom SDLC MCP Server — one-time setup script
-# Run this once per machine to build the server and register it with Claude Code.
+# Slalom SDLC MCP Server — build-from-source setup, for working ON the tool.
+#
+# This is NOT the install route any more. Consultants install the published
+# Claude Code plugin instead, which needs no clone, no pnpm, and updates itself:
+#
+#   claude plugin marketplace add Slalom/salesforce-devops
+#   claude plugin install slalom-sdlc@slalom
+#
+# Use this script when you're changing packages/core or packages/mcp and want the
+# working tree wired into your own Claude Code sessions. It registers the server
+# at user scope under the name `slalom-sdlc`, which collides with the plugin's
+# server of the same name — run `claude plugin uninstall slalom-sdlc` first, or
+# expect every tool to appear twice.
+#
 # See DESIGN-mcp.md §15 for full context.
 
 set -euo pipefail
@@ -12,8 +24,12 @@ warn() { echo -e "${YELLOW}⚠${RESET}  $1"; }
 die()  { echo -e "${RED}✗${RESET}  $1" >&2; exit 1; }
 
 echo ""
-echo "  Slalom SDLC — MCP Server Setup"
-echo "  ================================"
+echo "  Slalom SDLC — MCP Server Setup (build from source)"
+echo "  =================================================="
+echo ""
+echo "  Not installing? Consultants should use the plugin instead:"
+echo "    claude plugin marketplace add Slalom/salesforce-devops"
+echo "    claude plugin install slalom-sdlc@slalom"
 echo ""
 
 # ── Locate the repo root ──────────────────────────────────────────────────────

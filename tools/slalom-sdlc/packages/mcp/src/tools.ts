@@ -9,8 +9,8 @@ import {
   type SdlcConfig,
 } from "@sdlc/core";
 import { requireConfig, resolveProjectRoot } from "./config.js";
-
-const PHASES = ["discover", "refine", "design", "build", "test", "release"] as const;
+import { COMMANDS, PHASES, renderCommand } from "./render.js";
+import { cmd } from "./surface.js";
 
 const SCAFFOLD_SCHEMA = z.object({
   projectName:           z.string().min(1).describe("Client / project name"),
@@ -41,9 +41,41 @@ const SCAFFOLD_SCHEMA = z.object({
 
 type ScaffoldArgs = z.infer<typeof SCAFFOLD_SCHEMA>;
 
-export function registerTools(server: McpServer): void {
+const PROMPT_SCHEMA = z.object({
+  command:  z.enum(COMMANDS).describe("SDLC command to activate"),
+  storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test"),
+});
+
+type PromptArgs = z.infer<typeof PROMPT_SCHEMA>;
+
+export function registerTools(server: McpServer, mcpVersion: string): void {
   registerScaffold(server);
   registerStatus(server);
+  registerPromptTool(server, mcpVersion);
+}
+
+/**
+ * Tool-shaped access to the same agent instructions the MCP prompts expose.
+ *
+ * The prompts are only reachable as `/mcp__slalom-sdlc__<command>`. When the server is
+ * delivered as a Claude Code plugin, the plugin's own `commands/*.md` give the far
+ * friendlier `/slalom-sdlc:<command>` — but a slash command is static markdown and
+ * can't render Handlebars against `.sdlc/config.json`, so it calls this tool to get
+ * the per-project instruction set instead.
+ */
+function registerPromptTool(server: McpServer, mcpVersion: string): void {
+  server.tool(
+    "sdlc_prompt",
+    "Return the full, project-specific instruction set for an SDLC command, rendered against .sdlc/config.json. Follow the returned instructions verbatim.",
+    PROMPT_SCHEMA.shape,
+    async (args: PromptArgs) => {
+      const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey);
+      return {
+        content: [{ type: "text" as const, text }],
+        ...(ok ? {} : { isError: true }),
+      };
+    }
+  );
 }
 
 function registerScaffold(server: McpServer): void {
@@ -138,7 +170,7 @@ function registerScaffold(server: McpServer): void {
           result.preserved.forEach((f) => lines.push(`  = ${f}`));
         }
 
-        lines.push(`\nRun /mcp__slalom-sdlc__discover to start a discovery session.`);
+        lines.push(`\nRun ${cmd("discover")} to start a discovery session.`);
 
         return {
           content: [{ type: "text" as const, text: lines.join("\n") }],
