@@ -24,7 +24,7 @@ export function buildAboutText(mcpVersion: string): string {
 export const ABOUT_TEXT = `
 # Slalom SDLC — AI-Assisted Delivery for Salesforce
 
-**Slalom SDLC** brings Slalom's Salesforce delivery process directly into Claude Code. Each command activates a purpose-built AI agent for a specific SDLC phase — discovery, refinement, design, build, test, and release — working within your project's JIRA board, Salesforce org, and coding standards.
+**Slalom SDLC** brings Slalom's Salesforce delivery process directly into Claude Code. Each command activates a purpose-built AI agent for a specific SDLC phase — discovery, refinement, design, build, test, and release — working within your project's work-item tool (JIRA or Azure DevOps) — or local artifacts for LOCAL projects — plus your Salesforce org and coding standards.
 
 **MCP server version:** {MCP_VERSION} · **Instructions:** {INSTRUCTIONS_STATUS}
 
