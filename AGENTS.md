@@ -138,6 +138,7 @@ Always read the applicable standard from `devops/standards/` before generating c
 | Flows, validation rules, permission sets | `devops/standards/configuration.md` |
 | Custom objects or fields | `devops/standards/data-model.md` |
 | Data dictionary (object-reference docs) | `devops/standards/data-dictionary.md` |
+| Advanced Approvals (ARM, matrix-driven three-tier approvals) | `devops/standards/arm.md` |
 | Branching, commits, PRs | `devops/standards/git.md` |
 
 ### 2. Run the Apex framework checklist
@@ -198,6 +199,7 @@ These apply to every file generated or modified — no exceptions:
       build.prompt.md       # #sdlc/build    — Sprint
       test.prompt.md        # #sdlc/test     — Sprint +1
       release.prompt.md     # #sdlc/release  — TRANSITION
+      arm-approvals.prompt.md # #sdlc/arm-approvals — ARM domain playbook (used within /design & /build)
     project/
       create-jira-item.prompt.md  # #project/create-jira-item — standalone utility
 config/

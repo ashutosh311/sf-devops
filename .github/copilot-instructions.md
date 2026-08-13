@@ -83,6 +83,7 @@ When asked to build a new LWC component, follow these steps in order:
 | Declarative config (flows, validation rules, permissions) | `devops/standards/configuration.md` |
 | Data model (objects, fields, relationships) | `devops/standards/data-model.md` |
 | Data dictionary (object-reference docs) | `devops/standards/data-dictionary.md` |
+| Advanced Approvals (ARM, matrix-driven three-tier approvals) | `devops/standards/arm.md` |
 | Git (branching, commits, PRs) | `devops/standards/git.md` |
 
 ## Non-Negotiable Rules

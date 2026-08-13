@@ -1,0 +1,59 @@
+{
+  "max_tiers": 3,
+  "rows": [
+    {
+      "operating_unit": "Cardio US",
+      "tier": 1,
+      "threshold": 10,
+      "operator": ">",
+      "approver_type": "Dynamic",
+      "approver_strategy": "QuoteOwnerManager",
+      "approver_reference": "Quote.Owner.ManagerId"
+    },
+    {
+      "operating_unit": "Cardio US",
+      "tier": 2,
+      "threshold": 0,
+      "operator": ">",
+      "approver_type": "Dynamic",
+      "approver_strategy": "ProductFamilyManager",
+      "approver_reference": "Product2.Product_Family_Manager__c"
+    },
+    {
+      "operating_unit": "Cardio US",
+      "tier": 2,
+      "threshold": 20,
+      "operator": ">",
+      "approver_type": "Dynamic",
+      "approver_strategy": "SecondLevelManager",
+      "approver_reference": "Quote.Owner.Manager.ManagerId"
+    },
+    {
+      "operating_unit": "Cardio US",
+      "tier": 3,
+      "threshold": 30,
+      "operator": ">",
+      "approver_type": "Dynamic",
+      "approver_strategy": "QuoteOwnerVP",
+      "approver_reference": "Quote.Owner.VP_of_Sales__c"
+    },
+    {
+      "operating_unit": "Ortho US",
+      "tier": 1,
+      "threshold": 10,
+      "operator": ">",
+      "approver_type": "Static",
+      "approver_strategy": "Queue",
+      "approver_reference": "Finance_Approvers"
+    },
+    {
+      "operating_unit": "Ortho US",
+      "tier": 2,
+      "threshold": 25,
+      "operator": ">",
+      "approver_type": "Dynamic",
+      "approver_strategy": "QuoteOwnerVP",
+      "approver_reference": "Quote.Owner.VP_of_Sales__c"
+    }
+  ]
+}
