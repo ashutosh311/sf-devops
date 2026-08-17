@@ -52,6 +52,11 @@ if (!PHASE_TEMPLATES || typeof PHASE_TEMPLATES !== "object") {
   process.exit(1);
 }
 
+// RCA skill guidance is synced under a `skills/` subdirectory so the render
+// pipeline's readCachedSkill() can pick up updates on existing projects too.
+const REVENUE_CLOUD_SKILLS = typeof core.getRevenueCloudSkills === "function" ? core.getRevenueCloudSkills() : {};
+const REVENUE_CLOUD_SKILL_FILES = core.REVENUE_CLOUD_SKILL_FILES ?? {};
+
 // ── Locate instruction markdown files ────────────────────────────────────────
 
 const INSTRUCTION_FILES = {
@@ -82,7 +87,9 @@ const manifestFiles = {};
 
 function writeAndChecksum(filename, content) {
   const buf = Buffer.from(content, "utf-8");
-  writeFileSync(join(stagingDir, filename), buf);
+  const dest = join(stagingDir, filename);
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, buf);
   const checksum = "sha256:" + createHash("sha256").update(buf).digest("hex");
   manifestFiles[filename] = { checksum, size: buf.length };
 }
@@ -98,6 +105,13 @@ for (const [name, filePath] of Object.entries(INSTRUCTION_FILES)) {
   const content = readFileSync(filePath, "utf-8");
   writeAndChecksum(`${name}.md`, content);
   console.log(`  ✓ ${name}.md`);
+}
+
+// Revenue Cloud (RCA) skills — synced under skills/ (read by readCachedSkill)
+for (const [key, content] of Object.entries(REVENUE_CLOUD_SKILLS)) {
+  const fileBase = REVENUE_CLOUD_SKILL_FILES[key] ?? key;
+  writeAndChecksum(`skills/${fileBase}.md`, content);
+  console.log(`  ✓ skills/${fileBase}.md`);
 }
 
 // Manifest
@@ -117,7 +131,9 @@ console.log(`  ✓ manifest.json`);
 const zipPath = join(outputDir, "instructions.zip");
 if (existsSync(zipPath)) rmSync(zipPath);
 
-execSync(`zip -j "${zipPath}" "${stagingDir}"/*`, { stdio: "inherit" });
+// Zip from the staging root so the `skills/` subdirectory is preserved in the
+// archive (AdmZip.extractAllTo on the client relies on these internal paths).
+execSync(`cd "${stagingDir}" && zip -r "${zipPath}" .`, { stdio: "inherit" });
 
 // Write standalone manifest copy next to the zip
 writeFileSync(join(outputDir, "manifest.json"), manifestJson, "utf-8");

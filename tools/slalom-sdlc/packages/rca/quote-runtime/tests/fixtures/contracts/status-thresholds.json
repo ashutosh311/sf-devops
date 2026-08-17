@@ -1,0 +1,65 @@
+{
+  "statusPrecedence": [
+    "error",
+    "unsupported",
+    "partial",
+    "warn",
+    "changed",
+    "no_match",
+    "no_change",
+    "ok"
+  ],
+  "failOnValues": [
+    "none",
+    "warn",
+    "partial",
+    "no_match",
+    "unsupported",
+    "changed",
+    "no_change",
+    "error"
+  ],
+  "thresholdExpectations": [
+    {
+      "failOn": "none",
+      "shouldFail": []
+    },
+    {
+      "failOn": "warn",
+      "shouldFail": ["warn", "partial", "unsupported", "error"]
+    },
+    {
+      "failOn": "partial",
+      "shouldFail": ["partial", "unsupported", "error"]
+    },
+    {
+      "failOn": "no_match",
+      "shouldFail": ["no_match", "changed", "warn", "partial", "unsupported", "error"]
+    },
+    {
+      "failOn": "unsupported",
+      "shouldFail": ["unsupported", "error"]
+    },
+    {
+      "failOn": "changed",
+      "shouldFail": ["changed", "warn", "partial", "unsupported", "error"]
+    },
+    {
+      "failOn": "no_change",
+      "shouldFail": ["no_change", "no_match", "changed", "warn", "partial", "unsupported", "error"]
+    },
+    {
+      "failOn": "error",
+      "shouldFail": ["error"]
+    }
+  ],
+  "operationFamilyAliases": {
+    "pst_place": "pst_place",
+    "initiate_amendment": "initiate_amendment",
+    "initiate_renewal": "initiate_renewal",
+    "asset_add_to_renewal": "asset_add_to_renewal",
+    "amendment": "initiate_amendment",
+    "renewal": "initiate_renewal",
+    "add_asset": "asset_add_to_renewal"
+  }
+}

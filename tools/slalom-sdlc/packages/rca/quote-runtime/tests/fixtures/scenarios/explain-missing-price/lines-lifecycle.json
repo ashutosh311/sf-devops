@@ -1,0 +1,29 @@
+[
+  {
+    "Id": "0QLxx0000000301AAA",
+    "QuoteId": "0Q0xx0000000300AAA",
+    "LineNumber": 30,
+    "Product2Id": "01txx0000000301AAA",
+    "PricebookEntryId": "01uxx0000000301AAA",
+    "ParentQuoteLineItemId": null,
+    "Quantity": 1,
+    "StartQuantity": 1,
+    "EndQuantity": 1,
+    "UnitPrice": 0,
+    "ListPrice": 0,
+    "NetUnitPrice": 0,
+    "Subtotal": 0,
+    "TotalPrice": 0,
+    "TotalLineAmount": 0,
+    "TotalAdjustmentAmount": 0,
+    "SellingModelType": "Renewal",
+    "StartDate": null,
+    "EndDate": null,
+    "PriceWaterfallIdentifier": "lifecycle-gap",
+    "QuoteActionId": "7oca50000JAnrYLAQZ",
+    "QuoteAction.Type": "Amend",
+    "QuoteAction.SourceAssetId": "02ixx0000000001AAA",
+    "CreatedDate": "2026-04-15T11:10:00.000Z",
+    "LastModifiedDate": "2026-04-15T11:15:00.000Z"
+  }
+]

@@ -1,0 +1,102 @@
+quote-runtime
+
+Usage:
+  quote-runtime <command> [flags]
+
+Global flags:
+  --json
+  --org-alias <alias>
+  --fail-on <status>
+  --output <path>
+  --verbose
+
+Preflight and command fit:
+  doctor
+
+Persisted snapshots and overlays:
+  snapshot-quote
+  snapshot-lines
+  overlay-actions
+  overlay-relationships
+
+Context and planning:
+  inspect-pricing-waterfall
+  capture-post-pst-evidence
+  classify-pricing-outcome
+  create-quote
+  upsert-quote-lines
+  price-quote
+  build-test-quote
+  discover-products
+  inspect-usage-rate-model
+  inspect-pricing-product-sync
+  deploy-product-catalog-index
+  refresh-decision-tables
+  inspect-quote-ready-product
+  inspect-product-catalog-config
+  plan-product-config
+  apply-configured-quote
+  pst-apply-quote-intent
+  inspect-product-config
+  validate-product-config
+  repair-product-config
+  inspect-rlm-context
+  pst-plan
+  compare-quote-pricing
+  triage-symptom
+  explain-price
+  explain-missing-price
+  verify-lifecycle-provenance
+  test-pricing-change
+  create-lifecycle-scenario
+  inspect-asset-lifecycle
+  plan-order-activation
+  activate-order
+  capture-post-activation-evidence
+
+Quick starts:
+  quote-runtime doctor --org-alias <alias> --for-command doctor
+  quote-runtime doctor --org-alias <alias> --for-command snapshot-quote --quote-id <id>
+  quote-runtime snapshot-quote --org-alias <alias> --quote-id <id>
+  quote-runtime snapshot-lines --org-alias <alias> --quote-id <id> --line-id <id>
+  quote-runtime overlay-actions --org-alias <alias> --quote-id <id>
+  quote-runtime overlay-relationships --org-alias <alias> --quote-id <id> --line-id <id>
+  quote-runtime inspect-pricing-waterfall --org-alias <alias> --quote-id <id> --line-id <id>
+  quote-runtime capture-post-pst-evidence --org-alias <alias> --quote-id <id> --line-id <id> --line-id <id>
+  quote-runtime classify-pricing-outcome --org-alias <alias> --quote-id <id> --line-id <id> --expected-change <text>
+  quote-runtime create-quote --org-alias <alias> --name <name> --quote-account-id <id> --opportunity-id <id> --pricebook-id <id>
+  quote-runtime upsert-quote-lines --org-alias <alias> --quote-id <id> --pricebook-entry-id <id> --product-id <id> --quantity <number>
+  quote-runtime price-quote --org-alias <alias> --quote-id <id> --line-id <id> --line-field Quantity=2
+  quote-runtime build-test-quote --org-alias <alias> --input quote-intent.json
+  quote-runtime discover-products --org-alias <alias> --pricebook-id <id> --term "DR suite"
+  quote-runtime inspect-usage-rate-model --org-alias <alias> --include-samples
+  quote-runtime inspect-pricing-product-sync --org-alias <alias>
+  quote-runtime deploy-product-catalog-index --org-alias <alias>
+  quote-runtime refresh-decision-tables --org-alias <alias> --decision-table-api-name <name>
+  quote-runtime inspect-quote-ready-product --org-alias <alias> --pricebook-id <id> --term "DR suite"
+  quote-runtime inspect-product-catalog-config --org-alias <alias> --product-id <id> --pricebook-id <id>
+  quote-runtime plan-product-config --org-alias <alias> --product-config product-config.json --choices choices.json
+  quote-runtime apply-configured-quote --org-alias <alias> --quote-intent quote-intent.json --config-plan config-plan.json
+  quote-runtime pst-apply-quote-intent --org-alias <alias> --input quote-intent.json
+  quote-runtime inspect-product-config --org-alias <alias> --quote-id <id> --line-id <id>
+  quote-runtime validate-product-config --org-alias <alias> --quote-id <id> --line-id <id>
+  quote-runtime repair-product-config --org-alias <alias> --quote-id <id> --line-id <id> --repair-plan repair-plan.json
+  quote-runtime inspect-rlm-context --org-alias <alias> --quote-id <id> --line-id <id>
+  quote-runtime pst-plan --org-alias <alias> --operation-family initiate_amendment --quote-id <id>
+  quote-runtime compare-quote-pricing --org-alias <alias> --before-quote-id <id> --after-quote-id <id>
+  quote-runtime triage-symptom --org-alias <alias> --quote-id <id> --symptom "wrong price" --line-id <id>
+  quote-runtime explain-price --org-alias <alias> --quote-id <id> --line-id <id> --expected-change "line should use the discounted renewal price"
+  quote-runtime explain-missing-price --org-alias <alias> --quote-id <id> --line-id <id>
+  quote-runtime verify-lifecycle-provenance --org-alias <alias> --quote-id <id> --line-id <id> --asset-id <id>
+  quote-runtime test-pricing-change --org-alias <alias> --quote-id <id> --changed-artifact <text> --expected-change <text>
+  quote-runtime create-lifecycle-scenario --org-alias <alias> --operation-family initiate_amendment --quote-id <id> --asset-id <id>
+  quote-runtime inspect-asset-lifecycle --org-alias <alias> --asset-id <id>
+  quote-runtime plan-order-activation --org-alias <alias> --order-id <id>
+  quote-runtime activate-order --org-alias <alias> --order-id <id> --execute
+  quote-runtime capture-post-activation-evidence --org-alias <alias> --order-id <id>
+
+Notes:
+  Installed workspace binary `quote-runtime` is the canonical operator path in this repo.
+  The skill-local TS script remains a repo-local implementation detail and compatibility fallback.
+  Product discovery/config inspection is deterministic; transcript interpretation remains agent-owned.
+  inspect-rlm-context is an escalation lane and stays summary-first; it does not replace persisted snapshots.

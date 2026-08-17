@@ -1,0 +1,111 @@
+{
+  "example_name": "configured-bundle-with-default-exclusion",
+  "purpose": "Document a configured bundle payload that explicitly excludes an unintended default component before execution.",
+  "command_family": "pst-apply-quote-intent",
+  "create_vs_patch_behavior": "Can create or patch depending on target.mode. This example creates a new quote only because allow_new_quote is explicit.",
+  "quote_intent": {
+    "target": {
+      "mode": "create",
+      "allow_new_quote": true,
+      "assertions": {
+        "account_name": "Northstar Regional Health Network",
+        "opportunity_name": "Northstar Regional Health - Cloud Defense Modernization",
+        "pricebook_id": "01s_STANDARD_PRICEBOOK_PLACEHOLDER"
+      }
+    },
+    "plan_key": "northstar-cloud-defense-new-with-default-exclusion-v1",
+    "header": {
+      "name": "Northstar Cloud Defense Bundle - Default Exclusion Review",
+      "status": "Draft",
+      "start_date": "2026-07-01",
+      "expiration_date": "2029-06-30"
+    },
+    "lines": [
+      {
+        "operation": "create",
+        "role": "bundle_parent",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE",
+        "quantity": 1,
+        "configuration": {
+          "attributes": {
+            "SOC Response Level": "24x7",
+            "User Population": "1000",
+            "Cloud Coverage": "SaaS_IaaS"
+          },
+          "components": {
+            "User Access Controls": [
+              "AEGISAI-ACCESS-CONTROL",
+              "AEGISSASE-PRIVATE-ACCESS",
+              "AEGISSASE-SWG"
+            ],
+            "Cloud Workload Defense": [
+              "AEGISCLOUD-WORKLOAD-SHIELD"
+            ],
+            "Managed Operations": [
+              "AEGISSOC-ANALYTICS",
+              "AEGIS-MDR"
+            ]
+          },
+          "exclude_defaults": [
+            "AEGISXDR-ENDPOINT-SENSOR"
+          ]
+        }
+      }
+    ],
+    "default_policy": {
+      "mode": "exclude",
+      "excluded_product_codes": [
+        "AEGISXDR-ENDPOINT-SENSOR"
+      ],
+      "fail_if_default_cannot_be_removed": true
+    },
+    "pricing": {
+      "run": true
+    },
+    "verification": {
+      "validate_product_config": true,
+      "overlay_relationships": true,
+      "snapshot_lines": true
+    }
+  },
+  "generated_pst_graph_preview": {
+    "records": [
+      {
+        "referenceId": "lineBundle",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE"
+      },
+      {
+        "referenceId": "deleteDefaultEndpointSensor",
+        "record_type": "QuoteLineItem",
+        "method": "DELETE",
+        "product_code": "AEGISXDR-ENDPOINT-SENSOR",
+        "requires_persisted_default_line_id": true
+      }
+    ]
+  },
+  "expected_readback_shape": {
+    "must_include_components": [
+      "AEGISAI-ACCESS-CONTROL",
+      "AEGISSASE-PRIVATE-ACCESS",
+      "AEGISSASE-SWG",
+      "AEGISCLOUD-WORKLOAD-SHIELD",
+      "AEGISSOC-ANALYTICS",
+      "AEGIS-MDR"
+    ],
+    "must_not_include_components": [
+      "AEGISXDR-ENDPOINT-SENSOR"
+    ],
+    "default_cleanup": {
+      "pst_only": true,
+      "delete_count": 1
+    }
+  },
+  "expected_verification_commands": [
+    "quote-runtime inspect-product-catalog-config --org-alias <alias> --product-id 01t_AEGIS_BNDL_CLOUD_DEFENSE_PLACEHOLDER --pricebook-id 01s_STANDARD_PRICEBOOK_PLACEHOLDER --json",
+    "quote-runtime validate-product-config --org-alias <alias> --quote-id <quote_id> --json",
+    "quote-runtime overlay-relationships --org-alias <alias> --quote-id <quote_id> --json",
+    "quote-runtime snapshot-lines --org-alias <alias> --quote-id <quote_id> --json"
+  ]
+}

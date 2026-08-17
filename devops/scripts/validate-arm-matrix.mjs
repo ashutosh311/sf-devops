@@ -3,9 +3,13 @@
 'use strict';
 
 /**
- * ARM approval-matrix validator.
+ * ARM approval-matrix validator — runnable CLI.
  *
- * Node port of the original scripts/validate_matrix.rb from the ARM skill.
+ * Thin wrapper over the single-source validator in the slalom-sdlc tool
+ * (`tools/slalom-sdlc/packages/rca/arm-matrix`), which is also exposed as the
+ * MCP tool `rca_validate_arm_matrix`. Keeping one implementation avoids the
+ * dual-copy drift called out in the migration design doc.
+ *
  * Validates a client approval-matrix scenario and prints boundary routing
  * simulations. Exits non-zero when any error is found.
  *
@@ -16,51 +20,14 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 
-const ALLOWED_TYPES = ['Static', 'Dynamic'];
-const ALLOWED_STRATEGIES = [
-  'QuoteOwnerManager',
-  'ProductFamilyManager',
-  'SecondLevelManager',
-  'QuoteOwnerVP',
-  'Queue',
-  'User',
-  'PublicGroup',
-  'RecordField'
-];
-const REQUIRED = [
-  'operating_unit',
-  'tier',
-  'threshold',
-  'operator',
-  'approver_type',
-  'approver_strategy',
-  'approver_reference'
-];
-
-function addError(errors, index, message) {
-  errors.push(`row ${index + 1}: ${message}`);
-}
-
-function normalizeNumber(value) {
-  if (value === null || value === undefined) return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function toInteger(value) {
-  const s = String(value).trim();
-  if (!/^[+-]?\d+$/.test(s)) return null;
-  return Number.parseInt(s, 10);
-}
-
-function isBlank(value) {
-  return value === null || value === undefined || String(value).trim() === '';
-}
-
-function round2(value) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
+const require = createRequire(import.meta.url);
+/** @type {{ validateArmMatrix: (document: unknown) => { valid: boolean, errors: string[], warnings: string[], simulations: Record<string, unknown> } }} */
+const { validateArmMatrix } = require(
+  '../../tools/slalom-sdlc/packages/rca/arm-matrix/src/index.js'
+);
 
 function main() {
   const path = process.argv[2];
@@ -77,123 +44,22 @@ function main() {
     process.exit(2);
   }
 
-  const rows = Array.isArray(document) ? document : document?.rows;
-  if (!Array.isArray(rows)) {
-    console.error('error: scenario must be an array of rows or an object with a "rows" array');
+  let result;
+  try {
+    result = validateArmMatrix(document);
+  } catch (err) {
+    console.error(`error: ${err.message}`);
     process.exit(2);
   }
-  const maxTiers = Array.isArray(document)
-    ? 3
-    : Number.parseInt(String(document?.max_tiers ?? 3), 10);
 
-  const errors = [];
-  const warnings = [];
-  const seen = new Map();
-  /** @type {Array<Record<string, unknown>>} */
-  const validRows = [];
-
-  rows.forEach((row, index) => {
-    if (row === null || typeof row !== 'object' || Array.isArray(row)) {
-      addError(errors, index, 'row must be an object');
-      return;
-    }
-
-    const missing = REQUIRED.filter((key) => !(key in row) || isBlank(row[key]));
-    if (missing.length > 0) {
-      addError(errors, index, `missing ${missing.join(', ')}`);
-      return;
-    }
-
-    const tier = toInteger(row.tier);
-    const threshold = normalizeNumber(row.threshold);
-
-    if (!(tier !== null && tier >= 1 && tier <= maxTiers)) {
-      addError(errors, index, `tier must be an integer from 1 through ${maxTiers}`);
-    }
-    if (!(threshold !== null && threshold >= 0 && threshold <= 100)) {
-      addError(errors, index, 'threshold must be numeric from 0 through 100');
-    }
-    if (row.operator !== '>') {
-      addError(errors, index, 'operator must be strict greater-than (>)');
-    }
-    if (!ALLOWED_TYPES.includes(row.approver_type)) {
-      addError(errors, index, 'approver_type must be Static or Dynamic');
-    }
-    if (!ALLOWED_STRATEGIES.includes(row.approver_strategy)) {
-      addError(errors, index, `unsupported approver_strategy ${JSON.stringify(row.approver_strategy)}`);
-    }
-
-    if (row.approver_strategy === 'Queue' && row.approver_type !== 'Static') {
-      warnings.push(`row ${index + 1}: a fixed queue is normally Static`);
-    }
-
-    const key = REQUIRED.map((field) => String(row[field])).join('|');
-    if (seen.has(key)) {
-      addError(errors, index, `duplicates row ${seen.get(key) + 1}`);
-    } else {
-      seen.set(key, index);
-    }
-
-    validRows.push(row);
-  });
-
-  const simulations = {};
-  const byUnit = new Map();
-  for (const row of validRows) {
-    const unit = row.operating_unit;
-    if (!byUnit.has(unit)) byUnit.set(unit, []);
-    byUnit.get(unit).push(row);
-  }
-
-  for (const [unit, unitRows] of byUnit) {
-    const thresholds = [
-      ...new Set(unitRows.map((row) => normalizeNumber(row.threshold)).filter((v) => v !== null))
-    ].sort((a, b) => a - b);
-    const discounts = [
-      ...new Set([0, ...thresholds, ...thresholds.map((v) => round2(v + 0.01))])
-    ].sort((a, b) => a - b);
-
-    simulations[unit] = discounts.map((discount) => {
-      const qualifying = unitRows
-        .filter((row) => {
-          const threshold = normalizeNumber(row.threshold);
-          return threshold !== null && row.operator === '>' && discount > threshold;
-        })
-        .sort((a, b) => {
-          const ta = Number(a.tier) || 0;
-          const tb = Number(b.tier) || 0;
-          if (ta !== tb) return ta - tb;
-          const tha = Number(a.threshold) || 0;
-          const thb = Number(b.threshold) || 0;
-          if (tha !== thb) return tha - thb;
-          return String(a.approver_strategy).localeCompare(String(b.approver_strategy));
-        });
-
-      return {
-        discount,
-        requirements: qualifying.map((row) => ({
-          tier: row.tier,
-          strategy: row.approver_strategy,
-          reference: row.approver_reference
-        }))
-      };
-    });
-  }
-
-  console.log(
-    JSON.stringify(
-      {
-        valid: errors.length === 0,
-        errors,
-        warnings,
-        simulations
-      },
-      null,
-      2
-    )
-  );
-
-  process.exit(errors.length === 0 ? 0 : 1);
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(result.valid ? 0 : 1);
 }
 
-main();
+const invokedDirectly =
+  import.meta.url === pathToFileURL(process.argv[1] ?? '').href;
+if (invokedDirectly) {
+  main();
+}
+
+export { validateArmMatrix };

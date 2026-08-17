@@ -1,0 +1,19 @@
+{
+  "Id": "0Q0xx0000000001AAA",
+  "Name": "Sample Quote",
+  "QuoteNumber": "Q-00042",
+  "Pricebook2Id": "01sxx0000000001AAA",
+  "Status": "Draft",
+  "CalculationStatus": "Calculated",
+  "StartDate": "2026-04-01",
+  "ExpirationDate": "2026-04-30",
+  "Subtotal": 1200,
+  "TotalPrice": 1300,
+  "TotalTaxAmount": 100,
+  "TotalPriceWithTax": 1400,
+  "GrandTotal": 1400,
+  "LineItemCount": 3,
+  "OriginalActionType": "New",
+  "CreatedDate": "2026-04-01T12:00:00.000+0000",
+  "LastModifiedDate": "2026-04-15T15:30:00.000+0000"
+}

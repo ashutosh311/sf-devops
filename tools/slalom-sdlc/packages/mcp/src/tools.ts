@@ -14,6 +14,7 @@ import { requireConfig, resolveProjectRoot, loadConfig } from "./config.js";
 import { COMMANDS, PHASES, renderCommand } from "./render.js";
 import { INIT_PROMPT } from "./about.js";
 import { cmd } from "./surface.js";
+import { registerRcaTools } from "./rca.js";
 import {
   ABORTED,
   supportsElicitation,
@@ -40,6 +41,7 @@ const SCAFFOLD_SCHEMA = z.object({
   estimationApproach:    z.enum(["ta-assigns", "team-vote", "both"]).describe("Estimation approach"),
   orgSandbox:            z.string().min(1).describe("Salesforce CLI sandbox org alias"),
   apexCoverageThreshold: z.number().int().min(0).max(100).describe("Apex test coverage threshold (%)"),
+  revenueCloudEnabled:   z.boolean().optional().describe("Enable Revenue Cloud Advanced (RCA) skills & tooling"),
   storyBacklog:          z.string().optional().describe("Story: not started"),
   storyRefineInProgress: z.string().optional().describe("Story: refinement in progress"),
   storyReadyForDesign:   z.string().optional().describe("Story: refinement complete (gate)"),
@@ -71,6 +73,7 @@ export function registerTools(server: McpServer, mcpVersion: string): void {
   registerScaffold(server);
   registerStatus(server);
   registerPromptTool(server, mcpVersion);
+  registerRcaTools(server);
 }
 
 // ── /init ─────────────────────────────────────────────────────────────────────
@@ -184,6 +187,7 @@ function toAnswers(args: ScaffoldArgs): InterviewAnswers {
     estimationApproach:    args.estimationApproach,
     orgSandbox:            args.orgSandbox,
     apexCoverageThreshold: args.apexCoverageThreshold,
+    revenueCloudEnabled:   args.revenueCloudEnabled ?? false,
   };
 }
 

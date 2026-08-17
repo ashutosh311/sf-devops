@@ -1,0 +1,21 @@
+[
+  {
+    "Id": "0QLxx0000000001AAA",
+    "QuoteId": "0Q0xx0000000001AAA",
+    "QuoteActionId": "7oca50000JAnrYLAQZ",
+    "QuoteAction": {
+      "Type": "Amend",
+      "SourceAssetId": "02ixx0000000001AAA"
+    },
+    "PriceWaterfallIdentifier": "PWI-001",
+    "ParentQuoteLineItemId": "0QLPARENTIGNORED"
+  },
+  {
+    "Id": "0QLxx0000000002AAA",
+    "QuoteId": "0Q0xx0000000001AAA",
+    "QuoteActionId": null,
+    "QuoteAction": null,
+    "PriceWaterfallIdentifier": "PWI-002",
+    "ParentQuoteLineItemId": null
+  }
+]

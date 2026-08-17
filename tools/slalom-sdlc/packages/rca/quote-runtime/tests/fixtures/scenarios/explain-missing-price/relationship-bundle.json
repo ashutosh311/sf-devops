@@ -1,0 +1,20 @@
+[
+  {
+    "relationship_id": "a1Rxx0000000201AAA",
+    "quote_id": "0Q0xx0000000200AAA",
+    "main_line_id": "0QLxx0000000200AAA",
+    "main_line_number": 10,
+    "main_line_total_price": 100,
+    "associated_line_id": "0QLxx0000000201AAA",
+    "associated_line_number": 20,
+    "associated_line_total_price": 0,
+    "main_line_role": "Bundle",
+    "associated_line_role": "Component",
+    "associated_line_pricing": "IncludedInBundlePrice",
+    "associated_quant_scale_method": null,
+    "root_line_id": "0QLxx0000000200AAA",
+    "product_relationship_type_id": "0PRxx0000000201AAA",
+    "product_related_component_id": "01txx0000000201AAA",
+    "is_price_inclusive": true
+  }
+]

@@ -1,0 +1,2 @@
+TypeError: Cannot read properties of undefined (reading 'prototype')
+    at SomeSfCommand.run (/usr/local/lib/sf/dist/command.js:42:13)

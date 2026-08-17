@@ -1,0 +1,47 @@
+[
+  {
+    "Id": "0qRxx0000000001AAA",
+    "QuoteId": "0Q0xx0000000001AAA",
+    "MainQuoteLineId": "0QLxx0000000001AAA",
+    "MainQuoteLine": {
+      "LineNumber": 10,
+      "TotalPrice": 1200
+    },
+    "AssociatedQuoteLineId": "0QLxx0000000002AAA",
+    "AssociatedQuoteLine": {
+      "LineNumber": 11,
+      "TotalPrice": 0
+    },
+    "MainQuoteLineRole": "Bundle",
+    "AssociatedQuoteLineRole": "Component",
+    "AssociatedQuoteLinePricing": "IncludedInBundlePrice",
+    "AssociatedQuantScaleMethod": "PerUnit",
+    "RootQuoteLineId": "0QLxx0000000001AAA",
+    "ProductRelationshipTypeId": "0PRxx0000000001AAA",
+    "ProductRelatedComponentId": "0PCxx0000000001AAA",
+    "IsPriceInclusive": true,
+    "CreatedDate": "ignored"
+  },
+  {
+    "Id": "0qRxx0000000002AAA",
+    "QuoteId": "0Q0xx0000000001AAA",
+    "MainQuoteLineId": "0QLxx0000000001AAA",
+    "MainQuoteLine": {
+      "LineNumber": 10,
+      "TotalPrice": 1200
+    },
+    "AssociatedQuoteLineId": "0QLxx0000000003AAA",
+    "AssociatedQuoteLine": {
+      "LineNumber": 12,
+      "TotalPrice": 200
+    },
+    "MainQuoteLineRole": "Bundle",
+    "AssociatedQuoteLineRole": "Option",
+    "AssociatedQuoteLinePricing": "ListPrice",
+    "AssociatedQuantScaleMethod": null,
+    "RootQuoteLineId": "0QLxx0000000001AAA",
+    "ProductRelationshipTypeId": "0PRxx0000000001AAA",
+    "ProductRelatedComponentId": "0PCxx0000000002AAA",
+    "IsPriceInclusive": false
+  }
+]

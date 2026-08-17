@@ -9,6 +9,7 @@ import dataModelStandard       from "../../../../../devops/standards/data-model.
 import gitStandard             from "../../../../../devops/standards/git.md";
 import omniscriptStandard      from "../../../../../devops/standards/omniscript.md";
 import uxAccessibilityStandard from "../../../../../devops/standards/ux-accessibility.md";
+import armStandard             from "../../../../../devops/standards/arm.md";
 
 const STANDARDS: Record<string, string> = {
   "README.md": readmeStandard,
@@ -21,11 +22,26 @@ const STANDARDS: Record<string, string> = {
   "ux-accessibility.md": uxAccessibilityStandard,
 };
 
+// Revenue Cloud Advanced (RCA) standards are scaffolded only when the project
+// opts in via `revenueCloud.enabled`, so non-RCA projects stay clean.
+const REVENUE_CLOUD_STANDARDS: Record<string, string> = {
+  "arm.md": armStandard,
+};
+
+export interface StandardsOptions {
+  /** When true, include the Revenue Cloud Advanced (RCA) standards (e.g. arm.md). */
+  revenueCloud?: boolean;
+}
+
 /**
  * Returns the Slalom development standards bundled with the tool.
  * These are generated from `devops/standards/` at build time, so `/init` works
- * fully offline and needs no credentials.
+ * fully offline and needs no credentials. Pass `{ revenueCloud: true }` to also
+ * include the RCA standards for a Revenue Cloud project.
  */
-export function getStandards(): Record<string, string> {
-  return { ...STANDARDS };
+export function getStandards(opts?: StandardsOptions): Record<string, string> {
+  return {
+    ...STANDARDS,
+    ...(opts?.revenueCloud ? REVENUE_CLOUD_STANDARDS : {}),
+  };
 }

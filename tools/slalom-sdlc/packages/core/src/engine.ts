@@ -11,7 +11,8 @@ import { dataDictionaryTemplate } from "./templates/data-dictionary.js";
 import deploymentInstruction          from "../../../../../devops/instructions/deployment.md";
 import orgImpactAssessmentInstruction from "../../../../../devops/instructions/org-impact-assessment.md";
 import prerequisiteCheckInstruction   from "../../../../../devops/instructions/prerequisite-check.md";
-import { readCachedTemplate, readCachedInstruction } from "./cache.js";
+import { readCachedTemplate, readCachedInstruction, readCachedSkill } from "./cache.js";
+import { getRevenueCloudSkills, REVENUE_CLOUD_SKILL_FILES } from "./skills.js";
 
 // {{#eq a b}}...{{/eq}} helper for estimation approach conditionals
 Handlebars.registerHelper("eq", function (this: unknown, a: unknown, b: unknown, options: Handlebars.HelperOptions) {
@@ -79,11 +80,20 @@ export function renderPrompt(phase: string, config: SdlcConfig, opts?: RenderOpt
     );
   }
 
+  // Revenue Cloud Advanced (RCA) skill guidance is only exposed when the project
+  // has opted in. Non-RCA projects get an empty map, so the `{{#if revenueCloud.enabled}}`
+  // blocks in the templates render nothing and no prompt bloat leaks in.
+  const revenueCloudEnabled = config.revenueCloud?.enabled === true;
+  const skills = {
+    revenueCloud: revenueCloudEnabled ? resolveRevenueCloudSkills(opts?.cacheDir) : {},
+  };
+
   const compiled = Handlebars.compile(raw, { noEscape: true });
   return compiled({
     ...config,
     phases: phaseFlags,
     instructions,
+    skills,
     almTool,
     statusMap,
     projectKey,
@@ -91,6 +101,18 @@ export function renderPrompt(phase: string, config: SdlcConfig, opts?: RenderOpt
     pmMcp,
     itemNoun,
   });
+}
+
+/** Prefer cache-synced skills, fall back to the bundled build-time copies. */
+function resolveRevenueCloudSkills(cacheDir?: string): Record<string, string> {
+  const bundled = getRevenueCloudSkills();
+  if (!cacheDir) return bundled;
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(bundled)) {
+    const fileBase = REVENUE_CLOUD_SKILL_FILES[key];
+    resolved[key] = (fileBase ? readCachedSkill(fileBase, cacheDir) : null) ?? value;
+  }
+  return resolved;
 }
 
 export function renderAllPrompts(config: SdlcConfig, opts?: RenderOptions): Record<string, string> {

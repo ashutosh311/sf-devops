@@ -1,0 +1,146 @@
+{
+  "example_name": "mixed-bundle-service-hardware-discounts",
+  "purpose": "Represent the Northstar product mix with a configured bundle, discounted support/service, and discounted hardware in one quote intent.",
+  "command_family": "pst-apply-quote-intent",
+  "create_vs_patch_behavior": "Patches an existing quote when target.quote_id is provided. The payload keeps bundle components inside the bundle instead of adding them as standalone lines.",
+  "quote_intent": {
+    "target": {
+      "mode": "patch",
+      "quote_id": "0Q0_TARGET_QUOTE_PLACEHOLDER",
+      "allow_new_quote": false,
+      "assertions": {
+        "quote_number": "00000048",
+        "account_name": "Northstar Regional Health Network",
+        "opportunity_name": "Northstar Regional Health - Cloud Defense Modernization",
+        "pricebook_id": "01s_STANDARD_PRICEBOOK_PLACEHOLDER"
+      }
+    },
+    "plan_key": "northstar-cloud-defense-mixed-lines-v1",
+    "header": {
+      "name": "Northstar Cloud Defense Modernization - Mixed Package",
+      "status": "Draft",
+      "start_date": "2026-07-01",
+      "expiration_date": "2029-06-30"
+    },
+    "lines": [
+      {
+        "operation": "create",
+        "role": "bundle_parent",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE",
+        "quantity": 1,
+        "term": {
+          "start_date": "2026-07-01",
+          "end_date": "2029-06-30",
+          "subscription_term": 36,
+          "billing_frequency": "Annual"
+        },
+        "configuration": {
+          "attributes": {
+            "SOC Response Level": "24x7",
+            "User Population": "1000",
+            "Cloud Coverage": "SaaS_IaaS"
+          },
+          "components": {
+            "User Access Controls": [
+              "AEGISAI-ACCESS-CONTROL",
+              "AEGISSASE-PRIVATE-ACCESS",
+              "AEGISSASE-SWG"
+            ],
+            "Cloud Workload Defense": [
+              "AEGISCLOUD-WORKLOAD-SHIELD"
+            ],
+            "Managed Operations": [
+              "AEGISSOC-ANALYTICS",
+              "AEGIS-MDR"
+            ]
+          }
+        }
+      },
+      {
+        "operation": "create",
+        "role": "support",
+        "product_code": "AEGIS-PREMIUM-SUCCESS",
+        "quantity": 1,
+        "discount_percent": 15,
+        "discount_policy": "services_discount",
+        "term": {
+          "start_date": "2026-07-01",
+          "end_date": "2029-06-30",
+          "subscription_term": 36,
+          "billing_frequency": "Annual"
+        }
+      },
+      {
+        "operation": "create",
+        "role": "service",
+        "product_code": "AEGIS-THREAT-HUNTING-RETAINER",
+        "quantity": 1,
+        "discount_percent": 15,
+        "discount_policy": "services_discount",
+        "notes": "Optional threat hunting retainer from seller notes; remove if buyer does not approve."
+      },
+      {
+        "operation": "create",
+        "role": "hardware",
+        "product_code": "AEGIS-HW-EDGE250",
+        "quantity": 2,
+        "discount_percent": 30,
+        "discount_policy": "hardware_discount"
+      }
+    ],
+    "pricing": {
+      "run": true
+    },
+    "verification": {
+      "snapshot_quote": true,
+      "snapshot_lines": true,
+      "validate_product_config": true,
+      "overlay_relationships": true,
+      "capture_post_pst_evidence": true
+    }
+  },
+  "generated_pst_graph_preview": {
+    "records": [
+      {
+        "referenceId": "lineBundle",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE"
+      },
+      {
+        "referenceId": "linePremiumSuccess",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-PREMIUM-SUCCESS",
+        "discount_percent": 15
+      },
+      {
+        "referenceId": "lineHardware1",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-HW-EDGE250",
+        "discount_percent": 30
+      }
+    ]
+  },
+  "expected_readback_shape": {
+    "discounts": {
+      "AEGIS-PREMIUM-SUCCESS": 15,
+      "AEGIS-THREAT-HUNTING-RETAINER": 15,
+      "AEGIS-HW-EDGE250": 30
+    },
+    "bundle": {
+      "parent_product_code": "AEGIS-BNDL-CLOUD-DEFENSE",
+      "component_lines_are_related_to_parent": true
+    },
+    "pricing": {
+      "grand_total": "non_null_after_pricing"
+    }
+  },
+  "expected_verification_commands": [
+    "quote-runtime price-quote --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json",
+    "quote-runtime snapshot-quote --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json",
+    "quote-runtime snapshot-lines --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json",
+    "quote-runtime overlay-relationships --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json"
+  ]
+}

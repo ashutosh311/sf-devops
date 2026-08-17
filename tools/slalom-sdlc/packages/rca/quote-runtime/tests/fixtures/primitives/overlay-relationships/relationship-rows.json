@@ -1,0 +1,38 @@
+[
+  {
+    "relationship_id": "0qRxx0000000001AAA",
+    "quote_id": "0Q0xx0000000001AAA",
+    "main_line_id": "0QLxx0000000001AAA",
+    "main_line_number": 10,
+    "main_line_total_price": 1200,
+    "associated_line_id": "0QLxx0000000002AAA",
+    "associated_line_number": 11,
+    "associated_line_total_price": 0,
+    "main_line_role": "Bundle",
+    "associated_line_role": "Component",
+    "associated_line_pricing": "IncludedInBundlePrice",
+    "associated_quant_scale_method": "PerUnit",
+    "root_line_id": "0QLxx0000000001AAA",
+    "product_relationship_type_id": "0PRxx0000000001AAA",
+    "product_related_component_id": "0PCxx0000000001AAA",
+    "is_price_inclusive": true
+  },
+  {
+    "relationship_id": "0qRxx0000000002AAA",
+    "quote_id": "0Q0xx0000000001AAA",
+    "main_line_id": "0QLxx0000000001AAA",
+    "main_line_number": 10,
+    "main_line_total_price": 1200,
+    "associated_line_id": "0QLxx0000000003AAA",
+    "associated_line_number": 12,
+    "associated_line_total_price": 200,
+    "main_line_role": "Bundle",
+    "associated_line_role": "Option",
+    "associated_line_pricing": "ListPrice",
+    "associated_quant_scale_method": null,
+    "root_line_id": "0QLxx0000000001AAA",
+    "product_relationship_type_id": "0PRxx0000000001AAA",
+    "product_related_component_id": "0PCxx0000000002AAA",
+    "is_price_inclusive": false
+  }
+]

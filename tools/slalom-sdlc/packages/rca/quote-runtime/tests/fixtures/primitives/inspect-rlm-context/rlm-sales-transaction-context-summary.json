@@ -1,0 +1,90 @@
+{
+  "context_artifact": {
+    "name": "RLM_SalesTransactionContext",
+    "source": "fixture"
+  },
+  "relevant_mappings": [
+    {
+      "mapping_name": "QuoteEntitiesMapping -> SalesTransaction -> Quote",
+      "primary_debug_job": "quote header + pricebook debug",
+      "key_nodes": [
+        "SalesTransaction",
+        "Quote",
+        "Quote.Pricebook2Id",
+        "Quote.Status",
+        "Quote.TotalPrice",
+        "Quote.Subtotal"
+      ],
+      "evidence_level": "org_proven"
+    },
+    {
+      "mapping_name": "QuoteEntitiesMapping -> SalesTransactionAction -> QuoteAction",
+      "primary_debug_job": "lifecycle debug",
+      "key_nodes": [
+        "SalesTransactionAction",
+        "QuoteAction",
+        "QuoteAction.Type",
+        "QuoteAction.SourceAssetId",
+        "QuoteAction.Subtype"
+      ],
+      "evidence_level": "org_proven"
+    },
+    {
+      "mapping_name": "QuoteEntitiesMapping -> SalesTransactionItem -> QuoteLineItem",
+      "primary_debug_job": "quote line + pricebook + pricing debug",
+      "key_nodes": [
+        "SalesTransactionItem",
+        "QuoteLineItem",
+        "QuoteLineItem.PricebookEntryId",
+        "QuoteLineItem.Quantity",
+        "QuoteLineItem.NetUnitPrice",
+        "QuoteLineItem.TotalPrice"
+      ],
+      "evidence_level": "org_proven"
+    },
+    {
+      "mapping_name": "QuoteEntitiesMapping -> SalesTransactionItemDetail -> QuoteLineDetail",
+      "primary_debug_job": "waterfall debug",
+      "key_nodes": [
+        "SalesTransactionItemDetail",
+        "QuoteLineDetail",
+        "QuoteLineDetail.UnitPrice",
+        "QuoteLineDetail.NetUnitPrice",
+        "QuoteLineDetail.TotalPrice",
+        "QuoteLineDetail.PriceWaterfallIdentifier"
+      ],
+      "evidence_level": "org_proven"
+    },
+    {
+      "mapping_name": "QuoteEntitiesMapping -> SalesTrxnItemRelationship -> QuoteLineRelationship",
+      "primary_debug_job": "bundle / dependency / lifecycle debug",
+      "key_nodes": [
+        "SalesTrxnItemRelationship",
+        "QuoteLineRelationship",
+        "QuoteLineRelationship.MainQuoteLineId",
+        "QuoteLineRelationship.AssociatedQuoteLineId",
+        "QuoteLineRelationship.AssociatedQuoteLinePricing",
+        "QuoteLineRelationship.AssociatedQuantScaleMethod"
+      ],
+      "evidence_level": "org_proven"
+    }
+  ],
+  "bridge_summary": {
+    "primary_bridge": "RLM_SalesTransactionContext is the primary quote-runtime debugging bridge in wave 2 because its QuoteEntitiesMapping directly hydrates Quote, QuoteAction, QuoteLineItem, QuoteLineDetail, and QuoteLineRelationship.",
+    "quote_header_mapping": "QuoteEntitiesMapping -> SalesTransaction -> Quote is the primary quote header and pricebook bridge.",
+    "quote_line_mapping": "QuoteEntitiesMapping -> SalesTransactionItem -> QuoteLineItem plus QuoteEntitiesMapping -> SalesTransactionItemDetail -> QuoteLineDetail provide the primary persisted quote-line bridge.",
+    "lifecycle_mapping": "QuoteEntitiesMapping -> SalesTransactionAction -> QuoteAction and QuoteEntitiesMapping -> SalesTrxnItemRelationship -> QuoteLineRelationship are the primary lifecycle-facing mappings in scope for wave 2.",
+    "waterfall_mapping": "QuoteEntitiesMapping -> SalesTransactionItemDetail -> QuoteLineDetail is the clearest waterfall seam, with QuoteEntitiesMapping -> SalesTransactionItem -> QuoteLineItem supporting PriceWaterfallIdentifier linkage.",
+    "limitations": [
+      "This summary fixture is the authoritative wave-2 normalized source and intentionally does not emit raw XML or a full metadata dump by default.",
+      "RLM_SalesTransactionContext is the only primary context-definition artifact in wave 2; this command must not pivot to RevSalesTransactionContext or BrowseProductsCtxDefinition.",
+      "The repo-tracked raw RLM metadata copy is stale relative to ARM, so checked-in raw XML is not treated as canonical for normalized output."
+    ]
+  },
+  "open_questions": [
+    "Should the repo-tracked RLM_SalesTransactionContext source be refreshed to match the newer ARM metadata retrieve?",
+    "Should RevSalesTransactionContext remain a secondary bridge for contract and discovery crossover only rather than a first-line quote-debug artifact?",
+    "Are the association-only bridge stubs in related context definitions intentionally marker-only, or is their operative behavior defined elsewhere?",
+    "Is the narrow quote coverage in BrowseProductsCtxDefinition intentionally limited to discovery-time quote inputs?"
+  ]
+}

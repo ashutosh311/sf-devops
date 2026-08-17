@@ -1,0 +1,67 @@
+[
+  {
+    "name": "wrong-price",
+    "quoteId": "0Q0xx0000000001AAA",
+    "lineIds": ["0QLxx0000000001AAA"],
+    "symptom": "The wrong price is showing on this quote line",
+    "expected": {
+      "symptom_class": "wrong-price",
+      "primary_lane": "quote_pricing",
+      "recommended_branch": "persisted_price_explanation",
+      "required_overlays": [],
+      "recommended_next_commands": ["explain-price"]
+    }
+  },
+  {
+    "name": "missing-price",
+    "quoteId": "0Q0xx0000000002AAA",
+    "lineIds": ["0QLxx0000000002AAA"],
+    "symptom": "This component has a missing price and shows zero price",
+    "expected": {
+      "symptom_class": "missing-price",
+      "primary_lane": "quote_pricing",
+      "recommended_branch": "missing_price_explanation",
+      "required_overlays": ["QuoteLineRelationship", "QuoteAction"],
+      "recommended_next_commands": ["explain-missing-price"]
+    }
+  },
+  {
+    "name": "structure",
+    "quoteId": "0Q0xx0000000003AAA",
+    "lineIds": ["0QLxx0000000003AAA"],
+    "symptom": "Bundle structure looks wrong and the child relationship is missing",
+    "expected": {
+      "symptom_class": "structure",
+      "primary_lane": "structure_overlay",
+      "recommended_branch": "structure_overlay",
+      "required_overlays": ["QuoteLineRelationship"],
+      "recommended_next_commands": ["overlay-relationships"]
+    }
+  },
+  {
+    "name": "lifecycle",
+    "quoteId": "0Q0xx0000000004AAA",
+    "lineIds": ["0QLxx0000000004AAA"],
+    "symptom": "Amendment lifecycle provenance looks wrong for this line",
+    "expected": {
+      "symptom_class": "lifecycle",
+      "primary_lane": "lifecycle_provenance",
+      "recommended_branch": "lifecycle_overlay",
+      "required_overlays": ["QuoteAction"],
+      "recommended_next_commands": ["verify-lifecycle-provenance"]
+    }
+  },
+  {
+    "name": "context-bridge",
+    "quoteId": "0Q0xx0000000005AAA",
+    "lineIds": ["0QLxx0000000005AAA"],
+    "symptom": "RLM context bridge metadata looks wrong for this quote",
+    "expected": {
+      "symptom_class": "context-bridge",
+      "primary_lane": "context_bridge",
+      "recommended_branch": "context_bridge",
+      "required_overlays": [],
+      "recommended_next_commands": ["inspect-rlm-context"]
+    }
+  }
+]

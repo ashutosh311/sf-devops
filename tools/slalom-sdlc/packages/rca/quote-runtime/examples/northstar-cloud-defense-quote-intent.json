@@ -1,0 +1,234 @@
+{
+  "example_name": "northstar-cloud-defense-quote-intent",
+  "purpose": "Canonical Northstar complex quote intent covering the workflow failures from the spec: target locking, configured bundle attributes, default exclusion, services and hardware discounts, PST pricing, and verification.",
+  "command_family": "pst-apply-quote-intent",
+  "create_vs_patch_behavior": "Replaces only the scoped Northstar managed line set on quote 00000048. It must not create quote 00000049 or any other replacement quote.",
+  "source_context": {
+    "transcript_facts": [
+      "Healthcare buyer needs better SaaS and Azure visibility.",
+      "Buyer is concerned about AI access control and VPN sprawl.",
+      "Buyer wants 24x7 response and managed operations.",
+      "Hardware is present but not the center of the modernization."
+    ],
+    "seller_notes": [
+      "Use the Northstar Regional Health Network opportunity.",
+      "Preserve license margin.",
+      "Apply 15 percent services discount.",
+      "Apply 30 percent hardware discount.",
+      "Target term is 2026-07-01 through 2029-06-30."
+    ],
+    "salesforce_verified_facts": [
+      "Target quote number is 00000048.",
+      "Configured product is Aegis Cloud Defense Bundle.",
+      "Required bundle attributes are SOC Response Level, User Population, and Cloud Coverage.",
+      "AegisXDR Endpoint Sensor may appear as a default component and should be excluded for this scenario."
+    ]
+  },
+  "quote_intent": {
+    "target": {
+      "mode": "replace_lines",
+      "quote_id": "0Q0a5000002mnBlCAI",
+      "allow_new_quote": false,
+      "assertions": {
+        "quote_number": "00000048",
+        "account_name": "Northstar Regional Health Network",
+        "opportunity_name": "Northstar Regional Health - Cloud Defense Modernization",
+        "pricebook_id": "01sa50000038iVBAAY"
+      },
+      "line_scope": {
+        "mode": "explicit_product_set",
+        "product_codes": [
+          "AEGIS-BNDL-CLOUD-DEFENSE",
+          "AEGISAI-ACCESS-CONTROL",
+          "AEGISSASE-PRIVATE-ACCESS",
+          "AEGISSASE-SWG",
+          "AEGISCLOUD-WORKLOAD-SHIELD",
+          "AEGISSOC-ANALYTICS",
+          "AEGIS-MDR",
+          "AEGISXDR-ENDPOINT-SENSOR",
+          "AEGIS-PREMIUM-SUCCESS",
+          "AEGIS-THREAT-HUNTING-RETAINER",
+          "AEGIS-HW-EDGE250"
+        ],
+        "allow_delete_outside_scope": false
+      }
+    },
+    "plan_key": "northstar-cloud-defense-00000048-v1",
+    "header": {
+      "name": "Northstar Cloud Defense Modernization - 3 Year Draft",
+      "status": "Draft",
+      "start_date": "2026-07-01",
+      "expiration_date": "2029-06-30"
+    },
+    "lines": [
+      {
+        "operation": "create",
+        "role": "bundle_parent",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE",
+        "quantity": 1,
+        "term": {
+          "start_date": "2026-07-01",
+          "end_date": "2029-06-30",
+          "subscription_term": 36,
+          "billing_frequency": "Annual",
+          "period_boundary": "Anniversary"
+        },
+        "configuration": {
+          "attributes": {
+            "SOC Response Level": "24x7",
+            "User Population": "1000",
+            "Cloud Coverage": "SaaS_IaaS"
+          },
+          "components": {
+            "User Access Controls": [
+              "AEGISAI-ACCESS-CONTROL",
+              "AEGISSASE-PRIVATE-ACCESS",
+              "AEGISSASE-SWG"
+            ],
+            "Cloud Workload Defense": [
+              "AEGISCLOUD-WORKLOAD-SHIELD"
+            ],
+            "Managed Operations": [
+              "AEGISSOC-ANALYTICS",
+              "AEGIS-MDR"
+            ]
+          },
+          "exclude_defaults": [
+            "AEGISXDR-ENDPOINT-SENSOR"
+          ]
+        }
+      },
+      {
+        "operation": "create",
+        "role": "support",
+        "product_code": "AEGIS-PREMIUM-SUCCESS",
+        "quantity": 1,
+        "discount_percent": 15,
+        "discount_policy": "services_discount",
+        "term": {
+          "start_date": "2026-07-01",
+          "end_date": "2029-06-30",
+          "subscription_term": 36,
+          "billing_frequency": "Annual",
+          "period_boundary": "Anniversary"
+        }
+      },
+      {
+        "operation": "create",
+        "role": "service",
+        "product_code": "AEGIS-THREAT-HUNTING-RETAINER",
+        "quantity": 1,
+        "discount_percent": 15,
+        "discount_policy": "services_discount",
+        "approval_note": "Optional line from seller notes; keep only if buyer confirms threat hunting option."
+      },
+      {
+        "operation": "create",
+        "role": "hardware",
+        "product_code": "AEGIS-HW-EDGE250",
+        "quantity": 2,
+        "discount_percent": 30,
+        "discount_policy": "hardware_discount"
+      }
+    ],
+    "default_policy": {
+      "mode": "exclude",
+      "excluded_product_codes": [
+        "AEGISXDR-ENDPOINT-SENSOR"
+      ],
+      "fail_if_default_cannot_be_removed": true
+    },
+    "pricing": {
+      "run": true
+    },
+    "verification": {
+      "snapshot_quote": true,
+      "snapshot_lines": true,
+      "validate_product_config": true,
+      "overlay_relationships": true,
+      "capture_post_pst_evidence": true,
+      "classify_pricing_outcome": true
+    }
+  },
+  "generated_pst_graph_preview": {
+    "delete_phase": {
+      "scope": "explicit_product_set",
+      "must_delete_relationships_before_child_lines": true,
+      "fail_closed_on_unscoped_rows": true
+    },
+    "create_phase": [
+      {
+        "referenceId": "lineCloudDefenseBundle",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE"
+      },
+      {
+        "referenceId": "attributeSocResponse",
+        "record_type": "QuoteLineItemAttribute",
+        "method": "POST",
+        "attribute_value": "24x7"
+      },
+      {
+        "referenceId": "linePremiumSuccess",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-PREMIUM-SUCCESS",
+        "discount_percent": 15
+      },
+      {
+        "referenceId": "lineEdgeHardware",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-HW-EDGE250",
+        "discount_percent": 30
+      }
+    ],
+    "pricing_phase": {
+      "method": "POST",
+      "uses_pst": true
+    }
+  },
+  "expected_readback_shape": {
+    "target": {
+      "quote_id": "0Q0a5000002mnBlCAI",
+      "quote_number": "00000048"
+    },
+    "configuration": {
+      "attributes": {
+        "SOC Response Level": "24x7",
+        "User Population": "1000",
+        "Cloud Coverage": "SaaS_IaaS"
+      },
+      "must_include_components": [
+        "AEGISAI-ACCESS-CONTROL",
+        "AEGISSASE-PRIVATE-ACCESS",
+        "AEGISSASE-SWG",
+        "AEGISCLOUD-WORKLOAD-SHIELD",
+        "AEGISSOC-ANALYTICS",
+        "AEGIS-MDR"
+      ],
+      "must_not_include_components": [
+        "AEGISXDR-ENDPOINT-SENSOR"
+      ]
+    },
+    "discounts": {
+      "AEGIS-PREMIUM-SUCCESS": 15,
+      "AEGIS-THREAT-HUNTING-RETAINER": 15,
+      "AEGIS-HW-EDGE250": 30
+    },
+    "northstar_spec_targets": {
+      "line_count": 11,
+      "relationship_count": 6,
+      "grand_total": 427241.5
+    }
+  },
+  "expected_verification_commands": [
+    "quote-runtime snapshot-quote --org-alias ARMAF --quote-id 0Q0a5000002mnBlCAI --json",
+    "quote-runtime snapshot-lines --org-alias ARMAF --quote-id 0Q0a5000002mnBlCAI --json",
+    "quote-runtime validate-product-config --org-alias ARMAF --quote-id 0Q0a5000002mnBlCAI --json",
+    "quote-runtime overlay-relationships --org-alias ARMAF --quote-id 0Q0a5000002mnBlCAI --json",
+    "quote-runtime capture-post-pst-evidence --org-alias ARMAF --quote-id 0Q0a5000002mnBlCAI --json",
+    "quote-runtime classify-pricing-outcome --org-alias ARMAF --quote-id 0Q0a5000002mnBlCAI --json"
+  ]
+}

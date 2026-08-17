@@ -71,7 +71,7 @@ async function writeStandards(config: SdlcConfig, root: string, result: Scaffold
   const dir = path.join(root, config.paths.standards);
   await fs.mkdir(dir, { recursive: true });
 
-  const files = getStandards();
+  const files = getStandards({ revenueCloud: config.revenueCloud?.enabled === true });
 
   for (const [filename, content] of Object.entries(files)) {
     const filepath = path.join(dir, filename);

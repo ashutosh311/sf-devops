@@ -1,0 +1,194 @@
+{
+  "mode": "plan_only",
+  "operation_family": "pst_place",
+  "route": "/services/data/v66.0/connect/rev/sales-transaction/actions/place",
+  "contract_class": "primary_rest",
+  "subjects": {
+    "quote_id": "0Q0xx0000000001AAA",
+    "line_ids": ["0QLxx0000000001AAA"],
+    "asset_ids": [],
+    "expected_change": "reprice the targeted line"
+  },
+  "side_effect_scope": "May mutate or reprice the targeted quote and its quote lines in place.",
+  "payload_summary": {
+    "intent": "PST quote mutation or repricing request on an existing runtime quote.",
+    "expected_change": "reprice the targeted line",
+    "expected_anchor_type": "same_quote",
+    "execution_requested": false
+  },
+  "before_capture_plan": {
+    "capture_stage": "before",
+    "verification_anchor_expectation": "0Q0xx0000000001AAA",
+    "required_reads": [
+      {
+        "surface": "Quote",
+        "required": true,
+        "selectors": {
+          "quote_id": "0Q0xx0000000001AAA"
+        },
+        "field_set": [
+          "Id",
+          "Name",
+          "QuoteNumber",
+          "Pricebook2Id",
+          "Status",
+          "CalculationStatus",
+          "StartDate",
+          "ExpirationDate",
+          "Subtotal",
+          "TotalPrice",
+          "TotalTaxAmount",
+          "TotalPriceWithTax",
+          "GrandTotal",
+          "LineItemCount",
+          "OriginalActionType",
+          "CreatedDate",
+          "LastModifiedDate"
+        ]
+      },
+      {
+        "surface": "QuoteLineItem",
+        "required": true,
+        "selectors": {
+          "quote_id": "0Q0xx0000000001AAA",
+          "line_ids": ["0QLxx0000000001AAA"]
+        },
+        "field_set": [
+          "Id",
+          "QuoteId",
+          "LineNumber",
+          "Product2Id",
+          "PricebookEntryId",
+          "ParentQuoteLineItemId",
+          "Quantity",
+          "StartQuantity",
+          "EndQuantity",
+          "UnitPrice",
+          "ListPrice",
+          "NetUnitPrice",
+          "NetTotalPrice",
+          "Subtotal",
+          "TotalPrice",
+          "TotalLineAmount",
+          "TotalAdjustmentAmount",
+          "SellingModelType",
+          "StartDate",
+          "EndDate",
+          "PriceWaterfallIdentifier",
+          "QuoteActionId",
+          "QuoteAction.Type",
+          "QuoteAction.SourceAssetId",
+          "CreatedDate",
+          "LastModifiedDate"
+        ]
+      },
+      {
+        "surface": "Asset",
+        "required": false,
+        "selectors": {
+          "asset_ids": []
+        },
+        "field_set": ["Id", "Product2Id", "ContractId", "StartDate", "EndDate", "Quantity"]
+      }
+    ],
+    "optional_overlays": ["QuoteLineRelationship when line structure is under investigation"]
+  },
+  "after_capture_plan": {
+    "capture_stage": "after",
+    "expected_anchor_type": "same_quote",
+    "required_reads": [
+      {
+        "surface": "Quote",
+        "required": true,
+        "selectors": {
+          "quote_id": "0Q0xx0000000001AAA",
+          "anchor_strategy": "same_quote"
+        },
+        "field_set": [
+          "Id",
+          "Name",
+          "QuoteNumber",
+          "Pricebook2Id",
+          "Status",
+          "CalculationStatus",
+          "StartDate",
+          "ExpirationDate",
+          "Subtotal",
+          "TotalPrice",
+          "TotalTaxAmount",
+          "TotalPriceWithTax",
+          "GrandTotal",
+          "LineItemCount",
+          "OriginalActionType",
+          "CreatedDate",
+          "LastModifiedDate"
+        ]
+      },
+      {
+        "surface": "QuoteLineItem",
+        "required": true,
+        "selectors": {
+          "quote_id": "0Q0xx0000000001AAA",
+          "line_ids": ["0QLxx0000000001AAA"],
+          "anchor_strategy": "same_quote"
+        },
+        "field_set": [
+          "Id",
+          "QuoteId",
+          "LineNumber",
+          "Product2Id",
+          "PricebookEntryId",
+          "ParentQuoteLineItemId",
+          "Quantity",
+          "StartQuantity",
+          "EndQuantity",
+          "UnitPrice",
+          "ListPrice",
+          "NetUnitPrice",
+          "NetTotalPrice",
+          "Subtotal",
+          "TotalPrice",
+          "TotalLineAmount",
+          "TotalAdjustmentAmount",
+          "SellingModelType",
+          "StartDate",
+          "EndDate",
+          "PriceWaterfallIdentifier",
+          "QuoteActionId",
+          "QuoteAction.Type",
+          "QuoteAction.SourceAssetId",
+          "CreatedDate",
+          "LastModifiedDate"
+        ]
+      }
+    ],
+    "comparison_expectation": "Compare before and after snapshots on the same quote."
+  },
+  "verification_branch_hints": [
+    {
+      "branch": "persisted_verification",
+      "when": "Always start with Quote + QuoteLineItem readback on the same quote.",
+      "recommended_command": "snapshot-lines"
+    },
+    {
+      "branch": "pricing_waterfall_debug",
+      "when": "If repricing clearly happened but the causal pricing-step explanation is still missing, escalate to the core-pricing waterfall debug lane keyed from QuoteLineItem.PriceWaterfallIdentifier.",
+      "recommended_command": "inspect-pricing-waterfall"
+    },
+    {
+      "branch": "lifecycle_overlay",
+      "when": "Only if the PST change should express lifecycle provenance through QuoteAction rows.",
+      "recommended_command": "overlay-actions"
+    },
+    {
+      "branch": "structure_overlay",
+      "when": "Only if bundle, option, or parent-child semantics are the active question.",
+      "recommended_command": "overlay-relationships"
+    },
+    {
+      "branch": "context_bridge",
+      "when": "Use RLM context inspection only when persisted quote evidence and waterfall/debug evidence still do not explain the result.",
+      "recommended_command": "inspect-rlm-context"
+    }
+  ]
+}

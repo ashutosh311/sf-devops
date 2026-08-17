@@ -35,6 +35,12 @@ export function readCachedInstruction(name: string, cacheDir: string): string | 
   return readCacheFile(path.join(cacheDir, `${name}.md`));
 }
 
+// RCA skills are synced under a `skills/` subdirectory of the cache so their
+// filenames never collide with phase templates or instruction fragments.
+export function readCachedSkill(fileBaseName: string, cacheDir: string): string | null {
+  return readCacheFile(path.join(cacheDir, "skills", `${fileBaseName}.md`));
+}
+
 function readCacheFile(filePath: string): string | null {
   try {
     return fs.readFileSync(filePath, "utf-8");

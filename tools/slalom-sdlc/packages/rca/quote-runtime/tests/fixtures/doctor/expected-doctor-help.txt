@@ -1,0 +1,26 @@
+quote-runtime doctor
+
+Usage:
+  quote-runtime doctor --org-alias <alias> --for-command <subcommand>
+
+Global flags:
+  --json
+  --org-alias <alias>
+  --fail-on <status>
+  --output <path>
+  --verbose
+
+Doctor flags:
+  --for-command <subcommand>
+  --quote-id <id>
+  --line-id <id>
+  --asset-id <id>
+
+Notes:
+  doctor validates selector fit for the requested command.
+  doctor verifies local Salesforce CLI availability and org alias/auth viability when possible.
+  doctor attempts one safe read-only Organization query proof after org access is confirmed.
+
+Examples:
+  quote-runtime doctor --org-alias <alias> --for-command doctor
+  quote-runtime doctor --org-alias <alias> --for-command snapshot-quote --quote-id <id>

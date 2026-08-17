@@ -139,6 +139,15 @@ export const SdlcConfigSchema = z.object({
     apexCoverageThreshold: z.number().int().min(0).max(100),
   }),
 
+  /**
+   * Revenue Cloud Advanced (RCA) opt-in. When enabled, `/init` scaffolds the RCA
+   * standards/skills and the design/build agents load the RCA domain playbook +
+   * MCP tools. Absent/false leaves non-RCA projects completely unaffected.
+   */
+  revenueCloud: z.object({
+    enabled: z.boolean(),
+  }).optional(),
+
   jira: z.object({
     statusMap: z.object({
       story: StoryStatusMapSchema,

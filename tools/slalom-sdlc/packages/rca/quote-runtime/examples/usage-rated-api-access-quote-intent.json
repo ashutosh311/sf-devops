@@ -1,0 +1,177 @@
+{
+  "example_name": "usage-rated-api-access-quote-intent",
+  "purpose": "Narrow usage/rate pricing demo scenario for selling base API access plus usage-rated API consumption. This example is plan-first and selector-driven; replace placeholder selectors with org-proven records from discover-products and inspect-usage-rate-model before any execution.",
+  "command_family": "pst-apply-quote-intent",
+  "create_vs_patch_behavior": "Creates a new draft quote in dry-run by default. Do not execute until usage/rate selectors have been resolved in the target org and pricing/product sync prerequisites have been checked.",
+  "source_context": {
+    "demo_story": [
+      "Seller adds API Access Premium as the base subscription.",
+      "The product has multiple ProductUsageResource rows and RateCardEntry rows.",
+      "The operator selects one usage resource and matching rate card entry for the intended selling model.",
+      "Post-PST evidence must show either quote-side usage/rate artifacts or a clear partial usage-rating state."
+    ],
+    "salesforce_verified_shape": [
+      "ARMAF has a product named API Access Premium with product code CLOUD00910.",
+      "Read-only discovery found product usage resources including API Calls and Data Transfers.",
+      "Read-only discovery found rate card entries across a flat rate card and a tier rate card.",
+      "The current PST graph payload writes Quote, QuoteLineItem, and documented usage child records when usage selectors include rate card entries or grants.",
+      "An approved ARMAF live execution persisted QuoteLineRateCardEntry and QuotLineItmUseRsrcGrant rows when the line included org-required billing/proration fields and the grant included type plus validity fields."
+    ],
+    "required_preflight": [
+      "quote-runtime inspect-usage-rate-model --org-alias <alias> --product-id <product-id> --pricebook-id <pricebook-id> --include-samples --json",
+      "quote-runtime discover-products --org-alias <alias> --pricebook-id <pricebook-id> --term \"API Access Premium\" --json",
+      "quote-runtime inspect-product-catalog-config --org-alias <alias> --product-id <product-id> --pricebook-id <pricebook-id> --json",
+      "quote-runtime inspect-pricing-product-sync --org-alias <alias> --json",
+      "quote-runtime deploy-product-catalog-index --org-alias <alias> --json # dry-run only; add --execute only after review if product index refresh is required"
+    ]
+  },
+  "quote_intent": {
+    "target": {
+      "mode": "create",
+      "allow_new_quote": true,
+      "assertions": {
+        "pricebook_id": "<pricebook-id>"
+      }
+    },
+    "plan_key": "usage-rated-api-access-dry-run-v1",
+    "pst_plan": {
+      "catalog_rates_pref": "Fetch"
+    },
+    "header": {
+      "name": "API Access Usage Pricing Demo - Draft",
+      "status": "Draft",
+      "pricebook_id": "<pricebook-id>",
+      "start_date": "2026-07-01",
+      "expiration_date": "2027-06-30"
+    },
+    "lines": [
+      {
+        "operation": "create",
+        "role": "base_subscription_with_usage_context",
+        "product_code": "CLOUD00910",
+        "product_id": "<product-id>",
+        "pricebook_entry_id": "<pricebook-entry-id>",
+        "quantity": 1,
+        "term": {
+          "start_date": "2026-07-01",
+          "end_date": "2027-06-30"
+        },
+        "extraFields": {
+          "PeriodBoundary": "Anniversary",
+          "BillingFrequency": "<org-proven-billing-frequency>"
+        },
+        "usage": {
+          "usage_resource_code": "API001",
+          "usage_resource_id": "<usage-resource-id>",
+          "rate_card_id": "<rate-card-id>",
+          "rate_card_entry_id": "<rate-card-entry-id>",
+          "product_selling_model_id": "<product-selling-model-id>",
+          "expected_rate": 0.023456,
+          "rating_quantity": 100000,
+          "negotiated_rate": null,
+          "grants": [
+            {
+              "product_usage_grant_id": "<product-usage-grant-id>",
+              "usage_resource_id": "<usage-resource-id>",
+              "product_usage_resource_policy_id": "<product-usage-resource-policy-id-for-planning-readback-if-present>",
+              "grant_type": "Grant",
+              "grant_quantity": 10000,
+              "validity_period_term": 1,
+              "validity_period_unit": "Month"
+            }
+          ]
+        }
+      }
+    ],
+    "pricing": {
+      "run": true
+    },
+    "verification": {
+      "snapshot_quote": true,
+      "snapshot_lines": true,
+      "inspect_usage_rate_model": true,
+      "inspect_pricing_product_sync": true,
+      "deploy_product_catalog_index_dry_run_when_refresh_required": true,
+      "capture_post_pst_evidence": true,
+      "classify_pricing_outcome": true
+    }
+  },
+  "generated_pst_graph_preview": {
+    "guardrail_phase": {
+      "resolve_product_code": true,
+      "validate_pricebook_entry_product_selling_model": true,
+      "validate_product_usage_resource": true,
+      "validate_rate_card_entry": true,
+      "validate_product_usage_grant": true,
+      "fail_on_selling_model_mismatch": true,
+      "check_pricing_product_sync_before_execution": true,
+      "deploy_product_catalog_index_only_after_dry_run_and_approval": true
+    },
+    "create_phase": [
+      {
+        "referenceId": "quote1",
+        "record_type": "Quote",
+        "method": "POST",
+        "selector_policy": "placeholder fields must be replaced before execution"
+      },
+      {
+        "referenceId": "line1",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "CLOUD00910",
+        "usage_selector_behavior": "usage selectors are not blindly written as QuoteLineItem fields"
+      },
+      {
+        "referenceId": "rateCardEntry1",
+        "record_type": "QuoteLineRateCardEntry",
+        "method": "POST",
+        "selector_policy": "uses org-proven RateCardEntryId; NegotiatedRate null keeps catalog rate"
+      },
+      {
+        "referenceId": "usageGrant1",
+        "record_type": "QuotLineItmUseRsrcGrant",
+        "method": "POST",
+        "selector_policy": "uses org-proven UsageResourceId and ProductUsageGrantId; ProductUsageResourcePolicyId is readback/planning metadata when present"
+      }
+    ],
+    "pricing_phase": {
+      "method": "POST",
+      "uses_pst": true,
+      "execution_boundary": "Dry-run first. Do not execute until selectors, catalogRatesPref, and post-PST evidence expectations are reviewed and approved."
+    }
+  },
+  "expected_readback_shape": {
+    "discovery": {
+      "product_name": "API Access Premium",
+      "product_code": "CLOUD00910",
+      "usage_rate_summary": {
+        "product_usage_resource_count": "greater_than_zero",
+        "rate_card_entry_count": "greater_than_zero"
+      }
+    },
+    "pst_dry_run": {
+      "usage_rate_contexts": 1,
+      "quote_line_item_usage_fields_written": false,
+      "quote_line_rate_card_entry_planned": true,
+      "quote_line_usage_grant_planned": true,
+      "quote_line_item_billing_proration_fields_supplied": "org_specific_when_required",
+      "quote_line_usage_grant_type_and_validity_supplied": true
+    },
+    "post_pst_evidence": {
+      "rate_card_entries": "ok_after_live_execution_for_matching_armaf_shape",
+      "rate_adjustments": "ok_or_not_found",
+      "usage_grants": "ok_after_live_execution_for_matching_armaf_shape",
+      "usage_policies": "ok_or_not_found",
+      "partial_usage_rating_family": "allowed_when_catalog_ready_but_quote_side_artifacts_absent"
+    }
+  },
+  "expected_verification_commands": [
+    "quote-runtime discover-products --org-alias <alias> --pricebook-id <pricebook-id> --term \"API Access Premium\" --json",
+    "quote-runtime inspect-usage-rate-model --org-alias <alias> --product-id <product-id> --pricebook-id <pricebook-id> --include-samples --json",
+    "quote-runtime inspect-pricing-product-sync --org-alias <alias> --json",
+    "quote-runtime deploy-product-catalog-index --org-alias <alias> --json",
+    "quote-runtime pst-apply-quote-intent --org-alias <alias> --input examples/usage-rated-api-access-quote-intent.json --json",
+    "quote-runtime capture-post-pst-evidence --org-alias <alias> --quote-id <quote-id> --line-id <line-id> --include-usage-rating --json",
+    "quote-runtime classify-pricing-outcome --org-alias <alias> --quote-id <quote-id> --line-id <line-id> --expected-change \"usage rate artifacts should persist or classify as partial usage rating\" --output-family usage_rate_card_family --include-usage-rating --json"
+  ]
+}

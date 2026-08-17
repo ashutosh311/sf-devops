@@ -1,0 +1,122 @@
+{
+  "example_name": "configured-bundle-with-attributes",
+  "purpose": "Create a configured cloud-defense bundle and persist required quote line attributes returned by catalog inspection.",
+  "command_family": "apply-configured-quote",
+  "create_vs_patch_behavior": "Creates a new configured quote with apply-configured-quote. Use a future pst-apply-quote-intent payload to patch an existing quote.",
+  "quote_intent": {
+    "account_id": "001_ACCOUNT_NORTHSTAR_PLACEHOLDER",
+    "opportunity_id": "006_OPPORTUNITY_NORTHSTAR_CLOUD_DEFENSE_PLACEHOLDER",
+    "pricebook_id": "01s_STANDARD_PRICEBOOK_PLACEHOLDER",
+    "quote": {
+      "name": "Northstar Cloud Defense Bundle - New Draft",
+      "status": "Draft",
+      "start_date": "2026-07-01",
+      "expiration_date": "2029-06-30"
+    },
+    "lines": [
+      {
+        "product_id": "01t_AEGIS_BNDL_CLOUD_DEFENSE_PLACEHOLDER",
+        "pricebook_entry_id": "01u_AEGIS_BNDL_CLOUD_DEFENSE_PBE_PLACEHOLDER",
+        "quantity": 1,
+        "start_date": "2026-07-01",
+        "end_date": "2029-06-30",
+        "extraFields": {
+          "SubscriptionTerm": 36,
+          "BillingFrequency": "Annual"
+        }
+      }
+    ]
+  },
+  "config_plan": {
+    "source_command": "plan-product-config",
+    "configuration_choices": {
+      "SOC Response Level": "24x7",
+      "User Population": "1000",
+      "Cloud Coverage": "SaaS_IaaS"
+    },
+    "pst_plan": {
+      "quote_line_attributes": [
+        {
+          "referenceId": "attributeSocResponse",
+          "record": {
+            "attributes": {
+              "type": "QuoteLineItemAttribute",
+              "method": "POST"
+            },
+            "QuoteLineItemId": "@{line1.id}",
+            "AttributeDefinitionId": "0tj_SOC_RESPONSE_LEVEL_PLACEHOLDER",
+            "AttributePicklistValueId": "0v2_SOC_RESPONSE_24X7_PLACEHOLDER",
+            "AttributeValue": "24x7"
+          }
+        },
+        {
+          "referenceId": "attributeUserPopulation",
+          "record": {
+            "attributes": {
+              "type": "QuoteLineItemAttribute",
+              "method": "POST"
+            },
+            "QuoteLineItemId": "@{line1.id}",
+            "AttributeDefinitionId": "0tj_USER_POPULATION_PLACEHOLDER",
+            "AttributePicklistValueId": "0v2_USER_POPULATION_1000_PLACEHOLDER",
+            "AttributeValue": "1000"
+          }
+        },
+        {
+          "referenceId": "attributeCloudCoverage",
+          "record": {
+            "attributes": {
+              "type": "QuoteLineItemAttribute",
+              "method": "POST"
+            },
+            "QuoteLineItemId": "@{line1.id}",
+            "AttributeDefinitionId": "0tj_CLOUD_COVERAGE_PLACEHOLDER",
+            "AttributePicklistValueId": "0v2_CLOUD_COVERAGE_SAAS_IAAS_PLACEHOLDER",
+            "AttributeValue": "SaaS_IaaS"
+          }
+        }
+      ]
+    }
+  },
+  "generated_pst_graph_preview": {
+    "records": [
+      {
+        "referenceId": "quote1",
+        "record_type": "Quote",
+        "method": "POST"
+      },
+      {
+        "referenceId": "line1",
+        "record_type": "QuoteLineItem",
+        "method": "POST",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE"
+      },
+      {
+        "referenceId": "attributeSocResponse",
+        "record_type": "QuoteLineItemAttribute",
+        "method": "POST",
+        "attribute_value": "24x7"
+      }
+    ]
+  },
+  "expected_readback_shape": {
+    "configuration": {
+      "attributes": {
+        "SOC Response Level": "24x7",
+        "User Population": "1000",
+        "Cloud Coverage": "SaaS_IaaS"
+      }
+    },
+    "relationships": {
+      "bundle_parent_product_code": "AEGIS-BNDL-CLOUD-DEFENSE",
+      "relationship_count": "non_zero_when_components_are_created_or_defaulted"
+    }
+  },
+  "expected_verification_commands": [
+    "quote-runtime inspect-product-catalog-config --org-alias <alias> --product-id 01t_AEGIS_BNDL_CLOUD_DEFENSE_PLACEHOLDER --pricebook-id 01s_STANDARD_PRICEBOOK_PLACEHOLDER --json",
+    "quote-runtime plan-product-config --org-alias <alias> --product-config <inspect-output.json> --choices <choices.json> --json",
+    "quote-runtime apply-configured-quote --org-alias <alias> --quote-intent tools/salesforce/quote-runtime-cli/examples/configured-bundle-with-attributes.json --config-plan <config-plan.json> --json",
+    "quote-runtime validate-product-config --org-alias <alias> --quote-id <created_quote_id> --json",
+    "quote-runtime overlay-relationships --org-alias <alias> --quote-id <created_quote_id> --json"
+  ]
+}

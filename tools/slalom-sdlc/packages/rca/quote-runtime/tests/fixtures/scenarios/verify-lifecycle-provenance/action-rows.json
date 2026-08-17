@@ -1,0 +1,20 @@
+[
+  {
+    "Id": "7oca50000JAnrYLAQZ",
+    "QuoteId": "0Q0xx0000000400AAA",
+    "Type": "Amend",
+    "Subtype": "ExistingAssetChange",
+    "SourceAssetId": "02ixx0000000001AAA",
+    "CreatedDate": "2026-04-15T11:58:00.000Z",
+    "LastModifiedDate": "2026-04-15T11:59:00.000Z"
+  },
+  {
+    "Id": "7oca50000JAnrYLBRZ",
+    "QuoteId": "0Q0xx0000000400AAA",
+    "Type": "Renew",
+    "Subtype": "AssetConversion",
+    "SourceAssetId": "02ixx0000000002AAA",
+    "CreatedDate": "2026-04-15T11:58:30.000Z",
+    "LastModifiedDate": "2026-04-15T11:59:30.000Z"
+  }
+]

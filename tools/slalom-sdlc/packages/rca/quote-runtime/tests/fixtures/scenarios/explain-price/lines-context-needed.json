@@ -1,0 +1,29 @@
+[
+  {
+    "Id": "0QLxx0000000102AAA",
+    "QuoteId": "0Q0xx0000000100AAA",
+    "LineNumber": 2,
+    "Product2Id": "01txx0000000102AAA",
+    "PricebookEntryId": "01uxx0000000102AAA",
+    "ParentQuoteLineItemId": null,
+    "Quantity": 2,
+    "StartQuantity": 2,
+    "EndQuantity": 2,
+    "UnitPrice": 52.5,
+    "ListPrice": 52.5,
+    "NetUnitPrice": 52.5,
+    "Subtotal": 105,
+    "TotalPrice": 105,
+    "TotalLineAmount": 105,
+    "TotalAdjustmentAmount": 0,
+    "SellingModelType": "OneTime",
+    "StartDate": "2026-04-01",
+    "EndDate": "2026-04-30",
+    "PriceWaterfallIdentifier": "WF-102",
+    "QuoteActionId": null,
+    "QuoteAction.Type": null,
+    "QuoteAction.SourceAssetId": null,
+    "CreatedDate": "2026-04-15T11:00:00.000+0000",
+    "LastModifiedDate": "2026-04-15T11:05:00.000+0000"
+  }
+]

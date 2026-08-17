@@ -1,0 +1,19 @@
+{
+  "Id": "0Q0xx0000000100AAA",
+  "Name": "Q-0100",
+  "QuoteNumber": "Q-0100",
+  "Pricebook2Id": "01sxx0000000001AAA",
+  "Status": "Draft",
+  "CalculationStatus": "Calculated",
+  "StartDate": "2026-04-01",
+  "ExpirationDate": "2026-04-30",
+  "Subtotal": 210,
+  "TotalPrice": 210,
+  "TotalTaxAmount": 0,
+  "TotalPriceWithTax": 210,
+  "GrandTotal": 210,
+  "LineItemCount": 2,
+  "OriginalActionType": null,
+  "CreatedDate": "2026-04-15T11:00:00.000+0000",
+  "LastModifiedDate": "2026-04-15T11:05:00.000+0000"
+}

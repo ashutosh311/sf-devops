@@ -15,6 +15,11 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sdlc/core": "workspace:*",
+    "@sdlc/rca-pricing-procedure": "workspace:*",
+    "@sdlc/rca-sfx": "workspace:*",
+    "@sdlc/rca-quote-runtime": "workspace:*",
+    "@sdlc/rca-context-definition": "workspace:*",
+    "@sdlc/rca-arm-matrix": "workspace:*",
     "zod": "^3.25.0"
   },
   "devDependencies": {

@@ -84,6 +84,7 @@ export function buildSdlcConfig(
     standards:  { apexCoverageThreshold: answers.apexCoverageThreshold },
     branching:  "gitflow" as const,
     paths:      DEFAULT_PATHS,
+    ...(answers.revenueCloudEnabled ? { revenueCloud: { enabled: true } } : {}),
   };
 
   if (answers.pmTool === "LOCAL") {
@@ -141,6 +142,7 @@ export function resolveExistingAnswer(questionId: string, existing?: Partial<Sdl
     estimationApproach:    existing.team?.estimationApproach,
     orgSandbox:            existing.salesforce?.orgs.sandbox,
     apexCoverageThreshold: existing.standards?.apexCoverageThreshold,
+    revenueCloudEnabled:   existing.revenueCloud?.enabled ?? false,
   };
 
   return map[questionId];

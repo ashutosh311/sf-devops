@@ -121,6 +121,20 @@ async function collectAnswers(
         (answers as Record<string, unknown>)[q.id] = result.map((r) => r.value);
         break;
       }
+
+      case "confirm": {
+        const yes = { label: "Yes", value: true };
+        const no = { label: "No", value: false };
+        const items = def === true ? [yes, no] : [no, yes];
+        const result = await vscode.window.showQuickPick(items, {
+          title: `Slalom SDLC Setup — ${q.section}`,
+          placeHolder: q.label,
+          ignoreFocusOut: true,
+        });
+        if (!result) return undefined; // user pressed Escape
+        (answers as Record<string, unknown>)[q.id] = result.value;
+        break;
+      }
     }
   }
 

@@ -1,0 +1,92 @@
+{
+  "example_name": "new-simple-term-quote",
+  "purpose": "Create a new draft quote with one term-based subscription line using the current structured quote_intent shape.",
+  "command_family": "build-test-quote",
+  "create_vs_patch_behavior": "Creates a new quote because no target.quote_id is asserted. Dry-run should be reviewed before adding --execute.",
+  "quote_intent": {
+    "account_id": "001_ACCOUNT_ACME_PLACEHOLDER",
+    "opportunity_id": "006_OPPORTUNITY_ACME_RENEWAL_PLACEHOLDER",
+    "pricebook_id": "01s_STANDARD_PRICEBOOK_PLACEHOLDER",
+    "quote": {
+      "name": "ACME Secure Access Subscription - Draft",
+      "status": "Draft",
+      "start_date": "2026-06-01",
+      "expiration_date": "2027-05-31",
+      "transaction_type": "New"
+    },
+    "lines": [
+      {
+        "product_id": "01t_AEGISSASE_PRIVATE_ACCESS_PLACEHOLDER",
+        "pricebook_entry_id": "01u_AEGISSASE_PRIVATE_ACCESS_ANNUAL_PBE_PLACEHOLDER",
+        "quantity": 250,
+        "start_date": "2026-06-01",
+        "end_date": "2027-05-31",
+        "extraFields": {
+          "SubscriptionTerm": 12,
+          "BillingFrequency": "Annual"
+        }
+      }
+    ],
+    "pricing": {
+      "execute": true
+    }
+  },
+  "generated_pst_graph_preview": {
+    "route": "/services/data/v66.0/connect/rev/sales-transaction/actions/place",
+    "records": [
+      {
+        "referenceId": "quote1",
+        "record": {
+          "attributes": {
+            "type": "Quote",
+            "method": "POST"
+          },
+          "Name": "ACME Secure Access Subscription - Draft",
+          "QuoteAccountId": "001_ACCOUNT_ACME_PLACEHOLDER",
+          "OpportunityId": "006_OPPORTUNITY_ACME_RENEWAL_PLACEHOLDER",
+          "Pricebook2Id": "01s_STANDARD_PRICEBOOK_PLACEHOLDER",
+          "Status": "Draft",
+          "StartDate": "2026-06-01",
+          "ExpirationDate": "2027-05-31"
+        }
+      },
+      {
+        "referenceId": "line1",
+        "record": {
+          "attributes": {
+            "type": "QuoteLineItem",
+            "method": "POST"
+          },
+          "QuoteId": "@{quote1.id}",
+          "Product2Id": "01t_AEGISSASE_PRIVATE_ACCESS_PLACEHOLDER",
+          "PricebookEntryId": "01u_AEGISSASE_PRIVATE_ACCESS_ANNUAL_PBE_PLACEHOLDER",
+          "Quantity": 250,
+          "StartDate": "2026-06-01",
+          "EndDate": "2027-05-31"
+        }
+      }
+    ]
+  },
+  "expected_readback_shape": {
+    "quote": {
+      "status": "Draft",
+      "calculation_status": "CompletedWithTax",
+      "line_count": 1
+    },
+    "lines": [
+      {
+        "product_code": "AEGISSASE-PRIVATE-ACCESS",
+        "quantity": 250,
+        "start_date": "2026-06-01",
+        "end_date": "2027-05-31",
+        "net_total_price": "non_null_after_pricing"
+      }
+    ]
+  },
+  "expected_verification_commands": [
+    "quote-runtime build-test-quote --org-alias <alias> --input tools/salesforce/quote-runtime-cli/examples/new-simple-term-quote.json --json",
+    "quote-runtime build-test-quote --org-alias <alias> --input tools/salesforce/quote-runtime-cli/examples/new-simple-term-quote.json --execute --json",
+    "quote-runtime snapshot-quote --org-alias <alias> --quote-id <created_quote_id> --json",
+    "quote-runtime snapshot-lines --org-alias <alias> --quote-id <created_quote_id> --json"
+  ]
+}

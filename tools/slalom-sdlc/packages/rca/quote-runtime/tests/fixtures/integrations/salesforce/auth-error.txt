@@ -1,0 +1,4 @@
+Error (NoAuthInfo): No authorization information found for scratch org.
+
+Try this:
+Authorize an org using the auth web login command.

@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0.0",
+  "command": "doctor",
+  "status": "ok",
+  "summary": {
+    "primary_subject": "doctor"
+  },
+  "result": {
+    "subjects": {},
+    "checks": [],
+    "missing_requirements": [],
+    "recommended_next_commands": []
+  },
+  "warnings": [],
+  "errors": [],
+  "evidence": [],
+  "meta": {
+    "org_alias": "ARM",
+    "generated_at": "2026-04-14T00:00:00Z",
+    "duration_ms": 0,
+    "source_files": []
+  }
+}

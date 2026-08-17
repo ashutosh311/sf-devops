@@ -110,7 +110,18 @@ numeric field.
 
 Convert spreadsheet or prose input into the JSON shape in
 [`artifacts/samples/arm/client-scenario.example.json`](../../artifacts/samples/arm/client-scenario.example.json).
-Store numeric thresholds without `%` and use the strict `>` operator. Then validate:
+Store numeric thresholds without `%` and use the strict `>` operator. Then validate.
+
+Preferred — through the slalom-sdlc tool (works in any client project, no repo
+checkout, cross-platform), call the MCP tool:
+
+```
+rca_validate_arm_matrix { "path": "path/to/scenario.json" }
+```
+
+It returns `{ valid, errors, warnings, simulations }` and flags the call as an
+error when the scenario is invalid. If you have a checkout of the
+`salesforce-devops` repo, the same validator is runnable directly:
 
 ```sh
 node devops/scripts/validate-arm-matrix.mjs path/to/scenario.json
@@ -290,7 +301,8 @@ Run before declaring the solution ready.
 2. Tiers 1–3 only; sequential tiers; parallel-unanimous within a tier.
 3. **Fail closed** on any missing/inactive approver, queue, matrix, or field.
 4. Keep matrix **data separate** from metadata; load scenarios without changing the package.
-5. Validate every scenario with `devops/scripts/validate-arm-matrix.mjs` before generating records.
+5. Validate every scenario with the `rca_validate_arm_matrix` MCP tool (or
+   `devops/scripts/validate-arm-matrix.mjs` in a repo checkout) before generating records.
 6. Never infer permission to deploy or create records from a request to design, audit, or validate.
    Never deploy to production or create production data without explicit user authorization.
 7. Apex follows `apex.md`; declarative follows `configuration.md`; data model follows

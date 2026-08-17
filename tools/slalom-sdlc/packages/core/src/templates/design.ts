@@ -186,6 +186,49 @@ Present \`sf-discovery.md\` for review before moving to solution design.
 ### Org Impact Assessment Procedure
 
 {{{instructions.orgImpactAssessment}}}
+{{#if revenueCloud.enabled}}
+---
+
+## Step 2b — Revenue Cloud (RCA) domain routing
+
+This project has **Revenue Cloud Advanced enabled**. Classify whether this story is Revenue Cloud work. If it is, load the matching domain skill and record RCA-specific discovery findings in \`sf-discovery.md\`, and design against the matching skill + \`{{paths.standards}}/arm.md\` in Step 3.
+
+| If the story involves… | Load skill | Deterministic RCA MCP tools |
+|---|---|---|
+| Pricing procedures / \`ExpressionSetDefinition\` (\`PricingProcedure\`) | \`pricingProcedures\` | \`rca_pricing_inspect\`, \`rca_pricing_diff\` |
+| Quote/pricing runtime proof, transcript-to-quote | \`quotingPricingRuntime\` | \`rca_quote_runtime_investigate\` |
+| Context definitions | \`contextDefinitionEditor\` | \`rca_context_definition_inspect\` |
+| OmniStudio DocGen | \`docgenWorkflow\` | — |
+| Approval matrix / three-tier Flow Approval Process (ARM) | read \`{{paths.standards}}/arm.md\` | \`rca_validate_arm_matrix\` |
+| Org capability baseline / project inventory discovery | \`orgCapabilityBaseline\`, \`projectInventory\` | \`rca_sfx_org_baseline\` |
+
+Prefer the deterministic RCA MCP tools over manual scanning. Design only — you never write to \`{{paths.forceApp}}/\`. If none apply, this is not RCA work — proceed with normal design.
+
+<details><summary>Pricing procedures skill</summary>
+
+{{{skills.revenueCloud.pricingProcedures}}}
+</details>
+
+<details><summary>Quoting &amp; pricing runtime skill</summary>
+
+{{{skills.revenueCloud.quotingPricingRuntime}}}
+</details>
+
+<details><summary>Context definition editor skill</summary>
+
+{{{skills.revenueCloud.contextDefinitionEditor}}}
+</details>
+
+<details><summary>Org capability baseline skill</summary>
+
+{{{skills.revenueCloud.orgCapabilityBaseline}}}
+</details>
+
+<details><summary>Project inventory skill</summary>
+
+{{{skills.revenueCloud.projectInventory}}}
+</details>
+{{/if}}
 
 ---
 

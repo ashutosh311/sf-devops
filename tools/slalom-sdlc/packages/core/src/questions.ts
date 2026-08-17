@@ -48,6 +48,7 @@ export interface InterviewAnswers {
   estimationApproach: EstimationApproach;
   orgSandbox: string;
   apexCoverageThreshold: number;
+  revenueCloudEnabled: boolean;
 }
 
 export const PHASE_OPTIONS: SelectOption<Phase>[] = [
@@ -222,6 +223,16 @@ export const QUESTIONS: Question[] = [
     max: 100,
     validate: (v) =>
       Number(v) >= 0 && Number(v) <= 100 ? true : "Must be between 0 and 100",
+  },
+
+  // ── Revenue Cloud (RCA) ────────────────────────────────────────────────────
+  {
+    id: "revenueCloudEnabled",
+    section: "Standards",
+    label: "Enable Revenue Cloud Advanced (RCA) skills & tooling?",
+    hint: "Turn on for pricing procedures, quoting runtime, DocGen, context definitions and ARM approvals. Leave off for non-RCA projects.",
+    type: "confirm",
+    default: false,
   },
 ];
 

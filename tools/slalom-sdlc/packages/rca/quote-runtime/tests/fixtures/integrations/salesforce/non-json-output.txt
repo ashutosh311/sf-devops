@@ -1,0 +1,2 @@
+Warning: Salesforce CLI update available.
+This command emitted plain text instead of JSON.

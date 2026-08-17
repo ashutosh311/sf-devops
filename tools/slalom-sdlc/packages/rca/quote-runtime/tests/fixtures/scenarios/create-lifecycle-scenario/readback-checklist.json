@@ -1,0 +1,32 @@
+[
+  {
+    "phase": "before_execution",
+    "command": "snapshot-quote",
+    "purpose": "Capture the source quote snapshot before lifecycle execution so after-state readback has a durable baseline."
+  },
+  {
+    "phase": "before_execution",
+    "command": "snapshot-lines",
+    "purpose": "Capture the source quote line snapshot before lifecycle execution to preserve the baseline line set."
+  },
+  {
+    "phase": "after_execution",
+    "command": "snapshot-quote",
+    "purpose": "Read back the resulting lifecycle quote after execution and treat the returned output quote id as the verification anchor."
+  },
+  {
+    "phase": "after_execution",
+    "command": "snapshot-lines",
+    "purpose": "Read back the resulting quote lines after execution before moving to overlay-specific interpretation."
+  },
+  {
+    "phase": "conditional",
+    "command": "verify-lifecycle-provenance",
+    "purpose": "Confirm QuoteAction-backed lifecycle provenance separately when source-asset or amendment lineage matters."
+  },
+  {
+    "phase": "conditional",
+    "command": "overlay-relationships",
+    "purpose": "Inspect QuoteLineRelationship separately when carry-forward bundle or structure semantics remain unclear."
+  }
+]

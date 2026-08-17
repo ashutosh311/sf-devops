@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.0.0",
+  "command": "inspect-pricing-waterfall",
+  "status": "ok",
+  "result": {
+    "selector_resolution": {
+      "quote_id": "0Q0xx0000000001AAA",
+      "requested_line_id": "0QLxx0000000001AAA",
+      "resolved_line_id": "0QLxx0000000001AAA"
+    },
+    "waterfall": {
+      "fetch_status": "ok",
+      "normalized_elements": [
+        {
+          "sequence": 1,
+          "name": "List Price",
+          "filter_rules": [],
+          "inputs": [],
+          "outputs": [{ "target": "ListPrice", "value": 1000 }],
+          "calculation_formula": null,
+          "writes": ["ListPrice"]
+        },
+        {
+          "sequence": 2,
+          "name": "Attribute Adjustments",
+          "filter_rules": [],
+          "inputs": [{ "target": "ListPrice", "value": 1000 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 1200 }],
+          "calculation_formula": "ListPrice + 200",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 3,
+          "name": "Tier Discount",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 1200 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 1080 }],
+          "calculation_formula": "NetUnitPrice - 120",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 4,
+          "name": "Volume Discount",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 1080 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 980 }],
+          "calculation_formula": "NetUnitPrice - 100",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 5,
+          "name": "Contract Adjustment",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 980 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 950 }],
+          "calculation_formula": "NetUnitPrice - 30",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 6,
+          "name": "Attribute Discount Entries",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 950 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 930 }],
+          "calculation_formula": "NetUnitPrice - 20",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 7,
+          "name": "Bundle Based Adjustment",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 930 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 930 }],
+          "calculation_formula": null,
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 8,
+          "name": "Manual Discount",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 930 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 905 }],
+          "calculation_formula": "NetUnitPrice - 25",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 9,
+          "name": "Discretionary Discount",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 905 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 875 }],
+          "calculation_formula": "NetUnitPrice - 30",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 10,
+          "name": "Derived Price",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 875 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 870 }],
+          "calculation_formula": "NetUnitPrice - 5",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 11,
+          "name": "Formula Based Pricing",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 870 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 880 }],
+          "calculation_formula": "NetUnitPrice + 10",
+          "writes": ["NetUnitPrice"]
+        },
+        {
+          "sequence": 12,
+          "name": "Finalize Totals",
+          "filter_rules": [],
+          "inputs": [{ "target": "NetUnitPrice", "value": 880 }],
+          "outputs": [{ "target": "NetUnitPrice", "value": 880 }],
+          "calculation_formula": null,
+          "writes": ["NetUnitPrice"]
+        }
+      ]
+    }
+  },
+  "warnings": [],
+  "errors": []
+}

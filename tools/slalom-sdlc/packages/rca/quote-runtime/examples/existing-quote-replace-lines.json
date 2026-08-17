@@ -1,0 +1,134 @@
+{
+  "example_name": "existing-quote-replace-lines",
+  "purpose": "Patch a selected quote by replacing only a managed product scope. This is the proposed quote-intent shape for pst-apply-quote-intent, not the current apply-configured-quote create-only path.",
+  "command_family": "pst-apply-quote-intent",
+  "create_vs_patch_behavior": "Patches the asserted quote and blocks accidental creation. replace_lines is scoped to product codes and must fail closed if the dry-run diff includes rows outside the scope.",
+  "quote_intent": {
+    "target": {
+      "mode": "replace_lines",
+      "quote_id": "0Q0_TARGET_QUOTE_PLACEHOLDER",
+      "allow_new_quote": false,
+      "assertions": {
+        "quote_number": "00000048",
+        "account_name": "Northstar Regional Health Network",
+        "opportunity_name": "Northstar Regional Health - Cloud Defense Modernization",
+        "pricebook_id": "01s_STANDARD_PRICEBOOK_PLACEHOLDER"
+      },
+      "line_scope": {
+        "mode": "explicit_product_set",
+        "product_codes": [
+          "AEGIS-BNDL-CLOUD-DEFENSE",
+          "AEGIS-PREMIUM-SUCCESS",
+          "AEGIS-HW-EDGE250"
+        ],
+        "allow_delete_outside_scope": false
+      }
+    },
+    "plan_key": "northstar-cloud-defense-00000048-replace-managed-lines-v1",
+    "header": {
+      "name": "Northstar Cloud Defense Modernization - Draft",
+      "status": "Draft",
+      "start_date": "2026-07-01",
+      "expiration_date": "2029-06-30"
+    },
+    "lines": [
+      {
+        "operation": "create",
+        "role": "bundle_parent",
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE",
+        "quantity": 1,
+        "term": {
+          "start_date": "2026-07-01",
+          "end_date": "2029-06-30",
+          "subscription_term": 36,
+          "billing_frequency": "Annual"
+        }
+      },
+      {
+        "operation": "create",
+        "role": "support",
+        "product_code": "AEGIS-PREMIUM-SUCCESS",
+        "quantity": 1,
+        "discount_percent": 15,
+        "term": {
+          "start_date": "2026-07-01",
+          "end_date": "2029-06-30",
+          "subscription_term": 36,
+          "billing_frequency": "Annual"
+        }
+      },
+      {
+        "operation": "create",
+        "role": "hardware",
+        "product_code": "AEGIS-HW-EDGE250",
+        "quantity": 2,
+        "discount_percent": 30
+      }
+    ],
+    "pricing": {
+      "run": true
+    },
+    "verification": {
+      "snapshot_quote": true,
+      "snapshot_lines": true,
+      "overlay_relationships": true
+    }
+  },
+  "generated_pst_graph_preview": {
+    "delete_phase": [
+      {
+        "referenceId": "deleteManagedLine1",
+        "record": {
+          "attributes": {
+            "type": "QuoteLineItem",
+            "method": "DELETE"
+          },
+          "Id": "0QL_EXISTING_MANAGED_LINE_PLACEHOLDER"
+        }
+      }
+    ],
+    "create_phase": [
+      {
+        "referenceId": "lineBundle",
+        "record": {
+          "attributes": {
+            "type": "QuoteLineItem",
+            "method": "POST"
+          },
+          "QuoteId": "0Q0_TARGET_QUOTE_PLACEHOLDER",
+          "ProductCode": "AEGIS-BNDL-CLOUD-DEFENSE",
+          "Quantity": 1
+        }
+      }
+    ]
+  },
+  "expected_readback_shape": {
+    "target": {
+      "quote_id": "0Q0_TARGET_QUOTE_PLACEHOLDER",
+      "quote_number": "00000048"
+    },
+    "delete_diff": {
+      "scope_mode": "explicit_product_set",
+      "deleted_lines_all_match_scope": true
+    },
+    "lines": [
+      {
+        "product_code": "AEGIS-BNDL-CLOUD-DEFENSE",
+        "role": "bundle_parent"
+      },
+      {
+        "product_code": "AEGIS-PREMIUM-SUCCESS",
+        "discount_percent": 15
+      },
+      {
+        "product_code": "AEGIS-HW-EDGE250",
+        "discount_percent": 30
+      }
+    ]
+  },
+  "expected_verification_commands": [
+    "quote-runtime snapshot-quote --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json",
+    "quote-runtime snapshot-lines --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json",
+    "quote-runtime overlay-relationships --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json"
+  ]
+}

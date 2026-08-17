@@ -1,0 +1,81 @@
+{
+  "example_name": "pst-delete-bundle-default-component",
+  "purpose": "Show the PST-only repair shape for removing an unintended default bundle component after it was created.",
+  "command_family": "pst-repair-product-config",
+  "create_vs_patch_behavior": "Patches an existing quote by deleting a specific default child line and its relationships. It never creates a replacement quote.",
+  "repair_intent": {
+    "target": {
+      "mode": "patch",
+      "quote_id": "0Q0_TARGET_QUOTE_PLACEHOLDER",
+      "assertions": {
+        "quote_number": "00000048",
+        "account_name": "Northstar Regional Health Network"
+      }
+    },
+    "plan_key": "northstar-remove-default-endpoint-sensor-v1",
+    "delete_scope": {
+      "mode": "bundle_child_product_set",
+      "bundle_parent_line_id": "0QL_BUNDLE_PARENT_PLACEHOLDER",
+      "product_codes": [
+        "AEGISXDR-ENDPOINT-SENSOR"
+      ],
+      "allow_delete_outside_scope": false
+    },
+    "keep_product_codes": [
+      "AEGISAI-ACCESS-CONTROL",
+      "AEGISSASE-PRIVATE-ACCESS",
+      "AEGISSASE-SWG",
+      "AEGISCLOUD-WORKLOAD-SHIELD",
+      "AEGISSOC-ANALYTICS",
+      "AEGIS-MDR"
+    ],
+    "pricing": {
+      "run_after_delete": true
+    },
+    "verification": {
+      "overlay_relationships": true,
+      "snapshot_lines": true,
+      "validate_product_config": true
+    }
+  },
+  "generated_pst_graph_preview": {
+    "records": [
+      {
+        "referenceId": "deleteEndpointRelationship",
+        "record": {
+          "attributes": {
+            "type": "QuoteLineRelationship",
+            "method": "DELETE"
+          },
+          "Id": "0QLR_ENDPOINT_SENSOR_RELATIONSHIP_PLACEHOLDER"
+        }
+      },
+      {
+        "referenceId": "deleteEndpointLine",
+        "record": {
+          "attributes": {
+            "type": "QuoteLineItem",
+            "method": "DELETE"
+          },
+          "Id": "0QL_ENDPOINT_SENSOR_LINE_PLACEHOLDER"
+        }
+      }
+    ]
+  },
+  "expected_readback_shape": {
+    "before_delete": {
+      "unintended_default_product_code": "AEGISXDR-ENDPOINT-SENSOR",
+      "relationship_to_parent_exists": true
+    },
+    "after_delete": {
+      "unintended_default_product_code_absent": true,
+      "kept_component_product_codes_present": true,
+      "quote_number": "00000048"
+    }
+  },
+  "expected_verification_commands": [
+    "quote-runtime overlay-relationships --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json",
+    "quote-runtime snapshot-lines --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json",
+    "quote-runtime validate-product-config --org-alias <alias> --quote-id 0Q0_TARGET_QUOTE_PLACEHOLDER --json"
+  ]
+}

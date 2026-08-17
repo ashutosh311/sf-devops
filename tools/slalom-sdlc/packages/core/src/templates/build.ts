@@ -145,8 +145,54 @@ Before writing any code, confirm which standards apply based on what is being bu
 | LWC component | \`{{paths.standards}}/lwc.md\` |
 | Flow, validation rule, permission set | \`{{paths.standards}}/configuration.md\` |
 | Custom object or field | \`{{paths.standards}}/data-model.md\` |
-
+{{#if revenueCloud.enabled}}| Revenue Cloud Advanced — approval matrix / Flow Approval Process | \`{{paths.standards}}/arm.md\` |
+{{/if}}
 All Apex code must meet the Slalom Salesforce development standards and will be subject to a PMD static analysis scan before deployment.
+{{#if revenueCloud.enabled}}
+---
+
+## Step 2b — Revenue Cloud (RCA) domain routing
+
+This project has **Revenue Cloud Advanced enabled**. Before scaffolding, classify whether this ticket is Revenue Cloud work and, if so, load the matching domain skill and run its prerequisite gate **before touching the org**.
+
+**Is this RCA work?** Decide from the solution design + ticket text. Route to the matching skill:
+
+| If the work involves… | Load skill | Deterministic RCA MCP tools |
+|---|---|---|
+| Pricing procedures / \`ExpressionSetDefinition\` (\`PricingProcedure\`) | \`pricingProcedures\` | \`rca_pricing_inspect\`, \`rca_pricing_diff\` |
+| Quote/pricing runtime proof, transcript-to-quote | \`quotingPricingRuntime\` | \`rca_quote_runtime_investigate\` |
+| Context definitions | \`contextDefinitionEditor\` | \`rca_context_definition_inspect\` |
+| OmniStudio DocGen | \`docgenWorkflow\` | — (REST / \`sf\`-driven) |
+| Demo / seed data | \`demoData\` | — |
+| Approval matrix / three-tier Flow Approval Process (ARM) | read \`{{paths.standards}}/arm.md\` | \`rca_validate_arm_matrix\` |
+
+Prefer the deterministic RCA MCP tools over manual scanning. If none apply, this is not RCA work — skip this step and build normally.
+
+<details><summary>Pricing procedures skill</summary>
+
+{{{skills.revenueCloud.pricingProcedures}}}
+</details>
+
+<details><summary>Quoting &amp; pricing runtime skill</summary>
+
+{{{skills.revenueCloud.quotingPricingRuntime}}}
+</details>
+
+<details><summary>Context definition editor skill</summary>
+
+{{{skills.revenueCloud.contextDefinitionEditor}}}
+</details>
+
+<details><summary>OmniStudio DocGen workflow skill</summary>
+
+{{{skills.revenueCloud.docgenWorkflow}}}
+</details>
+
+<details><summary>Salesforce demo data skill</summary>
+
+{{{skills.revenueCloud.demoData}}}
+</details>
+{{/if}}
 
 Verify the Trigger Framework classes are present in \`{{paths.forceApp}}/frameworks/trigger-framework/classes/\`:
 - \`TriggerHandler.cls\`
