@@ -152,6 +152,12 @@ jobs:
           test -f dist/copilot/server/server.js
           test -f dist/copilot/install.sh
           ls dist/copilot/agents/*.agent.md
+          test -f dist/release/slalom-sdlc-copilot-marketplace.zip
+          test -f dist/copilot-plugin/.github/plugin/marketplace.json
+          test -f dist/copilot-plugin/plugin/plugin.json
+          test -f dist/copilot-plugin/plugin/.mcp.json
+          test -f dist/copilot-plugin/plugin/server/server.js
+          ls dist/copilot-plugin/plugin/agents/*.agent.md
           ls packages/vscode/*.vsix
           ls packages/cli/binaries/*
           ls -lh dist/release packages/vscode/*.vsix packages/cli/binaries/*
@@ -214,6 +220,67 @@ jobs:
           git -C "$WORK" push origin plugin-dist
           echo "Published plugin ${TAG} to plugin-dist."
 
+      # The GitHub Copilot CLI installs marketplace plugins by cloning a git ref too,
+      # so the assembled Copilot plugin (with its built server bundle) needs its own
+      # ref: `copilot-dist`, republished here on every release, mirroring plugin-dist.
+      # Users run `copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist`
+      # then `copilot plugin install slalom-sdlc@slalom`. Skipped for pre-releases for
+      # the same reason plugin-dist is — a dry-run tag must never become what users install.
+      - name: Publish Copilot plugin to copilot-dist branch
+        if: steps.version.outputs.prerelease != 'true'
+        working-directory: .
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          REMOTE="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          WORK="$RUNNER_TEMP/copilot-dist"
+
+          if git ls-remote --exit-code --heads "$REMOTE" copilot-dist >/dev/null 2>&1; then
+            git clone --depth 1 --branch copilot-dist "$REMOTE" "$WORK"
+          else
+            mkdir -p "$WORK"
+            git -C "$WORK" init -q -b copilot-dist
+            git -C "$WORK" remote add origin "$REMOTE"
+          fi
+
+          # The assembled tree is a branch root: .github/plugin/marketplace.json + plugin/.
+          rm -rf "$WORK/.github/plugin" "$WORK/plugin"
+          mkdir -p "$WORK/.github"
+          cp -R tools/slalom-sdlc/dist/copilot-plugin/.github/plugin "$WORK/.github/plugin"
+          cp -R tools/slalom-sdlc/dist/copilot-plugin/plugin "$WORK/plugin"
+
+          cat > "$WORK/README.md" <<EOF
+          # copilot-dist
+
+          Generated branch — do not edit by hand, and do not merge it into \`main\`.
+
+          It holds the built GitHub Copilot marketplace plugin for the current release:
+          \`.github/plugin/marketplace.json\` (the \`slalom\` marketplace) and \`plugin/\`
+          (the \`slalom-sdlc\` plugin, including \`plugin/server/server.js\`). Republished by
+          \`.github/workflows/release.yml\` on every \`vX.Y.Z\` tag. The plugin source lives at
+          \`tools/slalom-sdlc/copilot/plugin/\` on \`main\`; the bundled server is built from
+          \`tools/slalom-sdlc/packages/mcp\`.
+
+          Install: \`copilot plugin marketplace add ${GITHUB_REPOSITORY}#copilot-dist\`
+          then \`copilot plugin install slalom-sdlc@slalom\`.
+
+          Current release: ${TAG}
+          EOF
+
+          git -C "$WORK" config user.name  "github-actions[bot]"
+          git -C "$WORK" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$WORK" add -A
+
+          if git -C "$WORK" diff --cached --quiet; then
+            echo "copilot-dist already matches ${TAG} — nothing to publish."
+            exit 0
+          fi
+
+          git -C "$WORK" commit -q -m "release: slalom-sdlc copilot plugin ${TAG}"
+          git -C "$WORK" push origin copilot-dist
+          echo "Published Copilot plugin ${TAG} to copilot-dist."
+
       # GitHub's "immutable releases" feature locks a release's assets and tag as
       # soon as it's published — asset uploads are only allowed while a release is
       # still a draft. softprops/action-gh-release creates the release object and
@@ -239,9 +306,13 @@ jobs:
             - **`slalom-sdlc-plugin.zip`** — the Claude Code plugin, for manual or air-gapped install.
               Normally you don't need this file: `claude plugin marketplace add Slalom/salesforce-devops`
               then `claude plugin install slalom-sdlc@slalom`, and `claude plugin update slalom-sdlc` thereafter.
-            - **`slalom-sdlc-copilot.zip`** — the GitHub Copilot pack (CLI + desktop app). Unzip and run
-              `./install.sh` to add the SDLC agents at the user level (`~/.copilot/agents/`), then invoke
-              them in any project with `/agent slalom-about` (or discover/refine/design/build/test/release).
+            - **`slalom-sdlc-copilot.zip`** — the GitHub Copilot pack (CLI + desktop app), for manual or
+              air-gapped install. Normally you don't need this file: `copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist`
+              then `copilot plugin install slalom-sdlc@slalom`, and `copilot plugin update slalom-sdlc` thereafter.
+              To install from the zip instead, unzip and run `./install.sh` to add the SDLC agents at the user
+              level (`~/.copilot/agents/`), then invoke them with `/agent slalom-about` (or discover/refine/design/build/test/release).
+            - **`slalom-sdlc-copilot-marketplace.zip`** — the same Copilot plugin as a self-contained
+              marketplace tree, for adding a local marketplace air-gapped (`copilot plugin marketplace add ./<unzipped-dir>`).
           draft: true
           prerelease: ${{ steps.version.outputs.prerelease }}
           make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
@@ -250,6 +321,7 @@ jobs:
             tools/slalom-sdlc/dist/release/manifest.json
             tools/slalom-sdlc/dist/release/slalom-sdlc-plugin.zip
             tools/slalom-sdlc/dist/release/slalom-sdlc-copilot.zip
+            tools/slalom-sdlc/dist/release/slalom-sdlc-copilot-marketplace.zip
             tools/slalom-sdlc/packages/vscode/*.vsix
             tools/slalom-sdlc/packages/cli/binaries/*
 

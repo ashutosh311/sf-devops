@@ -29,6 +29,14 @@
  *     install.sh                           — user-level installer
  *     README.md                            — install instructions
  *   dist/release/slalom-sdlc-copilot.zip   — same tree, for download / air-gapped install
+ *
+ *   dist/copilot-plugin/                   — the marketplace branch tree (published to copilot-dist)
+ *     .github/plugin/marketplace.json      — marketplace manifest (version-stamped)
+ *     plugin/plugin.json                   — plugin manifest (version-stamped)
+ *     plugin/.mcp.json                     — server registration (${PLUGIN_ROOT})
+ *     plugin/agents/*.agent.md             — Copilot custom agents (${PLUGIN_ROOT} path)
+ *     plugin/server/server.js              — bundled MCP server
+ *   dist/release/slalom-sdlc-copilot-marketplace.zip — same tree, for air-gapped marketplace add
  */
 
 import { execSync } from "node:child_process";
@@ -123,8 +131,80 @@ if (existsSync(zipPath)) rmSync(zipPath);
 execSync(`cd "${outDir}" && zip -qr "${zipPath}" .`, { stdio: "inherit" });
 console.log(`  ✓ dist/release/slalom-sdlc-copilot.zip`);
 
+// ── Marketplace plugin (native `copilot plugin install` path) ─────────────────
+//
+// The same agents + server, assembled as a proper Copilot plugin behind a
+// marketplace manifest. This tree mirrors the `copilot-dist` branch the release
+// workflow publishes: the marketplace.json lives at `.github/plugin/` and points
+// at the sibling `plugin/` directory. Users then run:
+//   copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+//   copilot plugin install slalom-sdlc@slalom
+//
+// Unlike the pack (install.sh, which resolves an absolute server path), the plugin
+// resolves its server relative to the install location via ${PLUGIN_ROOT}, so the
+// agent + .mcp.json server paths are rewritten to ${PLUGIN_ROOT}/server/server.js.
+
+const PLUGIN_ROOT_SERVER = "${PLUGIN_ROOT}/server/server.js";
+
+const pluginSrcDir      = join(WORKSPACE_ROOT, "copilot", "plugin");
+const marketplaceSrc    = join(WORKSPACE_ROOT, "copilot", "marketplace.json");
+const pluginManifestSrc = join(pluginSrcDir, "plugin.json");
+const pluginMcpSrc      = join(pluginSrcDir, ".mcp.json");
+
+for (const f of [marketplaceSrc, pluginManifestSrc, pluginMcpSrc]) {
+  if (!existsSync(f)) {
+    console.error(`Marketplace/plugin source missing: ${f}`);
+    process.exit(1);
+  }
+}
+
+// Branch-root layout: <root>/.github/plugin/marketplace.json + <root>/plugin/*
+const distDir     = join(WORKSPACE_ROOT, "dist", "copilot-plugin");
+const pluginOut   = join(distDir, "plugin");
+const marketOut   = join(distDir, ".github", "plugin");
+
+if (existsSync(distDir)) rmSync(distDir, { recursive: true, force: true });
+mkdirSync(join(pluginOut, "agents"), { recursive: true });
+mkdirSync(join(pluginOut, "server"), { recursive: true });
+mkdirSync(marketOut, { recursive: true });
+
+// Stamp the release version into the marketplace manifest (top-level + plugin entry).
+const marketplace = JSON.parse(readFileSync(marketplaceSrc, "utf-8"));
+marketplace.metadata = marketplace.metadata || {};
+marketplace.metadata.version = version;
+for (const p of marketplace.plugins ?? []) p.version = version;
+writeFileSync(join(marketOut, "marketplace.json"), JSON.stringify(marketplace, null, 2) + "\n", "utf-8");
+console.log(`  ✓ copilot/marketplace.json → dist/copilot-plugin/.github/plugin/marketplace.json (v${version})`);
+
+// Stamp the release version into the plugin manifest.
+const pluginManifest = JSON.parse(readFileSync(pluginManifestSrc, "utf-8"));
+pluginManifest.version = version;
+writeFileSync(join(pluginOut, "plugin.json"), JSON.stringify(pluginManifest, null, 2) + "\n", "utf-8");
+cpSync(pluginMcpSrc, join(pluginOut, ".mcp.json"));
+console.log(`  ✓ copilot/plugin/{plugin.json,.mcp.json} → dist/copilot-plugin/plugin/`);
+
+// Agents — same templates, server placeholder rewritten to the ${PLUGIN_ROOT} form.
+for (const name of templates) {
+  const src = readFileSync(join(templateDir, name), "utf-8");
+  const rendered = src.replaceAll("${SLALOM_SDLC_SERVER}", PLUGIN_ROOT_SERVER);
+  writeFileSync(join(pluginOut, "agents", name), rendered, "utf-8");
+}
+console.log(`  ✓ copilot/agents/ → dist/copilot-plugin/plugin/agents/ (${templates.length} agents)`);
+
+cpSync(serverJs, join(pluginOut, "server", "server.js"));
+console.log(`  ✓ packages/mcp/dist/server.js → dist/copilot-plugin/plugin/server/server.js (${serverKb} KB)`);
+
+// Zip the branch-root tree too, for air-gapped `copilot plugin marketplace add <local-path>`.
+const marketZip = join(releaseDir, "slalom-sdlc-copilot-marketplace.zip");
+if (existsSync(marketZip)) rmSync(marketZip);
+execSync(`cd "${distDir}" && zip -qr "${marketZip}" .`, { stdio: "inherit" });
+console.log(`  ✓ dist/release/slalom-sdlc-copilot-marketplace.zip`);
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 console.log(`\nCopilot pack ${version} assembled in dist/copilot/`);
 console.log(`  Try it locally:  (cd dist/copilot && ./install.sh)`);
 console.log(`  Publish:         handled by .github/workflows/release.yml on a vX.Y.Z tag`);
+console.log(`\nCopilot marketplace plugin ${version} assembled in dist/copilot-plugin/`);
+console.log(`  Try it locally:  copilot plugin marketplace add ./dist/copilot-plugin && copilot plugin install slalom-sdlc@slalom`);
+console.log(`  Publish:         handled by .github/workflows/release.yml on a vX.Y.Z tag (copilot-dist branch)`);

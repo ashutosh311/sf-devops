@@ -4,6 +4,19 @@ This pack adds the Slalom SDLC commands to **GitHub Copilot CLI** and the
 **Copilot desktop app** as custom agents, the same way the VSIX adds them to
 VS Code and the plugin adds them to Claude Code.
 
+> **Prefer the marketplace plugin.** The easiest install is the native marketplace
+> route — no zip, and it self-updates:
+>
+> ```bash
+> copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+> copilot plugin install slalom-sdlc@slalom
+> ```
+>
+> Its agents are namespaced (`slalom-sdlc:about`, `slalom-sdlc:init`, …) and it
+> updates with `copilot plugin update slalom-sdlc`. This zip pack below is the
+> **manual / air-gapped** alternative; it installs un-namespaced agents
+> (`slalom-about`, …) at the user level.
+
 ## Install
 
 ```bash

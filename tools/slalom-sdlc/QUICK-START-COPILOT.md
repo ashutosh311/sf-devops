@@ -93,7 +93,39 @@ Configure the Azure DevOps MCP server with a Personal Access Token that has work
 
 ---
 
-## Step 5 — Install the Slalom SDLC Pack
+## Step 5 — Install the Slalom SDLC Plugin
+
+### Recommended — marketplace plugin
+
+The easiest install is the native Copilot marketplace. Add the Slalom marketplace once, then install the plugin:
+
+```bash
+copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+copilot plugin install slalom-sdlc@slalom
+```
+
+Both are user-level — the plugin's agents are then available in every project, with no per-project setup. Update anytime with:
+
+```bash
+copilot plugin update slalom-sdlc
+```
+
+> The plugin's agents are **namespaced** under the plugin name: `slalom-sdlc:about`, `slalom-sdlc:init`, `slalom-sdlc:discover`, and so on. Use those ids everywhere this guide shows `slalom-about` / `slalom-init` etc.
+
+### Verify the install
+
+```bash
+copilot
+/agent slalom-sdlc:about
+```
+
+You should see a help message describing the available SDLC commands.
+
+---
+
+### Alternative — zip pack (manual / air-gapped)
+
+If you can't reach the marketplace (offline, restricted network), install from the release zip instead. This installs **un-namespaced** agents (`slalom-about`, `slalom-init`, …).
 
 1. Download `slalom-sdlc-copilot.zip` from the [latest release](https://github.com/Slalom/salesforce-devops/releases).
 2. Unzip and run the installer:
@@ -106,7 +138,7 @@ cd slalom-sdlc-copilot
 
 The installer runs fully at **user level** — agents are available in every project with no per-project setup.
 
-### What the installer does
+#### What the installer does
 
 | Step | What happens |
 |------|--------------|
@@ -116,13 +148,13 @@ The installer runs fully at **user level** — agents are available in every pro
 
 All steps are idempotent — re-running `./install.sh` upgrades in place.
 
-### Install to a non-default Copilot home
+#### Install to a non-default Copilot home
 
 ```bash
 COPILOT_HOME=/path/to/.copilot ./install.sh
 ```
 
-### Verify the install
+#### Verify the zip install
 
 ```bash
 copilot
@@ -220,7 +252,13 @@ copilot
 
 ## Upgrading
 
-Re-run `./install.sh` from the new release zip:
+**Marketplace plugin:**
+
+```bash
+copilot plugin update slalom-sdlc
+```
+
+**Zip pack:** re-run `./install.sh` from the new release zip:
 
 ```bash
 unzip slalom-sdlc-copilot-<new-version>.zip -d slalom-sdlc-copilot
@@ -231,6 +269,15 @@ cd slalom-sdlc-copilot
 ---
 
 ## Uninstalling
+
+**Marketplace plugin:**
+
+```bash
+copilot plugin uninstall slalom-sdlc
+copilot plugin marketplace remove slalom
+```
+
+**Zip pack:**
 
 ```bash
 rm ~/.copilot/agents/slalom-*.agent.md
@@ -283,9 +330,10 @@ artifacts/
 
 | Symptom | Check |
 |---------|-------|
-| `slalom-*` agents not appearing in `/agent` list | Confirm `~/.copilot/agents/slalom-*.agent.md` files exist; re-run `./install.sh` |
+| `slalom-*` agents not appearing in `/agent` list | **Plugin:** run `copilot plugin list` and confirm `slalom-sdlc@slalom` is installed (agents are namespaced `slalom-sdlc:*`). **Zip:** confirm `~/.copilot/agents/slalom-*.agent.md` files exist; re-run `./install.sh` |
 | `node: command not found` during install | Install Node.js 20+ and ensure it is on your `PATH` |
-| `/agent slalom-init` does not start | Verify `~/.copilot/mcp-config.json` contains the `slalom-sdlc` entry; re-run the installer |
+| `/agent slalom-init` does not start | **Plugin:** re-run `copilot plugin update slalom-sdlc`. **Zip:** verify `~/.copilot/mcp-config.json` contains the `slalom-sdlc` entry; re-run the installer |
+| `marketplace add` fails | Confirm you have access to `Slalom/salesforce-devops` and are authenticated (`copilot auth login`); the marketplace lives on the `copilot-dist` branch (`Slalom/salesforce-devops#copilot-dist`) |
 | PM tool status updates not working | Confirm your PM tool MCP server is configured and accessible; check credentials |
 | `push-backlog` / `sync-pm` report no tools available | Verify the PM tool MCP server is registered in `~/.copilot/mcp-config.json` and your credentials are valid |
 | Sandbox deploy fails | Run `sf org list` and confirm the alias in `.sdlc/config.json` matches |

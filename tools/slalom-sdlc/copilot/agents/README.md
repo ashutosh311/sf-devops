@@ -8,7 +8,11 @@ MCP server (`sdlc_prompt` / `sdlc_init`).
 Copilot CLI and the Copilot desktop app discover custom agents from:
 
 - `.github/agents/*.agent.md` — repository level (this repo, for developing the tool)
-- `~/.copilot/agents/*.agent.md` — user level (consultants, across all their projects)
+- `~/.copilot/agents/*.agent.md` — user level (the zip pack, across all their projects)
+- an installed **marketplace plugin** — the `slalom-sdlc` plugin served from the `copilot-dist`
+  branch (`copilot plugin install slalom-sdlc@slalom`); its agents are namespaced
+  `slalom-sdlc:<file>` (e.g. `slalom-sdlc:about`). The plugin's copy of these files is generated
+  by `scripts/package-copilot.mjs` with `${SLALOM_SDLC_SERVER}` pointed at `${PLUGIN_ROOT}/server/server.js`.
 
 ## The `${SLALOM_SDLC_SERVER}` placeholder and the surface arg
 
@@ -37,6 +41,7 @@ does forward env. See `packages/mcp/src/surface.ts`.
 |---|---|---|
 | Repo `.github/agents/` | `tools/slalom-sdlc/packages/mcp/dist/server.js` (repo-relative) | `scripts/generate-copilot-agents.mjs` |
 | Release pack | `<install-dir>/slalom-sdlc/server.js` (absolute, resolved by `install.sh`) | `scripts/package-copilot.mjs` + `install.sh` |
+| Marketplace plugin | `${PLUGIN_ROOT}/server/server.js` (resolved by Copilot at install) | `scripts/package-copilot.mjs` |
 
 ## Regenerating the committed repo agents
 

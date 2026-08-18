@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "slalom-sdlc": {
+      "type": "local",
+      "command": "node",
+      "args": ["${PLUGIN_ROOT}/server/server.js", "--surface=copilot"],
+      "tools": ["*"]
+    }
+  }
+}
