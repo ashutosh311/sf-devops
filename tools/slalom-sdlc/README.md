@@ -4,7 +4,7 @@ AI-assisted SDLC agents for Salesforce delivery, built by Slalom UK&I.
 
 Each slash command activates a purpose-built AI agent for a specific delivery phase — discovery, refinement, design, build, test, and release. The agents work within the project's PM tool — **JIRA (Atlassian) or Azure DevOps (ADO)** — Salesforce org, and Slalom coding standards without the consultant needing to switch context. You pick the PM tool once during `/init` and every agent adapts to it.
 
-The **primary, fully-supported experience is the VS Code extension running on GitHub Copilot** (`@slalom-sdlc`). A **Claude Code plugin** is also published for teams that prefer Claude Code — it shares the same engine and standards, installs from a marketplace in this repo, and updates with `claude plugin update` (see [Instruction Updates](#instruction-updates)).
+The **primary, fully-supported experience is the VS Code extension running on GitHub Copilot** (`@slalom-sdlc`). A **Claude Code plugin** and a **GitHub Copilot pack** (for the Copilot CLI and the Copilot desktop app) are also published — both share the same engine and standards, install once per user, and update alongside each release (see [Instruction Updates](#instruction-updates)).
 
 ---
 
@@ -65,25 +65,46 @@ If you previously registered the MCP server by hand with `packages/mcp/setup.sh`
 claude mcp remove slalom-sdlc
 ```
 
+### GitHub Copilot CLI / desktop app (pack)
+
+> A supported install for the `copilot` terminal CLI and the Copilot desktop app. Requires Node.js 20+ on your `PATH`.
+
+Download `slalom-sdlc-copilot.zip` from the [latest release](https://github.com/Slalom/salesforce-devops/releases), unzip it, and run the installer:
+
+```bash
+unzip slalom-sdlc-copilot.zip -d slalom-sdlc-copilot
+cd slalom-sdlc-copilot
+./install.sh
+```
+
+This installs at the **user level** (`~/.copilot/agents/` + `~/.copilot/mcp-config.json`), so the agents are available in every project — like installing the VSIX or the Claude plugin once. Then, from any Salesforce project:
+
+```
+copilot
+/agent slalom-init
+```
+
+Copilot surfaces the SDLC commands as **custom agents** (`slalom-about`, `slalom-init`, `slalom-discover`, `slalom-refine`, `slalom-design`, `slalom-build`, `slalom-test`, `slalom-release`). Re-running `./install.sh` upgrades in place. To install into a non-default Copilot home, set `COPILOT_HOME`.
+
 ---
 
 ## Commands
 
-The `@slalom-sdlc` (VS Code / GitHub Copilot) column is the primary invocation. The Claude Code column is the equivalent plugin command.
+The `@slalom-sdlc` (VS Code / GitHub Copilot) column is the primary invocation. The Claude Code and Copilot CLI/desktop columns are the equivalent plugin and agent commands.
 
-| VS Code | Claude Code | What it does |
-|---|---|---|
-| `@slalom-sdlc /about` | `/slalom-sdlc:about` | Tool overview and command list |
-| `@slalom-sdlc /init` | `/slalom-sdlc:init` | Set up or reconfigure a project |
-| `@slalom-sdlc /discover` | `/slalom-sdlc:discover` | Map requirements, identify unknowns, draft epics and stories |
-| `@slalom-sdlc /refine PROJ-42` | `/slalom-sdlc:refine PROJ-42` | Refine a story — AC, open questions, effort estimate |
-| `@slalom-sdlc /design PROJ-42` | `/slalom-sdlc:design PROJ-42` | Technical design — solution, data model, sub-tasks |
-| `@slalom-sdlc /build PROJ-42` | `/slalom-sdlc:build PROJ-42` | Scaffold Apex/LWC/config, deploy to sandbox |
-| `@slalom-sdlc /test PROJ-42` | `/slalom-sdlc:test PROJ-42` | Generate test classes, validate coverage |
-| `@slalom-sdlc /release` | `/slalom-sdlc:release` | Deployment notes, checklist, PM-tool transitions |
-| `@slalom-sdlc /feedback <comment>` | — | Send feedback about the tooling (VS Code only) — logged to the usage list |
+| VS Code | Claude Code | Copilot CLI / desktop | What it does |
+|---|---|---|---|
+| `@slalom-sdlc /about` | `/slalom-sdlc:about` | `/agent slalom-about` | Tool overview and command list |
+| `@slalom-sdlc /init` | `/slalom-sdlc:init` | `/agent slalom-init` | Set up or reconfigure a project |
+| `@slalom-sdlc /discover` | `/slalom-sdlc:discover` | `/agent slalom-discover` | Map requirements, identify unknowns, draft epics and stories |
+| `@slalom-sdlc /refine PROJ-42` | `/slalom-sdlc:refine PROJ-42` | `/agent slalom-refine` | Refine a story — AC, open questions, effort estimate |
+| `@slalom-sdlc /design PROJ-42` | `/slalom-sdlc:design PROJ-42` | `/agent slalom-design` | Technical design — solution, data model, sub-tasks |
+| `@slalom-sdlc /build PROJ-42` | `/slalom-sdlc:build PROJ-42` | `/agent slalom-build` | Scaffold Apex/LWC/config, deploy to sandbox |
+| `@slalom-sdlc /test PROJ-42` | `/slalom-sdlc:test PROJ-42` | `/agent slalom-test` | Generate test classes, validate coverage |
+| `@slalom-sdlc /release` | `/slalom-sdlc:release` | `/agent slalom-release` | Deployment notes, checklist, PM-tool transitions |
+| `@slalom-sdlc /feedback <comment>` | — | — | Send feedback about the tooling (VS Code only) — logged to the usage list |
 
-Registering the MCP server directly instead of installing the plugin (see [Development](#development)) gives the same commands as `/mcp__slalom-sdlc__<name>`. The server detects which surface it's running under and every message it prints uses the matching form.
+Registering the MCP server directly instead of installing the plugin or pack (see [Development](#development)) gives the same commands as `/mcp__slalom-sdlc__<name>`. The server detects which surface it's running under and every message it prints uses the matching form.
 
 ### Interactive prompts in Claude Code
 
@@ -196,6 +217,14 @@ The marketplace entry points at the **`plugin-dist` branch**, a generated branch
 **Required:** Node.js 20+ on `PATH`, GitHub account with access to `Slalom/salesforce-devops`.
 
 `slalom-sdlc-plugin.zip` is attached to each release for manual or air-gapped install, but the marketplace route is the normal one — it's the only one that updates.
+
+### For Slalom consultants — GitHub Copilot CLI / desktop
+
+Download `slalom-sdlc-copilot.zip` from the latest release, unzip it, and run `./install.sh`. It installs the SDLC agents at the user level (`~/.copilot/agents/`) and registers the bundled MCP server in `~/.copilot/mcp-config.json` — a one-time setup that then works across every project, exactly like the VSIX or the Claude plugin. Re-run `./install.sh` from a fresh zip to update.
+
+**Required:** Node.js 20+ on `PATH`, GitHub Copilot access, GitHub account with access to `Slalom/salesforce-devops`.
+
+Unlike the plugin (which updates via a marketplace) and the VSIX (which auto-syncs), the Copilot pack updates only when you re-run the installer — the agent instructions are compiled into the bundled server, so a fresh zip carries the new templates.
 
 ### For client teams and non-Slalom users
 
@@ -334,7 +363,7 @@ itself is only ever created when `SLALOM_SDLC_USAGE_DEBUG` is set; normal usage 
 
 ## For Slalom Delivery Teams: Publishing an Update
 
-Releases are fully automated and tag-driven — there is no version to bump and no release script to run yourself. Every release ships the same four artefacts together: the VS Code extension (`.vsix`), the standalone CLI binaries, the instruction bundle (`instructions.zip` + `manifest.json`), and the Claude Code plugin.
+Releases are fully automated and tag-driven — there is no version to bump and no release script to run yourself. Every release ships the same artefacts together: the VS Code extension (`.vsix`), the standalone CLI binaries, the instruction bundle (`instructions.zip` + `manifest.json`), the Claude Code plugin, and the GitHub Copilot pack (`slalom-sdlc-copilot.zip`).
 
 1. Edit whatever needs to change (instruction markdown in `devops/instructions/`, templates in `packages/core/src/templates/`, extension code, etc.) and merge it into `main` as normal.
 2. Tag the merged commit with the version you want to release and push the tag:
@@ -344,8 +373,8 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-3. `.github/workflows/release.yml` picks up the tag, verifies it's actually reachable from `main`, builds and typechecks every package, stamps `v1.2.3` into each package's `package.json` and `TOOL_VERSION` (this stamping happens only in the CI working tree — nothing is committed back to the repo), packages the VSIX / CLI binaries / instruction bundle / plugin, republishes the `plugin-dist` branch, and publishes the assets as one GitHub Release.
-4. All consultants with the extension pick up the new instructions within 24 hours automatically. Claude Code users get it on their next `claude plugin update slalom-sdlc@slalom`. Anyone installing a fresh `.vsix` or CLI binary gets `v1.2.3` baked in.
+3. `.github/workflows/release.yml` picks up the tag, verifies it's actually reachable from `main`, builds and typechecks every package, verifies the committed `.github/agents/` are in sync with their templates, stamps `v1.2.3` into each package's `package.json` and `TOOL_VERSION` (this stamping happens only in the CI working tree — nothing is committed back to the repo), packages the VSIX / CLI binaries / instruction bundle / plugin / Copilot pack, republishes the `plugin-dist` branch, and publishes the assets as one GitHub Release.
+4. All consultants with the extension pick up the new instructions within 24 hours automatically. Claude Code users get it on their next `claude plugin update slalom-sdlc@slalom`. Copilot CLI/desktop users get it by re-running `./install.sh` from a fresh `slalom-sdlc-copilot.zip`. Anyone installing a fresh `.vsix` or CLI binary gets `v1.2.3` baked in.
 
 > `plugin-dist` is written by CI only. Don't commit to it, don't merge it into `main`, and don't delete it — deleting it breaks `claude plugin install`/`update` for everyone until the next release recreates it.
 
@@ -426,13 +455,22 @@ tools/slalom-sdlc/
 │   └── cli/        @sdlc/cli — standalone CLI for init/reconfigure
 ├── plugin/         Claude Code plugin source — manifest, .mcp.json, commands/
 │                   (the built server is added at package time, never committed)
+├── copilot/        GitHub Copilot pack source
+│   ├── agents/     canonical *.agent.md templates (one per SDLC command)
+│   └── pack/       install.sh + README shipped in the release zip
 └── scripts/
     ├── sync-version.mjs           — stamps a version into every package.json + TOOL_VERSION (release workflow only)
     ├── package-instructions.mjs   — release asset builder
-    └── package-plugin.mjs         — assembles plugin/ + the built MCP server into dist/plugin/
+    ├── package-plugin.mjs         — assembles plugin/ + the built MCP server into dist/plugin/
+    ├── package-copilot.mjs        — assembles copilot/ + the built MCP server into dist/copilot/
+    └── generate-copilot-agents.mjs — regenerates the repo's .github/agents/ from copilot/agents/ (--check for CI)
 ```
 
-The repo-root `.claude-plugin/marketplace.json` is the other half of the plugin — it's what `claude plugin marketplace add Slalom/salesforce-devops` reads.
+The repo-root `.claude-plugin/marketplace.json` is the other half of the plugin — it's what `claude plugin marketplace add Slalom/salesforce-devops` reads. The repo-root `.github/agents/*.agent.md` are the Copilot equivalent — generated from `copilot/agents/` by `generate-copilot-agents.mjs`, they let `copilot` discover the SDLC commands directly in this source repo. Regenerate them after editing any template:
+
+```bash
+node tools/slalom-sdlc/scripts/generate-copilot-agents.mjs
+```
 
 ### Local builds
 

@@ -1,9 +1,10 @@
 name: Release
 
 # Builds and publishes every Slalom SDLC release asset — the VS Code extension
-# (VSIX), standalone CLI binaries, the instruction bundle, and the Claude Code
-# plugin — from a single git tag. The tag is the only source of truth for the
-# release version: no package.json bump, no local script to run or remember.
+# (VSIX), standalone CLI binaries, the instruction bundle, the Claude Code
+# plugin, and the GitHub Copilot pack — from a single git tag. The tag is the
+# only source of truth for the release version: no package.json bump, no local
+# script to run or remember.
 #
 # Release process:
 #   1. Merge your changes into main.
@@ -117,6 +118,9 @@ jobs:
       - name: Typecheck
         run: pnpm -r typecheck
 
+      - name: Verify Copilot agents are in sync
+        run: node scripts/generate-copilot-agents.mjs --check
+
       - name: Package VS Code extension (VSIX)
         env:
           # Same secret as the "Build packages" step above — this step re-runs
@@ -134,6 +138,9 @@ jobs:
       - name: Package Claude Code plugin
         run: node scripts/package-plugin.mjs --version "${{ steps.version.outputs.version }}"
 
+      - name: Package Copilot pack
+        run: node scripts/package-copilot.mjs --version "${{ steps.version.outputs.version }}"
+
       - name: Verify assets
         run: |
           test -f dist/release/instructions.zip
@@ -141,6 +148,10 @@ jobs:
           test -f dist/release/slalom-sdlc-plugin.zip
           test -f dist/plugin/server/server.js
           test -f dist/plugin/.mcp.json
+          test -f dist/release/slalom-sdlc-copilot.zip
+          test -f dist/copilot/server/server.js
+          test -f dist/copilot/install.sh
+          ls dist/copilot/agents/*.agent.md
           ls packages/vscode/*.vsix
           ls packages/cli/binaries/*
           ls -lh dist/release packages/vscode/*.vsix packages/cli/binaries/*
@@ -228,6 +239,9 @@ jobs:
             - **`slalom-sdlc-plugin.zip`** — the Claude Code plugin, for manual or air-gapped install.
               Normally you don't need this file: `claude plugin marketplace add Slalom/salesforce-devops`
               then `claude plugin install slalom-sdlc@slalom`, and `claude plugin update slalom-sdlc` thereafter.
+            - **`slalom-sdlc-copilot.zip`** — the GitHub Copilot pack (CLI + desktop app). Unzip and run
+              `./install.sh` to add the SDLC agents at the user level (`~/.copilot/agents/`), then invoke
+              them in any project with `/agent slalom-about` (or discover/refine/design/build/test/release).
           draft: true
           prerelease: ${{ steps.version.outputs.prerelease }}
           make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
@@ -235,6 +249,7 @@ jobs:
             tools/slalom-sdlc/dist/release/instructions.zip
             tools/slalom-sdlc/dist/release/manifest.json
             tools/slalom-sdlc/dist/release/slalom-sdlc-plugin.zip
+            tools/slalom-sdlc/dist/release/slalom-sdlc-copilot.zip
             tools/slalom-sdlc/packages/vscode/*.vsix
             tools/slalom-sdlc/packages/cli/binaries/*
 

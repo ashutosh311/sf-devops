@@ -1,5 +1,5 @@
 import { readSyncMetadata, validateCacheManifest, CACHE_CURRENT_DIR } from "@sdlc/core";
-import { cmd } from "./surface.js";
+import { cmd, hostName } from "./surface.js";
 
 /**
  * Static agent text that isn't rendered from a project's .sdlc/config.json —
@@ -24,7 +24,7 @@ export function buildAboutText(mcpVersion: string): string {
 export const ABOUT_TEXT = `
 # Slalom SDLC — AI-Assisted Delivery for Salesforce
 
-**Slalom SDLC** brings Slalom's Salesforce delivery process directly into Claude Code. Each command activates a purpose-built AI agent for a specific SDLC phase — discovery, refinement, design, build, test, and release — working within your project's work-item tool (JIRA or Azure DevOps) — or local artifacts for LOCAL projects — plus your Salesforce org and coding standards.
+**Slalom SDLC** brings Slalom's Salesforce delivery process directly into ${hostName()}. Each command activates a purpose-built AI agent for a specific SDLC phase — discovery, refinement, design, build, test, and release — working within your project's work-item tool (JIRA or Azure DevOps) — or local artifacts for LOCAL projects — plus your Salesforce org and coding standards.
 
 **MCP server version:** {MCP_VERSION} · **Instructions:** {INSTRUCTIONS_STATUS}
 
@@ -32,7 +32,7 @@ export const ABOUT_TEXT = `
 
 ## Prerequisites
 
-- Claude Code (CLI or IDE extension)
+- ${hostName()} (CLI or IDE extension)
 - A Salesforce project folder with this MCP server configured
 - Atlassian account access to your JIRA project (via the Atlassian MCP)
 - Salesforce CLI (\`sf\`) installed, with sandbox org authenticated
@@ -47,7 +47,7 @@ export const ABOUT_TEXT = `
 ${cmd("init")}
 \`\`\`
 
-Claude will walk you through a short setup and scaffold the project with:
+${hostName()} will walk you through a short setup and scaffold the project with:
 - Configuration (\`.sdlc/config.json\`)
 - Development standards (\`devops/standards/\`)
 - Artifact directories (\`artifacts/\`)
@@ -85,7 +85,7 @@ ${cmd("release").padEnd(36)}← release notes and deployment checklist
 
 ## How It Works
 
-Each agent reads \`.sdlc/config.json\`, renders the full instruction set for that phase (with your project's JIRA key, status names, paths, and standards already resolved), and executes the procedure using Claude Code's connected tools — including the Atlassian MCP for JIRA/Confluence and the Salesforce MCP for org operations.
+Each agent reads \`.sdlc/config.json\`, renders the full instruction set for that phase (with your project's JIRA key, status names, paths, and standards already resolved), and executes the procedure using ${hostName()}'s connected tools — including the Atlassian MCP for JIRA/Confluence and the Salesforce MCP for org operations.
 
 **Prompts stay inside the tool.** The instructions that drive each agent are compiled into the server binary — they are never written to your repo.
 

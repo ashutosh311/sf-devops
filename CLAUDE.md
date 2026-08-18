@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Two distinct things live side by side here:
 
 1. **A Salesforce consulting delivery repo** (Slalom UK&I) — `force-app/` (SFDX metadata), `devops/standards/` (prescriptive coding standards), `artifacts/` (generated SDLC deliverables), `manifests/`, `config/`, `pipeline-scripts/` (Bitbucket CI). This is the shape a client project takes after running the SDLC tooling below.
-2. **`tools/slalom-sdlc/`** — the actual software product: a pnpm/TypeScript monorepo that implements the "Agentic SDLC" — phase-based AI agents (`/discover`, `/refine`, `/design`, `/build`, `/test`, `/release`) shipped as a VS Code/GitHub Copilot extension (primary, supported) and as a Claude Code plugin wrapping the MCP server. **Most Claude Code work in this repo happens inside `tools/slalom-sdlc/`.**
+2. **`tools/slalom-sdlc/`** — the actual software product: a pnpm/TypeScript monorepo that implements the "Agentic SDLC" — phase-based AI agents (`/discover`, `/refine`, `/design`, `/build`, `/test`, `/release`) shipped as a VS Code/GitHub Copilot extension (primary, supported), as a Claude Code plugin, and as a GitHub Copilot pack (CLI + desktop app) — the latter two wrapping the MCP server. **Most Claude Code work in this repo happens inside `tools/slalom-sdlc/`.**
 
 Full behavioral rules for AI agents operating on a *client* project (non-negotiable Apex/LWC rules, commit/branch format, standards-file routing) are in [AGENTS.md](AGENTS.md) and its GitHub Copilot equivalent `.github/copilot-instructions.md` — read those before generating Apex, LWC, OmniStudio, or config metadata under `force-app/`.
 
@@ -54,9 +54,13 @@ packages/
   cli/      @sdlc/cli    — standalone init/reconfigure CLI, packaged as native binaries
 plugin/     Claude Code plugin source (manifest, .mcp.json, commands/) — the built
             server is added by scripts/package-plugin.mjs, never committed
+copilot/    GitHub Copilot pack source (agents/ templates + pack/install.sh) — the
+            built server is added by scripts/package-copilot.mjs, never committed
 ```
 
 The repo-root `.claude-plugin/marketplace.json` publishes that plugin. Its source points at the **`plugin-dist` branch**, which `.github/workflows/release.yml` republishes on every `vX.Y.Z` tag with the assembled plugin (including the built `server/server.js`). `plugin-dist` is CI-owned: never commit to it, merge it, or delete it.
+
+The repo-root `.github/agents/*.agent.md` are the GitHub Copilot equivalent of the plugin's `commands/*.md` — thin wrappers that let the `copilot` CLI and desktop app discover the SDLC commands. They are generated from `copilot/agents/` by `scripts/generate-copilot-agents.mjs` (run `--check` in CI to catch drift), and shipped to consultants as `slalom-sdlc-copilot.zip`. When editing a Copilot wrapper, edit the template under `copilot/agents/` and regenerate — never hand-edit `.github/agents/`.
 
 `core` contains all the logic; `vscode`, `mcp`, and `cli` are thin front ends that call into it. When adding a new SDLC command/phase, the work almost always starts in `packages/core/src/`, then gets exposed from each front end (`packages/vscode/src/handlers/`, `packages/mcp/src/tools.ts` + `prompts.ts`, `packages/cli/src/index.ts`).
 
