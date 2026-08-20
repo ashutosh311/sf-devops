@@ -1,0 +1,28 @@
+{
+  "name": "slalom",
+  "owner": {
+    "name": "Slalom UK&I"
+  },
+  "metadata": {
+    "description": "Slalom UK&I delivery tooling for GitHub Copilot",
+    "version": "0.0.0"
+  },
+  "plugins": [
+    {
+      "name": "otto",
+      "description": "Slalom Otto — AI delivery agents for Salesforce: discovery, refinement, design, build (test and release coming soon), driven by your project's JIRA/ADO/Local board, org, and coding standards.",
+      "version": "0.0.0",
+      "category": "development",
+      "source": "./plugin",
+      "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/otto"
+    },
+    {
+      "name": "slalom-sdlc",
+      "description": "DEPRECATED — renamed to Otto. Run `copilot plugin install otto@slalom`.",
+      "version": "0.0.0",
+      "category": "development",
+      "source": "./plugin",
+      "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/otto"
+    }
+  ]
+}

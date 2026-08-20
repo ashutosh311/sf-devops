@@ -3,10 +3,10 @@ name: quoting-pricing-runtime
 description: Use when planning, preflighting, verifying, or routing Salesforce Revenue Cloud quoting/pricing runtime work through the tracked TypeScript quote-runtime CLI and its persisted-first, evidence-led investigation lanes.
 ---
 
-> **Vendored into slalom-sdlc.** This Revenue Cloud skill was adapted from
+> **Vendored into Otto.** This Revenue Cloud skill was adapted from
 > `Slalom/arm-build-agents`. Deterministic operations that the upstream skill ran
 > through standalone CLIs (e.g. `.agents/skills/.../scripts/*.ts`) are exposed here as
-> in-process **RCA MCP tools** (`rca_*`) on the slalom-sdlc MCP server — no external
+> in-process **RCA MCP tools** (`rca_*`) on the otto MCP server — no external
 > clone or PATH setup is required. Deep-dive `references/*` files named below live in the
 > upstream skill and are being progressively inlined; treat them as optional context, not
 > as files guaranteed to exist in this repo. This skill is only loaded when
@@ -21,7 +21,7 @@ For sales-facing transcript-to-quote demos, use the dedicated reference in `refe
 For nontrivial transcript-to-product mapping, use `references/use-cases/product-mix-subagent-prompt.md` as a bounded product-mix delegation prompt.
 
 ## Tool routing (RCA MCP tool)
-The `quote-runtime` command family is vendored into the slalom-sdlc tool and
+The `quote-runtime` command family is vendored into the Otto tool and
 exposed in-process on the MCP server — no external CLI, no `arm-setup-cli`, no
 PATH setup. Route runtime investigation through the single read-only tool:
 

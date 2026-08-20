@@ -1,0 +1,250 @@
+catalog_version: v1
+description: Discovery phase skill routing. Maps skill IDs to prompt paths so the AI can route user requests to the correct sub-prompt.
+skills_root: .github/prompts/otto/discover
+
+skills:
+  - id: setup
+    name: setup
+    description: >
+      Use when the user asks to initialize or onboard a new project — capture project context,
+      organize the inbox, and seed the registers. Run once per engagement.
+    kind: workflow
+    path: .github/prompts/otto/discover/setup.prompt.md
+    trigger_phrases:
+      - "set up the project"
+      - "initialize discovery"
+      - "onboard the project"
+      - "run setup"
+
+  - id: process-session
+    name: process-session
+    description: >
+      Use when the user asks to process a workshop transcript or meeting notes into a structured
+      session note and queue register proposals.
+    kind: workflow
+    path: .github/prompts/otto/discover/process-session.prompt.md
+    trigger_phrases:
+      - "process today's workshop"
+      - "process session notes"
+      - "process meeting notes"
+      - "I just finished a session"
+
+  - id: synthesize
+    name: synthesize
+    description: >
+      Use when the user asks for a narrative synthesis or current-state summary from the registers
+      and session notes. Not for structured analysis or deliverable assembly.
+    kind: workflow
+    path: .github/prompts/otto/discover/synthesize.prompt.md
+    trigger_phrases:
+      - "synthesize current state"
+      - "summarize what we've heard"
+      - "weekly rollup"
+      - "what are the main themes"
+
+  - id: analyze
+    name: analyze
+    description: >
+      Use when the user asks for prioritization, gap analysis, root cause analysis, option comparison,
+      or phase-gate readiness checks against discovery evidence.
+    kind: workflow
+    path: .github/prompts/otto/discover/analyze.prompt.md
+    trigger_phrases:
+      - "analyze pain points"
+      - "prioritize findings"
+      - "coverage gaps"
+      - "root cause"
+      - "compare options"
+      - "are we ready to move to"
+
+  - id: manage-backlog
+    name: manage-backlog
+    description: >
+      Use when the user asks to initialize, extend, or restructure the backlog workbook
+      (Backlog Tracker.xlsx) from discovery evidence.
+    kind: workflow
+    path: .github/prompts/otto/discover/manage-backlog.prompt.md
+    trigger_phrases:
+      - "create backlog"
+      - "initialize backlog"
+      - "generate user stories"
+      - "seed the backlog"
+      - "add stories"
+
+  - id: generate-backlog
+    name: generate-backlog
+    description: >
+      VS Code extension only. Generates or syncs backlog structure and story skeletons.
+    kind: vscode-only
+    trigger_phrases:
+      - "generate backlog"
+      - "create backlog"
+      - "build backlog"
+
+  - id: generate-functional-requirements
+    name: generate-functional-requirements
+    description: >
+      VS Code extension only. Fills missing functional requirements on stories in the workbook.
+      Updates only the functional_requirements field; all other fields are preserved.
+    kind: vscode-only
+    trigger_phrases:
+      - "generate functional requirements"
+      - "fill functional requirements"
+      - "fill fr"
+
+  - id: generate-solution-comments
+    name: generate-solution-comments
+    description: >
+      VS Code extension only. Fills missing solution notes on stories in the workbook.
+      Updates only the solution_notes field; all other fields are preserved.
+    kind: vscode-only
+    trigger_phrases:
+      - "generate solution comments"
+      - "fill solution notes"
+      - "solution notes"
+
+  - id: push-backlog
+    name: push-backlog
+    description: >
+      Use when the user has reviewed Backlog Tracker.xlsx and is ready to push epics and stories
+      to the PM tool. Archives the Excel file after push.
+    kind: workflow
+    path: .github/prompts/otto/discover/push-backlog.prompt.md
+    trigger_phrases:
+      - "push backlog to PM tool"
+      - "create PM tool items"
+      - "push to PM tool"
+      - "send to PM tool"
+
+  - id: sync-pm
+    name: sync-pm
+    description: >
+      Use when the user wants to pull the current PM tool status of pushed stories back into the repo
+      as a read-only snapshot. Only valid after push-backlog has been run.
+    kind: workflow
+    path: .github/prompts/otto/discover/sync-pm.prompt.md
+    trigger_phrases:
+      - "sync PM tool"
+      - "pull PM status"
+      - "what's the status in the PM tool"
+      - "update jira-sync"
+
+  - id: compose-deliverable
+    name: compose-deliverable
+    description: >
+      Use when the user asks to generate client-facing deliverables: executive readout,
+      technical readout, MVP scope document, or workshop summary.
+    kind: workflow
+    path: .github/prompts/otto/discover/compose-deliverable.prompt.md
+    trigger_phrases:
+      - "compose findings deck"
+      - "executive readout"
+      - "technical readout"
+      - "MVP scope document"
+      - "workshop summary"
+
+  - id: conflict-check
+    name: conflict-check
+    description: >
+      Use when the user asks to detect contradictions, misalignments, or disagreements across
+      sessions or between stakeholders.
+    kind: workflow
+    path: .github/prompts/otto/discover/conflict-check.prompt.md
+    trigger_phrases:
+      - "check for contradictions"
+      - "conflict check"
+      - "stakeholder misalignment"
+      - "conflicting statements"
+
+  - id: prep-workshop
+    name: prep-workshop
+    description: >
+      Use when the user is preparing for an upcoming workshop or interview — compiles existing
+      knowledge, surfaces gaps, and produces targeted questions and reaction materials.
+    kind: workflow
+    path: .github/prompts/otto/discover/prep-workshop.prompt.md
+    trigger_phrases:
+      - "prep for workshop"
+      - "prepare for session"
+      - "briefing materials"
+      - "what do we know about"
+
+  - id: hub-audit
+    name: hub-audit
+    description: >
+      Use when the user wants a completeness check, phase-gate readiness assessment, register health
+      check, or pre-push validation.
+    kind: workflow
+    path: .github/prompts/otto/discover/hub-audit.prompt.md
+    trigger_phrases:
+      - "hub audit"
+      - "completeness check"
+      - "are we ready"
+      - "phase gate"
+      - "what are we missing"
+
+  - id: whats-next
+    name: whats-next
+    description: >
+      Daily orientation briefing — where are we, what's the next action.
+    kind: orientation
+    path: .github/prompts/otto/discover/whats-next.prompt.md
+    trigger_phrases:
+      - "what's next"
+      - "where are we"
+      - "orient me"
+      - "what should I do"
+
+  - id: registers-to-stories
+    name: registers-to-stories
+    description: >
+      Post-setup bridge that runs synthesize → analyze → manage-backlog in sequence.
+      Use after setup completes and registers are populated.
+    kind: orientation
+    path: .github/prompts/otto/discover/registers-to-stories.prompt.md
+    trigger_phrases:
+      - "registers to stories"
+      - "build the backlog from registers"
+      - "setup is done, what now"
+
+  - id: stories-refined
+    name: stories-refined
+    description: >
+      Bridge between the reviewed backlog and the design phase. Reads Backlog Tracker.xlsx
+      and writes a per-story refinement-notes.md (business context + AC + FR + solution notes)
+      for each story that has acceptance criteria. Also auto-detects stories marked as disregarded
+      (Disregarded column = Y) in the workbook, persists them to disregard-record.md, and excludes
+      them from refinement, future backlog regeneration, and PM tool push. No JIRA required.
+    kind: workflow
+    path: .github/prompts/otto/discover/stories-refined.prompt.md
+    trigger_phrases:
+      - "mark stories refined"
+      - "generate refinement notes"
+      - "stories refined"
+      - "prepare stories for design"
+      - "bridge backlog to design"
+
+  - id: set-preferences
+    name: set-preferences
+    description: >
+      VS Code extension only. Opens a wizard to set authoring preferences (AC style,
+      FR detail level, solution notes depth). Preferences are stored in
+      00 - Project/authoring-preferences.md and applied to all subsequent
+      manage-backlog and rebuild runs.
+    kind: vscode-only
+    trigger_phrases:
+      - "set authoring preferences"
+      - "set preferences"
+      - "change backlog style"
+
+  - id: feedback
+    name: feedback
+    description: >
+      VS Code extension only. Prompts for a rating and free-form comment on the
+      last command. Feedback is appended to the authoring preferences file so the
+      model learns the team's expectations over time.
+    kind: vscode-only
+    trigger_phrases:
+      - "give feedback"
+      - "rate the last command"
+      - "leave a note"

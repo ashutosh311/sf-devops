@@ -1,14 +1,14 @@
 ---
-name: slalom-about
-description: What the Slalom SDLC is, how to use it, and every available command
+name: otto-about
+description: What Slalom Otto is, how to use it, and every available command
 target: github-copilot
-tools: ["slalom-sdlc/*", "read"]
+tools: ["otto/*", "read"]
 mcp-servers:
-  slalom-sdlc:
+  otto:
     type: local
     command: node
-    args: ["tools/slalom-sdlc/packages/mcp/dist/server.js", "--surface=copilot"]
+    args: ["tools/otto/packages/mcp/dist/server.js", "--surface=copilot"]
     tools: ["*"]
 ---
-<!-- GENERATED FILE — do not edit. Source: tools/slalom-sdlc/copilot/agents/. Regenerate: node tools/slalom-sdlc/scripts/generate-copilot-agents.mjs -->
-Call `sdlc_prompt` on the `slalom-sdlc` MCP server with `command: "about"`, then present the returned overview to the user as-is.
+<!-- GENERATED FILE — do not edit. Source: tools/otto/copilot/agents/. Regenerate: node tools/otto/scripts/generate-copilot-agents.mjs -->
+Call `otto_prompt` on the `otto` MCP server with `command: "about"`, then present the returned overview to the user as-is.

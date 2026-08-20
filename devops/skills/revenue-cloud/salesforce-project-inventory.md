@@ -3,10 +3,10 @@ name: project-inventory
 description: Use this skill when the user needs repo-side Salesforce project grounding, package-root discovery, metadata family footprint, candidate domain signals, or architecture hotspots for a local Salesforce codebase before broader discovery or workshop prep.
 ---
 
-> **Vendored into slalom-sdlc.** This Revenue Cloud skill was adapted from
+> **Vendored into Otto.** This Revenue Cloud skill was adapted from
 > `Slalom/arm-build-agents`. Deterministic operations that the upstream skill ran
 > through standalone CLIs (e.g. `.agents/skills/.../scripts/*.ts`) are exposed here as
-> in-process **RCA MCP tools** (`rca_*`) on the slalom-sdlc MCP server — no external
+> in-process **RCA MCP tools** (`rca_*`) on the otto MCP server — no external
 > clone or PATH setup is required. Deep-dive `references/*` files named below live in the
 > upstream skill and are being progressively inlined; treat them as optional context, not
 > as files guaranteed to exist in this repo. This skill is only loaded when
@@ -66,7 +66,7 @@ If continuing an existing run:
 Prefer the latest relevant `discover-project-inventory` artifact for the active `run_id` when the task is interpretation-only and fresh retrieval is not needed.
 
 ## Tool routing (RCA MCP tools)
-The `sfx` discovery surface is exposed in-process on the slalom-sdlc MCP server —
+The `sfx` discovery surface is exposed in-process on the otto MCP server —
 no external CLI install. Prefer this tool over shelling out:
 
 | MCP tool | Use for | Key inputs |

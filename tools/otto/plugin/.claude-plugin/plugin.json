@@ -1,0 +1,12 @@
+{
+  "name": "otto",
+  "version": "0.0.0",
+  "description": "Slalom's Agentic SDLC for Salesforce — phase agents for discovery, refinement, design, build, test, and release.",
+  "author": {
+    "name": "Slalom UK&I"
+  },
+  "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/otto",
+  "repository": "https://github.com/Slalom/salesforce-devops",
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": ["salesforce", "sdlc", "jira", "apex", "lwc"]
+}

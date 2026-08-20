@@ -1,0 +1,30 @@
+{
+  "name": "otto-mcp",
+  "version": "0.0.0",
+  "description": "Slalom Otto MCP server for Claude Code — AI delivery agents for Salesforce projects",
+  "license": "SEE LICENSE IN LICENSE",
+  "bin": {
+    "otto-mcp": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "dev": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "package": "pnpm build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@otto/core": "workspace:*",
+    "@otto/rca-pricing-procedure": "workspace:*",
+    "@otto/rca-sfx": "workspace:*",
+    "@otto/rca-quote-runtime": "workspace:*",
+    "@otto/rca-context-definition": "workspace:*",
+    "@otto/rca-arm-matrix": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}

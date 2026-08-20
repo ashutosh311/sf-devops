@@ -13,7 +13,7 @@ Flow Approval Process** owns runtime approval decisions. Prefer configuration (m
 rows) over client-specific flow branches — never generate a bespoke orchestration per client unless a
 verified platform limitation prevents the configuration-driven design.
 
-> Companion prompt: `#sdlc/arm-approvals` (see `.github/prompts/sdlc/arm-approvals.prompt.md`).
+> Companion prompt: `#otto/arm-approvals` (see `.github/prompts/otto/arm-approvals.prompt.md`).
 > This standard is a **domain playbook** used *inside* the `/design` and `/build` phases — it does
 > not cross SDLC phase boundaries on its own.
 
@@ -39,7 +39,7 @@ These semantics are non-negotiable and identical across clients:
 ## 2. Salesforce mappings
 
 Treat these as requested **defaults, not proof** the metadata already exists. Always describe the org
-(`#sdlc/design` discovery) before querying or deploying. Verify `Quote.Discount` specifically — do
+(`#otto/design` discovery) before querying or deploying. Verify `Quote.Discount` specifically — do
 not silently substitute a quote-line discount or a calculated field.
 
 | Purpose | API mapping |
@@ -112,7 +112,7 @@ Convert spreadsheet or prose input into the JSON shape in
 [`artifacts/samples/arm/client-scenario.example.json`](../../artifacts/samples/arm/client-scenario.example.json).
 Store numeric thresholds without `%` and use the strict `>` operator. Then validate.
 
-Preferred — through the slalom-sdlc tool (works in any client project, no repo
+Preferred — through the Otto tool (works in any client project, no repo
 checkout, cross-platform), call the MCP tool:
 
 ```

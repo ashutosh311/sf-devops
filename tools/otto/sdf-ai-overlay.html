@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Powered Salesforce Delivery Methodology</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .slide {
+    width: 1280px;
+    height: 720px;
+    background: #fff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.25);
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #001529 0%, #002060 60%, #001A3E 100%);
+    padding: 22px 40px 20px;
+    height: 118px;
+    position: relative;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .header h1 em {
+    font-style: italic;
+    color: #C6E04B;
+    font-weight: 800;
+  }
+
+  .header p {
+    font-size: 11.5px;
+    color: #ccd6e8;
+    margin-top: 8px;
+    max-width: 900px;
+    line-height: 1.55;
+  }
+
+  /* Slalom logo placeholder bottom-left */
+  .slalom-logo {
+    position: absolute;
+    bottom: 10px;
+    left: 40px;
+    font-size: 18px;
+    font-weight: 900;
+    color: #C6E04B;
+    letter-spacing: -1px;
+  }
+
+  .copyright {
+    position: absolute;
+    bottom: 10px;
+    left: 120px;
+    font-size: 9px;
+    color: #8899bb;
+  }
+
+  .page-num {
+    position: absolute;
+    bottom: 10px;
+    right: 40px;
+    font-size: 10px;
+    color: #8899bb;
+  }
+
+  /* ── Phase columns ── */
+  .phases {
+    display: flex;
+    height: calc(720px - 118px);
+    position: relative;
+  }
+
+  .phase {
+    display: flex;
+    flex-direction: column;
+    padding: 18px 0 0;
+    position: relative;
+    border-right: 1.5px dashed #b0c4de;
+  }
+
+  .phase:last-child { border-right: none; }
+
+  .phase-discovery {
+    width: 210px;
+    background: #f7f9ff;
+  }
+
+  .phase-deliver {
+    flex: 1;
+    background: #fff;
+  }
+
+  .phase-transition {
+    width: 200px;
+    background: #f7f9ff;
+  }
+
+  .phase-label {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #0070C0;
+    padding: 0 20px 10px;
+    letter-spacing: 0.2px;
+  }
+
+  .phase-desc {
+    font-size: 9.5px;
+    color: #333;
+    line-height: 1.55;
+    padding: 0 18px;
+    border: 1px solid #bbb;
+    margin: 0 14px 10px;
+    padding: 10px 12px;
+    background: #fff;
+    font-style: normal;
+    min-height: 72px;
+  }
+
+  /* ── Agent cards ── */
+  .agents-row {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .agent-card {
+    background: #fff;
+    border: 2px solid #0070C0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+    min-width: 80px;
+    max-width: 120px;
+    box-shadow: 0 2px 8px rgba(0,112,192,0.12);
+    position: relative;
+  }
+
+  .agent-card.discovery {
+    border-color: #5B2D8E;
+    background: linear-gradient(135deg, #f9f4ff, #ede5ff);
+  }
+
+  .agent-card.refine {
+    border-color: #0070C0;
+    background: linear-gradient(135deg, #f0f7ff, #deeeff);
+  }
+
+  .agent-card.design {
+    border-color: #006494;
+    background: linear-gradient(135deg, #eaf4fb, #d1eaf8);
+  }
+
+  .agent-card.build {
+    border-color: #107C10;
+    background: linear-gradient(135deg, #f0fff0, #d4f4d4);
+  }
+
+  .agent-card.test {
+    border-color: #C05000;
+    background: linear-gradient(135deg, #fff8f0, #ffe0c0);
+  }
+
+  .agent-card.release {
+    border-color: #6B3A8E;
+    background: linear-gradient(135deg, #fdf8ff, #eedeff);
+  }
+
+  .agent-icon {
+    font-size: 22px;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .agent-name {
+    font-size: 13px;
+    font-weight: 800;
+    font-family: 'Courier New', monospace;
+    display: block;
+  }
+
+  .agent-card.discovery .agent-name { color: #5B2D8E; }
+  .agent-card.refine    .agent-name { color: #0070C0; }
+  .agent-card.design    .agent-name { color: #006494; }
+  .agent-card.build     .agent-name { color: #107C10; }
+  .agent-card.test      .agent-name { color: #C05000; }
+  .agent-card.release   .agent-name { color: #6B3A8E; }
+
+  .agent-persona {
+    font-size: 8.5px;
+    color: #666;
+    margin-top: 2px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .agent-desc {
+    font-size: 8px;
+    color: #444;
+    margin-top: 5px;
+    line-height: 1.45;
+    text-align: left;
+  }
+
+  .agent-gate {
+    font-size: 7.5px;
+    margin-top: 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .agent-card.discovery .agent-gate { background: #e8d5ff; color: #5B2D8E; }
+  .agent-card.refine    .agent-gate { background: #cce3f8; color: #0054A0; }
+  .agent-card.design    .agent-gate { background: #c0dff0; color: #004a70; }
+  .agent-card.build     .agent-gate { background: #c8f0c8; color: #075207; }
+  .agent-card.test      .agent-gate { background: #ffe0b0; color: #8b3600; }
+  .agent-card.release   .agent-gate { background: #e8c8ff; color: #4a1a6e; }
+
+  /* ── Deliver sub-columns ── */
+  .deliver-inner {
+    display: flex;
+    height: 100%;
+    gap: 0;
+  }
+
+  .sprint-minus-1 {
+    width: 260px;
+    border-right: 1px dashed #c0d0e8;
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .sprint-main {
+    flex: 1;
+    border-right: 1px dashed #c0d0e8;
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .sprint-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0070C0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    background: #e8f2fb;
+    padding: 3px 12px;
+    border-radius: 20px;
+  }
+
+  .deliver-phase-desc {
+    font-size: 9.5px;
+    color: #333;
+    line-height: 1.55;
+    border: 1px solid #bbb;
+    margin: 0 14px 10px;
+    padding: 10px 12px;
+    background: #fff;
+    min-height: 72px;
+    width: calc(100% - 28px);
+  }
+
+  /* ── Flow arrows (SVG overlay) ── */
+  .svg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* ── JIRA flow bar ── */
+  .jira-flow {
+    position: absolute;
+    bottom: 12px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-size: 8px;
+    font-weight: 600;
+  }
+
+  .jira-status {
+    background: #e8f0fe;
+    border: 1px solid #aac0f0;
+    border-radius: 4px;
+    padding: 3px 7px;
+    color: #1a3a80;
+    white-space: nowrap;
+  }
+
+  .jira-arrow {
+    color: #0070C0;
+    font-size: 14px;
+    margin: 0 2px;
+    flex-shrink: 0;
+  }
+
+  .jira-label {
+    font-size: 7.5px;
+    color: #5B2D8E;
+    font-family: 'Courier New', monospace;
+    background: #f0e8ff;
+    border: 1px solid #c8a0ff;
+    border-radius: 3px;
+    padding: 2px 5px;
+    white-space: nowrap;
+  }
+
+  /* ── Sprint cycle visual ── */
+  .sprint-cycle {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    position: relative;
+  }
+
+  /* Artifact dots */
+  .artifact-list {
+    margin-top: 8px;
+    padding: 0 8px;
+    width: 100%;
+  }
+
+  .artifact-item {
+    font-size: 7.5px;
+    color: #555;
+    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .artifact-item::before {
+    content: '▸';
+    color: #0070C0;
+    font-size: 8px;
+  }
+
+  .sub-header {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #0070C0;
+    padding: 8px 14px 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <h1>Our <em>AI-Powered Salesforce Delivery Methodology</em> Overview</h1>
+    <p>
+      Six purpose-built AI agents — powered by Claude Sonnet — span the full consulting lifecycle,
+      from discovery workshops to post-go-live hypercare. Each agent operates within a defined phase,
+      enforces quality gates, and produces structured artefacts that flow directly into the next agent's context.
+    </p>
+    <div class="slalom-logo">slalom</div>
+    <div class="copyright">©2026 Slalom. All Rights Reserved. Proprietary and Confidential.</div>
+    <div class="page-num">AI-SDLC v1</div>
+  </div>
+
+  <!-- ── PHASES ── -->
+  <div class="phases">
+
+    <!-- DISCOVERY -->
+    <div class="phase phase-discovery">
+      <div class="phase-label">Definition &amp; Design</div>
+      <div class="phase-desc">
+        We confirm vision, goals, and objectives. The AI leads discovery, maps requirements,
+        identifies gaps, and shapes the backlog — ready for sprint planning.
+      </div>
+      <div class="agents-row" style="justify-content:center; padding: 8px 14px;">
+        <div class="agent-card discovery" style="max-width:160px; width:100%;">
+          <span class="agent-icon">🔭</span>
+          <span class="agent-name">#otto/discover</span>
+          <div class="agent-persona">Business Analyst · Functional Lead</div>
+          <div class="agent-desc">
+            Ingests workshop notes &amp; client brief. Produces capability map, epic &amp; story list, sprint allocation plan, and HL solution design.
+          </div>
+          <div class="agent-gate">Exit → Stories in JIRA + Sprint Plan</div>
+        </div>
+      </div>
+      <div class="artifact-list">
+        <div class="sub-header">Artefacts</div>
+        <div class="artifact-item">capability-map.md</div>
+        <div class="artifact-item">epic-story-list.md</div>
+        <div class="artifact-item">sprint-allocation-plan.md</div>
+        <div class="artifact-item">hl-solution-design.md</div>
+      </div>
+    </div>
+
+    <!-- DELIVER -->
+    <div class="phase phase-deliver" style="padding:0; border-right: 1.5px dashed #b0c4de;">
+      <div class="phase-label" style="padding: 18px 20px 0;">Deliver</div>
+      <div class="deliver-inner">
+
+        <!-- Sprint -1 -->
+        <div class="sprint-minus-1">
+          <div class="sprint-label">Sprint −1</div>
+          <div class="deliver-phase-desc">
+            Ideas are shaped into technically ready stories. BA adds Gherkin AC; Tech Architect defines the solution and sub-tasks before a single line of code is written.
+          </div>
+
+          <div class="agents-row" style="flex-direction: column; align-items: center; gap: 10px; padding: 0 16px;">
+            <div class="agent-card refine" style="width:100%; max-width:210px;">
+              <span class="agent-icon">✏️</span>
+              <span class="agent-name">#otto/refine</span>
+              <div class="agent-persona">Business Analyst · Functional Lead</div>
+              <div class="agent-desc">
+                Adds Gherkin AC, surfaces open questions, estimates effort. Transitions story to <em>Ready for Design</em>.
+              </div>
+              <div class="agent-gate">Entry: To Do → Exit: Ready for Design</div>
+            </div>
+            <div style="font-size:18px; color:#0070C0;">↓</div>
+            <div class="agent-card design" style="width:100%; max-width:210px;">
+              <span class="agent-icon">🏗️</span>
+              <span class="agent-name">#otto/design</span>
+              <div class="agent-persona">Technical Architect · Tech Lead</div>
+              <div class="agent-desc">
+                Writes solution-design.md: data model, component breakdown, API contracts, sub-tasks. Posts design to JIRA.
+              </div>
+              <div class="agent-gate">Entry: Ready for Design → Exit: Ready for Build</div>
+            </div>
+          </div>
+
+          <div class="artifact-list" style="margin-top:6px;">
+            <div class="sub-header">Artefacts</div>
+            <div class="artifact-item">sf-discovery.md</div>
+            <div class="artifact-item">solution-design.md</div>
+            <div class="artifact-item">JIRA sub-tasks</div>
+          </div>
+        </div>
+
+        <!-- Sprint -->
+        <div class="sprint-main">
+          <div class="sprint-label">Sprint (Build &amp; Test)</div>
+          <div class="deliver-phase-desc">
+            Code is scaffolded, reviewed, and deployed to sandbox; a parallel QA agent generates test classes, validates coverage, and raises defects — all within the same sprint cycle.
+          </div>
+
+          <div class="agents-row" style="flex-direction: row; align-items: flex-start; gap: 12px; padding: 4px 16px;">
+            <div class="agent-card build" style="flex:1; max-width:none;">
+              <span class="agent-icon">⚙️</span>
+              <span class="agent-name">#otto/build</span>
+              <div class="agent-persona">Developer</div>
+              <div class="agent-desc">
+                Reads solution-design.md. Scaffolds Apex triggers, handlers, selectors, LWC, and config metadata. Deploys to scratch org, raises PR.
+              </div>
+              <div class="agent-gate">Entry: Ready for Build → Exit: Ready for Test</div>
+            </div>
+            <div style="font-size:18px; color: #C05000; align-self:center;">→</div>
+            <div class="agent-card test" style="flex:1; max-width:none;">
+              <span class="agent-icon">🧪</span>
+              <span class="agent-name">#otto/test</span>
+              <div class="agent-persona">QA Engineer</div>
+              <div class="agent-desc">
+                Generates Apex test classes (≥85% coverage) and LWC JEST tests. Writes test-plan.md &amp; test-results.md. Raises defects in JIRA.
+              </div>
+              <div class="agent-gate">Entry: Ready for Test → Exit: Done / Defect</div>
+            </div>
+          </div>
+
+          <div class="artifact-list" style="margin-top:6px;">
+            <div class="sub-header">Artefacts</div>
+            <div class="artifact-item">force-app/ (Apex, LWC, metadata)</div>
+            <div class="artifact-item">package.xml</div>
+            <div class="artifact-item">implementation-record.md</div>
+            <div class="artifact-item">test-plan.md · test-results.md</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TRANSITION -->
+    <div class="phase phase-transition">
+      <div class="phase-label">Transition</div>
+      <div class="phase-desc">
+        The team sets the customer up for ongoing success — deployment runbook, knowledge transfer, hypercare log, and final BAU handover.
+      </div>
+      <div class="agents-row" style="justify-content:center; padding: 8px 14px;">
+        <div class="agent-card release" style="max-width:160px; width:100%;">
+          <span class="agent-icon">🚀</span>
+          <span class="agent-name">#otto/release</span>
+          <div class="agent-persona">Tech Lead · Delivery Manager</div>
+          <div class="agent-desc">
+            Generates deployment runbook, go-live checklist, BAU handover doc, and hypercare log. Transitions stories to <em>Released</em>.
+          </div>
+          <div class="agent-gate">Entry: Done → Exit: Released</div>
+        </div>
+      </div>
+      <div class="artifact-list">
+        <div class="sub-header">Artefacts</div>
+        <div class="artifact-item">deployment-runbook.md</div>
+        <div class="artifact-item">go-live-checklist.md</div>
+        <div class="artifact-item">bau-handover.md</div>
+        <div class="artifact-item">hypercare-log.md</div>
+      </div>
+    </div>
+
+  </div><!-- /phases -->
+
+  <!-- ── SVG FLOW ARROWS ── -->
+  <svg class="svg-overlay" viewBox="0 0 1280 602" preserveAspectRatio="none">
+    <defs>
+      <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#0070C0"/>
+      </marker>
+      <marker id="arrow-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#5B2D8E"/>
+      </marker>
+      <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#107C10"/>
+      </marker>
+    </defs>
+    <!-- Discover → Refine (phase boundary) -->
+    <path d="M 204 220 C 230 220, 235 235, 260 235"
+          stroke="#5B2D8E" stroke-width="2" fill="none"
+          stroke-dasharray="5,3" marker-end="url(#arrow-purple)"/>
+    <!-- Sprint -1 → Sprint (phase boundary) -->
+    <path d="M 464 280 C 490 280, 495 280, 520 280"
+          stroke="#0070C0" stroke-width="2" fill="none"
+          stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+    <!-- Sprint → Transition (phase boundary) -->
+    <path d="M 1076 280 C 1096 280, 1100 280, 1118 280"
+          stroke="#107C10" stroke-width="2" fill="none"
+          stroke-dasharray="5,3" marker-end="url(#arrow-green)"/>
+  </svg>
+
+  <!-- ── JIRA STATUS FLOW BAR ── -->
+  <div style="position:absolute; bottom:0; left:0; right:0; background:#f0f4ff; border-top: 1.5px solid #c0cce8; padding: 7px 20px; display:flex; align-items:center; gap:4px; font-size:8px; font-weight:600;">
+    <span style="color:#555; margin-right:6px; font-size:9px; font-weight:700;">JIRA Flow:</span>
+    <span class="jira-status">To Do</span>
+    <span class="jira-label">/refine</span>
+    <span class="jira-arrow">→</span>
+    <span class="jira-status">Ready for Design</span>
+    <span class="jira-label">/design</span>
+    <span class="jira-arrow">→</span>
+    <span class="jira-status">Ready for Build</span>
+    <span class="jira-label">/build</span>
+    <span class="jira-arrow">→</span>
+    <span class="jira-status">Ready for Test</span>
+    <span class="jira-label">/test</span>
+    <span class="jira-arrow">→</span>
+    <span class="jira-status">Done / Defect</span>
+    <span class="jira-label">/release</span>
+    <span class="jira-arrow">→</span>
+    <span class="jira-status" style="background:#c8f0c8; border-color:#70c070; color:#075207;">Released ✓</span>
+    <span style="margin-left:auto; font-size:8px; color:#888;">Powered by Claude Sonnet 4.6 via GitHub Copilot</span>
+  </div>
+
+</div><!-- /slide -->
+</body>
+</html>

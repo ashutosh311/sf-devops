@@ -22,7 +22,7 @@ Generated artifacts live in `artifacts/` (created during SDLC workflow).
 
 This repo uses phase-based agents that map to Slalom's consulting delivery methodology. Each agent covers a delivery phase and can be used by multiple personas.
 
-**AI tooling:** GitHub Copilot (VS Code / IntelliJ) with **Claude Sonnet 4.6** as the recommended model. Agents are invoked via Copilot Chat using `#sdlc/<agent>` syntax.
+**AI tooling:** GitHub Copilot (VS Code / IntelliJ) with **Claude Sonnet 4.6** as the recommended model. Agents are invoked via Copilot Chat using `#otto/<agent>` syntax.
 
 ```
 DISCOVER           DELIVER — Sprint -1                    DELIVER — Sprint           TRANSITION
@@ -36,12 +36,12 @@ DISCOVER           DELIVER — Sprint -1                    DELIVER — Sprint  
 
 | Agent | Phase | Entry gate | Exit gate |
 |---|---|---|---|
-| `#sdlc/discover` | DISCOVER | Workshop notes / client brief | Backlog pushed to JIRA (`push-record.md` exists), current-state synthesis complete, MVP scope approved |
-| `#sdlc/refine` | Sprint -1 (BA / FL) | An ALM story key (JIRA / ADO, status = **To Do**) **or** local `04 - Backlog/` materials (no PM tool) | Story has Gherkin AC — status = **Ready for Design** (ALM mode) or `refinement-notes.md` written into the backlog story folder (Local mode) |
-| `#sdlc/design` | Sprint -1 (TA / TL) | Story status = **Ready for Design** | `solution-design.md` written, design posted to JIRA, sub-tasks created, status = **Ready for Build** |
-| `#sdlc/build` | Sprint | Story status = **Ready for Build**, solution-design.md exists | Code deployed, PR raised, status = **Ready for Test** |
-| `#sdlc/test` | Sprint +1 | Story status = Ready for Test | Test report written, defects in JIRA, status = Done or Defect |
-| `#sdlc/release` | TRANSITION | Stories in Done (or risk-accepted) | Deployment runbook, BAU handover signed off, status = Released |
+| `#otto/discover` | DISCOVER | Workshop notes / client brief | Backlog pushed to JIRA (`push-record.md` exists), current-state synthesis complete, MVP scope approved |
+| `#otto/refine` | Sprint -1 (BA / FL) | An ALM story key (JIRA / ADO, status = **To Do**) **or** local `04 - Backlog/` materials (no PM tool) | Story has Gherkin AC — status = **Ready for Design** (ALM mode) or `refinement-notes.md` written into the backlog story folder (Local mode) |
+| `#otto/design` | Sprint -1 (TA / TL) | Story status = **Ready for Design** | `solution-design.md` written, design posted to JIRA, sub-tasks created, status = **Ready for Build** |
+| `#otto/build` | Sprint | Story status = **Ready for Build**, solution-design.md exists | Code deployed, PR raised, status = **Ready for Test** |
+| `#otto/test` | Sprint +1 | Story status = Ready for Test | Test report written, defects in JIRA, status = Done or Defect |
+| `#otto/release` | TRANSITION | Stories in Done (or risk-accepted) | Deployment runbook, BAU handover signed off, status = Released |
 
 ### JIRA status flow
 
@@ -88,12 +88,12 @@ The `/discover` agent runs a 4-phase structured engagement methodology (Prepare 
 
 | Phase | Timing | Playbook |
 |-------|--------|---------|
-| Prepare | Weeks 0–1 | `.github/prompts/sdlc/discover/playbooks/01-prepare.md` |
-| Learn | Week 2 | `.github/prompts/sdlc/discover/playbooks/02-learn.md` |
-| Ideate | Weeks 3–4 | `.github/prompts/sdlc/discover/playbooks/03-ideate.md` |
-| Plan | Weeks 5–6 | `.github/prompts/sdlc/discover/playbooks/04-plan.md` |
+| Prepare | Weeks 0–1 | `.github/prompts/otto/discover/playbooks/01-prepare.md` |
+| Learn | Week 2 | `.github/prompts/otto/discover/playbooks/02-learn.md` |
+| Ideate | Weeks 3–4 | `.github/prompts/otto/discover/playbooks/03-ideate.md` |
+| Plan | Weeks 5–6 | `.github/prompts/otto/discover/playbooks/04-plan.md` |
 
-### Sub-prompts (invoke via `#sdlc/discover <skill>`)
+### Sub-prompts (invoke via `#otto/discover <skill>`)
 
 | Skill | What it does |
 |-------|-------------|
@@ -193,13 +193,13 @@ These apply to every file generated or modified — no exceptions:
 .github/
   prompts/
     sdlc/
-      discover.prompt.md    # #sdlc/discover — DISCOVER phase
-      refine.prompt.md      # #sdlc/refine   — Sprint -1 (BA / FL: AC + Ready for Design)
-      design.prompt.md      # #sdlc/design   — Sprint -1 (TA / TL: solution design + Ready for Build)
-      build.prompt.md       # #sdlc/build    — Sprint
-      test.prompt.md        # #sdlc/test     — Sprint +1
-      release.prompt.md     # #sdlc/release  — TRANSITION
-      arm-approvals.prompt.md # #sdlc/arm-approvals — ARM domain playbook (used within /design & /build)
+      discover.prompt.md    # #otto/discover — DISCOVER phase
+      refine.prompt.md      # #otto/refine   — Sprint -1 (BA / FL: AC + Ready for Design)
+      design.prompt.md      # #otto/design   — Sprint -1 (TA / TL: solution design + Ready for Build)
+      build.prompt.md       # #otto/build    — Sprint
+      test.prompt.md        # #otto/test     — Sprint +1
+      release.prompt.md     # #otto/release  — TRANSITION
+      arm-approvals.prompt.md # #otto/arm-approvals — ARM domain playbook (used within /design & /build)
     project/
       create-jira-item.prompt.md  # #project/create-jira-item — standalone utility
 config/
@@ -223,14 +223,14 @@ pipeline-scripts/
 
 ### Usage tracking (VS Code extension)
 
-The `slalom-sdlc` VS Code extension records command and feedback usage to the **Salesforce
+The Otto (VS Code) extension records command and feedback usage to the **Salesforce
 DevOps Log** SharePoint list (via a Power Automate HTTP trigger) for adoption reporting. It only
 sends `Command, Date, User, Project, Story, Model, Tokens, Comment` — **never** prompt or
 response text. It is **Slalom-only** (active only once private-repo instruction sync has
 succeeded — never gated on ambient `GITHUB_TOKEN`/`GH_TOKEN` presence) and fully asynchronous
-(per-item file queue at `~/.slalom-sdlc/usage-queue/`). The endpoint is a CI-injected secret, never
+(per-item file queue at `~/.otto/usage-queue/`). The endpoint is a CI-injected secret, never
 committed to source. Feedback is captured via `/feedback <comment>`, Copilot thumbs up/down, and
-the `/discover` feedback prompt. See `tools/slalom-sdlc/README.md` → **Usage Tracking** for detail.
+the `/discover` feedback prompt. See `tools/otto/README.md` → **Usage Tracking** for detail.
 
 ---
 

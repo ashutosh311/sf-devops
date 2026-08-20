@@ -7,10 +7,10 @@ metadata:
   provenance: "Newly authored 2026-07-17 from the ARMAF DocGen spike evidence; replaces the former medtech-arm-docgen-orchestrator wrapper (generalized)."
 ---
 
-> **Vendored into slalom-sdlc.** This Revenue Cloud skill was adapted from
+> **Vendored into Otto.** This Revenue Cloud skill was adapted from
 > `Slalom/arm-build-agents`. Deterministic operations that the upstream skill ran
 > through standalone CLIs (e.g. `.agents/skills/.../scripts/*.ts`) are exposed here as
-> in-process **RCA MCP tools** (`rca_*`) on the slalom-sdlc MCP server — no external
+> in-process **RCA MCP tools** (`rca_*`) on the otto MCP server — no external
 > clone or PATH setup is required. Deep-dive `references/*` files named below live in the
 > upstream skill and are being progressively inlined; treat them as optional context, not
 > as files guaranteed to exist in this repo. This skill is only loaded when

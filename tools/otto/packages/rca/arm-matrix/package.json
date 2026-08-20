@@ -1,0 +1,16 @@
+{
+  "name": "@otto/rca-arm-matrix",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Single-source ARM approval-matrix validator (pure) exposed in-process for MCP tools and the runnable CLI.",
+  "main": "src/index.js",
+  "types": "index.d.ts",
+  "files": [
+    "src",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "build": "node -e \"process.exit(0)\"",
+    "typecheck": "tsc --noEmit"
+  }
+}

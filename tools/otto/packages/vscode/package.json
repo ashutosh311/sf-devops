@@ -1,0 +1,106 @@
+{
+  "name": "slalom-sdlc",
+  "displayName": "Slalom Otto",
+  "description": "Otto — AI delivery agents for Salesforce projects",
+  "version": "0.0.0",
+  "publisher": "slalom",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Slalom/salesforce-devops"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onChatParticipant:slalom.slalom-sdlc"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "slalom-sdlc.syncInstructions",
+        "title": "Sync Instructions",
+        "category": "Slalom Otto"
+      },
+      {
+        "command": "slalom-sdlc.instructionStatus",
+        "title": "Instruction Status",
+        "category": "Slalom Otto"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "slalom.slalom-sdlc",
+        "name": "otto",
+        "fullName": "Slalom Otto",
+        "description": "Otto — AI delivery agents for Salesforce — type / to see available agents",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "about",
+            "description": "What is this tool, how to use it, and all available commands"
+          },
+          {
+            "name": "init",
+            "description": "Set up and scaffold the SDLC for this project"
+          },
+          {
+            "name": "discover",
+            "description": "Start a discovery session"
+          },
+          {
+            "name": "refine",
+            "description": "Refine a JIRA story or sprint"
+          },
+          {
+            "name": "design",
+            "description": "Technical design for a JIRA story"
+          },
+          {
+            "name": "build",
+            "description": "Build a JIRA story  —  usage: /build PROJ-42"
+          },
+          {
+            "name": "test",
+            "description": "Test a JIRA story  —  usage: /test PROJ-42"
+          },
+          {
+            "name": "release",
+            "description": "Run the release agent for a set of stories"
+          },
+          {
+            "name": "feedback",
+            "description": "Send feedback about the tooling  —  usage: /feedback <your comment>"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "dev": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "package": "pnpm build && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@otto/core": "workspace:*",
+    "adm-zip": "^0.5.18",
+    "exceljs": "^4.4.0",
+    "mammoth": "^1.12.0",
+    "mupdf": "^1.28.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^2.26.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}

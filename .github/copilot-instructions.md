@@ -107,13 +107,13 @@ This project uses a structured, agent-driven delivery workflow. Each agent has a
 
 | # | Command | Persona | Output | Phase boundary |
 |---|---------|---------|--------|----------------|
-| 0 | `@slalom-sdlc /init` | Any | Project scaffold + `sdlc.config.json` | — |
-| 1 | `@slalom-sdlc /discover` | BA / SA / FL | Structured 4-phase engagement (Prepare→Learn→Ideate→Plan): session notes, synthesized current state, evidence-backed backlog, JIRA push via `push-backlog`. JIRA items **only** via explicit `push-backlog` command. | High-level only — no component design, no field-level data model, no detailed architecture |
-| 2 | `@slalom-sdlc /refine` | SA / FL / BA | `artifacts/{KEY}/refinement-notes.md` with Gherkin AC + business context. Story transitioned to Ready for Design. | Business context + AC only — no org discovery, no solution design, no technical decisions whatsoever |
-| 3 | `@slalom-sdlc /design` | TA / TL | `artifacts/{KEY}/sf-discovery.md`, `artifacts/{KEY}/solution-design.md`, JIRA sub-tasks. Story transitioned to Ready for Build. | The only agent that produces detailed solution designs |
-| 4 | `@slalom-sdlc /build` | Developer | Salesforce metadata deployed under `force-app/`. | Implementation only — follows `solution-design.md` |
-| 5 | `@slalom-sdlc /test` | Tester | `artifacts/{KEY}/test-plan.md`, test results. | Testing only |
-| 6 | `@slalom-sdlc /release` | DevOps | Deployment record, release notes. | Release only |
+| 0 | `@otto /init` | Any | Project scaffold + `sdlc.config.json` | — |
+| 1 | `@otto /discover` | BA / SA / FL | Structured 4-phase engagement (Prepare→Learn→Ideate→Plan): session notes, synthesized current state, evidence-backed backlog, JIRA push via `push-backlog`. JIRA items **only** via explicit `push-backlog` command. | High-level only — no component design, no field-level data model, no detailed architecture |
+| 2 | `@otto /refine` | SA / FL / BA | `artifacts/{KEY}/refinement-notes.md` with Gherkin AC + business context. Story transitioned to Ready for Design. | Business context + AC only — no org discovery, no solution design, no technical decisions whatsoever |
+| 3 | `@otto /design` | TA / TL | `artifacts/{KEY}/sf-discovery.md`, `artifacts/{KEY}/solution-design.md`, JIRA sub-tasks. Story transitioned to Ready for Build. | The only agent that produces detailed solution designs |
+| 4 | `@otto /build` | Developer | Salesforce metadata deployed under `force-app/`. | Implementation only — follows `solution-design.md` |
+| 5 | `@otto /test` | Tester | `artifacts/{KEY}/test-plan.md`, test results. | Testing only |
+| 6 | `@otto /release` | DevOps | Deployment record, release notes. | Release only |
 
 ### Phase boundary rules — hard constraints
 
@@ -146,7 +146,7 @@ The shared JIRA item creation protocol is in `.github/instructions/jira-item-pro
 
 Discovery artifacts live directly under `artifacts/` in numbered subfolders (`00 - Project/`, `00 - Inbox/`, `00 - Registers/`, `01 - Sessions/`, `02 - Current State/`, `03 - Future State/`, `04 - Backlog/`, `06 - Reference/`). Story artifacts live under `artifacts/{JIRA-KEY}/` — `refinement-notes.md`, `sf-discovery.md`, `solution-design.md`, `test-plan.md`.
 
-The `/discover` sub-prompts are under `.github/prompts/sdlc/discover/`. Invoke with `#sdlc/discover <skill>` (e.g. `#sdlc/discover process-session`, `#sdlc/discover push-backlog`). Phase playbooks are at `.github/prompts/sdlc/discover/playbooks/`.
+The `/discover` sub-prompts are under `.github/prompts/otto/discover/`. Invoke with `#otto/discover <skill>` (e.g. `#otto/discover process-session`, `#otto/discover push-backlog`). Phase playbooks are at `.github/prompts/otto/discover/playbooks/`.
 
 ---
 

@@ -1,0 +1,16 @@
+{
+  "name": "otto-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r dev",
+    "typecheck": "pnpm -r typecheck",
+    "start": "node packages/cli/dist/index.js",
+    "package": "pnpm -r --filter @otto/cli package",
+    "package-instructions": "node scripts/package-instructions.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

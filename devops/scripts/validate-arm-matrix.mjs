@@ -5,8 +5,8 @@
 /**
  * ARM approval-matrix validator — runnable CLI.
  *
- * Thin wrapper over the single-source validator in the slalom-sdlc tool
- * (`tools/slalom-sdlc/packages/rca/arm-matrix`), which is also exposed as the
+ * Thin wrapper over the single-source validator in the Otto tool
+ * (`tools/otto/packages/rca/arm-matrix`), which is also exposed as the
  * MCP tool `rca_validate_arm_matrix`. Keeping one implementation avoids the
  * dual-copy drift called out in the migration design doc.
  *
@@ -26,7 +26,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 /** @type {{ validateArmMatrix: (document: unknown) => { valid: boolean, errors: string[], warnings: string[], simulations: Record<string, unknown> } }} */
 const { validateArmMatrix } = require(
-  '../../tools/slalom-sdlc/packages/rca/arm-matrix/src/index.js'
+  '../../tools/otto/packages/rca/arm-matrix/src/index.js'
 );
 
 function main() {

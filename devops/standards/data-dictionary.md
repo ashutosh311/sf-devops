@@ -13,7 +13,7 @@ in scope — written in the **object-reference style** used by the Salesforce
 (one page per object: a description, supported operations, then a field table).
 
 It is produced and maintained by the shared **`data-dictionary`** sub-command,
-invoked as **`#sdlc/<phase> data-dictionary`** (e.g. `#sdlc/design data-dictionary`)
+invoked as **`#otto/<phase> data-dictionary`** (e.g. `#otto/design data-dictionary`)
 from any agent (Discover, Refine, Design, Build) or via that agent's menu. The dictionary is a
 **single accumulating source of truth** — later phases *upgrade* the same files
 rather than starting new ones.
@@ -115,8 +115,8 @@ What this object represents, which business domain owns it, and how it is used.
 
 | Date | Fidelity | Change | Source |
 |------|----------|--------|--------|
-| 2026-07-28 | Physical | Reconciled from org; added `IsActive__c`. | `#sdlc/build data-dictionary` |
-| 2026-07-20 | Logical | Initial design from PROJ-42 solution design. | `#sdlc/design data-dictionary` |
+| 2026-07-28 | Physical | Reconciled from org; added `IsActive__c`. | `#otto/build data-dictionary` |
+| 2026-07-20 | Logical | Initial design from PROJ-42 solution design. | `#otto/design data-dictionary` |
 ```
 
 ### Column rules (lean Slalom set)
@@ -168,7 +168,7 @@ Unknown cells use an em dash (`—`) — never leave a cell empty or omit the co
 
 ## 6. Merge rules (no-downgrade)
 
-When `#sdlc/<phase> data-dictionary` runs against an object that already has a file:
+When `#otto/<phase> data-dictionary` runs against an object that already has a file:
 
 1. **Never downgrade.** A run that resolves lower fidelity than the file's current
    header MUST NOT overwrite existing higher-fidelity cells. It may only fill cells

@@ -7,8 +7,8 @@
   },
   "plugins": [
     {
-      "name": "slalom-sdlc",
-      "description": "Slalom's Agentic SDLC for Salesforce — phase agents for discovery, refinement, design, build, test, and release, driven by your project's JIRA board, org, and coding standards.",
+      "name": "otto",
+      "description": "Slalom Otto — AI delivery agents for Salesforce: discovery, refinement, design, build (test and release coming soon), driven by your project's JIRA/ADO/Local board, org, and coding standards.",
       "author": {
         "name": "Slalom UK&I"
       },
@@ -19,7 +19,22 @@
         "path": "plugin",
         "ref": "plugin-dist"
       },
-      "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/slalom-sdlc"
+      "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/otto"
+    },
+    {
+      "name": "slalom-sdlc",
+      "description": "DEPRECATED — renamed to Otto. Run `claude plugin uninstall slalom-sdlc@slalom` then `claude plugin install otto@slalom`.",
+      "author": {
+        "name": "Slalom UK&I"
+      },
+      "category": "development",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/Slalom/salesforce-devops.git",
+        "path": "plugin",
+        "ref": "plugin-dist"
+      },
+      "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/otto"
     }
   ]
 }

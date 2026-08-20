@@ -1,18 +1,18 @@
 ---
-name: slalom-init
-description: Set up or reconfigure the Slalom SDLC for this Salesforce project
+name: otto-init
+description: Set up or reconfigure Slalom Otto for this Salesforce project
 target: github-copilot
-tools: ["slalom-sdlc/*", "read", "edit", "execute"]
+tools: ["otto/*", "read", "edit", "execute"]
 mcp-servers:
-  slalom-sdlc:
+  otto:
     type: local
     command: node
-    args: ["tools/slalom-sdlc/packages/mcp/dist/server.js", "--surface=copilot"]
+    args: ["tools/otto/packages/mcp/dist/server.js", "--surface=copilot"]
     tools: ["*"]
 ---
-<!-- GENERATED FILE — do not edit. Source: tools/slalom-sdlc/copilot/agents/. Regenerate: node tools/slalom-sdlc/scripts/generate-copilot-agents.mjs -->
-Call `sdlc_init` on the `slalom-sdlc` MCP server, with no arguments.
+<!-- GENERATED FILE — do not edit. Source: tools/otto/copilot/agents/. Regenerate: node tools/otto/scripts/generate-copilot-agents.mjs -->
+Call `otto_init` on the `otto` MCP server, with no arguments.
 
 It runs the setup interview itself and writes `.sdlc/config.json` plus the rest of the scaffold. Do not ask the setup questions yourself first, and do not write any config file by hand — report what the tool returns.
 
-If it hands back an interview for you to conduct rather than a result, the client doesn't support input forms: work through that interview conversationally, then call `sdlc_scaffold` with the answers.
+If it hands back an interview for you to conduct rather than a result, the client doesn't support input forms: work through that interview conversationally, then call `otto_scaffold` with the answers.

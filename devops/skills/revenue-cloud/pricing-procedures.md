@@ -3,10 +3,10 @@ name: pricing-procedures
 description: Use when working with Salesforce Revenue Cloud pricing procedures: identify ExpressionSetDefinition artifacts, inspect structure, trace context tags, diff versions, plan safe edits, and validate with the pricing-procedure CLI.
 ---
 
-> **Vendored into slalom-sdlc.** This Revenue Cloud skill was adapted from
+> **Vendored into Otto.** This Revenue Cloud skill was adapted from
 > `Slalom/arm-build-agents`. Deterministic operations that the upstream skill ran
 > through standalone CLIs (e.g. `.agents/skills/.../scripts/*.ts`) are exposed here as
-> in-process **RCA MCP tools** (`rca_*`) on the slalom-sdlc MCP server — no external
+> in-process **RCA MCP tools** (`rca_*`) on the otto MCP server — no external
 > clone or PATH setup is required. Deep-dive `references/*` files named below live in the
 > upstream skill and are being progressively inlined; treat them as optional context, not
 > as files guaranteed to exist in this repo. This skill is only loaded when
@@ -37,7 +37,7 @@ Before analysis or edits, classify the request:
 
 ## Tool Routing
 
-Deterministic pricing-procedure analysis runs **in-process on the slalom-sdlc MCP
+Deterministic pricing-procedure analysis runs **in-process on the otto MCP
 server** — there is no external CLI to install and no `arm-setup-cli`/PATH step.
 
 Two operations are exposed directly as MCP tools:

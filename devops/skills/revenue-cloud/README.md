@@ -1,6 +1,6 @@
 ---
 title: Revenue Cloud Advanced (RCA) Skills
-description: Domain skill guidance for Salesforce Revenue Cloud Advanced work, vendored from Slalom/arm-build-agents and delivered through the slalom-sdlc render pipeline.
+description: Domain skill guidance for Salesforce Revenue Cloud Advanced work, vendored from Slalom/arm-build-agents and delivered through the Otto render pipeline.
 scope: revenue-cloud
 ---
 
@@ -8,18 +8,18 @@ scope: revenue-cloud
 
 Domain playbooks for Salesforce Revenue Cloud Advanced (RCA) / Agentforce Revenue
 Management work. They were adapted from `Slalom/arm-build-agents` and vendored into
-slalom-sdlc so they ship through the normal tool distribution (VS Code extension,
+Otto so they ship through the normal tool distribution (VS Code extension,
 MCP server, Claude Code plugin) with **no external clone or PATH setup**.
 
 ## When these load
 
-These skills are injected into the `#sdlc/design` and `#sdlc/build` agents **only
+These skills are injected into the `#otto/design` and `#otto/build` agents **only
 when `revenueCloud.enabled` is `true`** in `.sdlc/config.json` (set during `/init`).
 Non-RCA projects never see them, so there is no prompt bloat. The design/build
 agents run a domain classifier and load the matching skill for the story.
 
 Deterministic operations that the upstream repo ran through standalone CLIs are
-being exposed as in-process **RCA MCP tools** (`rca_*`) on the slalom-sdlc MCP
+being exposed as in-process **RCA MCP tools** (`rca_*`) on the otto MCP
 server.
 
 ## Skills index
@@ -36,7 +36,7 @@ server.
 
 > The ARM Approvals vertical is a standard, not a skill — see
 > [`../../standards/arm.md`](../../standards/arm.md) and the
-> `#sdlc/arm-approvals` playbook.
+> `#otto/arm-approvals` playbook.
 
 ## How they are delivered
 

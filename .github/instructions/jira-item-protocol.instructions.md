@@ -70,7 +70,7 @@ If not already known, ask:
 }
 ```
 
-### Variant: Sprint Epic (created by `#sdlc/discover`)
+### Variant: Sprint Epic (created by `#otto/discover`)
 
 When creating an Epic that represents a **sprint container** (produced by the Discovery agent from a Sprint Allocation Plan), use this ADF structure instead:
 

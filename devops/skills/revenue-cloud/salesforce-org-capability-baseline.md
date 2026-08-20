@@ -3,10 +3,10 @@ name: org-capability-baseline
 description: Use this skill when the job is to baseline an authenticated Salesforce org before broader discovery, validate org-side prerequisites, run the canonical preflight-first command chain, and interpret compact org capability outputs without drifting into domain exploration or final synthesis.
 ---
 
-> **Vendored into slalom-sdlc.** This Revenue Cloud skill was adapted from
+> **Vendored into Otto.** This Revenue Cloud skill was adapted from
 > `Slalom/arm-build-agents`. Deterministic operations that the upstream skill ran
 > through standalone CLIs (e.g. `.agents/skills/.../scripts/*.ts`) are exposed here as
-> in-process **RCA MCP tools** (`rca_*`) on the slalom-sdlc MCP server — no external
+> in-process **RCA MCP tools** (`rca_*`) on the otto MCP server — no external
 > clone or PATH setup is required. Deep-dive `references/*` files named below live in the
 > upstream skill and are being progressively inlined; treat them as optional context, not
 > as files guaranteed to exist in this repo. This skill is only loaded when
@@ -59,7 +59,7 @@ If the org alias, auth posture, or run context is missing, retrieve or validate 
 - If the user provides existing artifacts, prefer reading the relevant run-scoped `outputs/doctor-sf-cli--<command_execution_id>.json` and `outputs/discover-org-baseline--<command_execution_id>.json` rather than re-running commands.
 
 ## Tool routing (RCA MCP tools)
-The `sfx` discovery surface is exposed in-process on the slalom-sdlc MCP server —
+The `sfx` discovery surface is exposed in-process on the otto MCP server —
 no external CLI install. Prefer these tools over shelling out:
 
 | MCP tool | Use for | Key inputs |

@@ -1,17 +1,17 @@
 ---
-name: slalom-test
+name: otto-test
 description: Test agent — Apex and JEST test classes, coverage validation
 target: github-copilot
-tools: ["slalom-sdlc/*", "read", "edit", "search", "execute"]
+tools: ["otto/*", "read", "edit", "search", "execute"]
 mcp-servers:
-  slalom-sdlc:
+  otto:
     type: local
     command: node
-    args: ["tools/slalom-sdlc/packages/mcp/dist/server.js", "--surface=copilot"]
+    args: ["tools/otto/packages/mcp/dist/server.js", "--surface=copilot"]
     tools: ["*"]
 ---
-<!-- GENERATED FILE — do not edit. Source: tools/slalom-sdlc/copilot/agents/. Regenerate: node tools/slalom-sdlc/scripts/generate-copilot-agents.mjs -->
-Call `sdlc_prompt` on the `slalom-sdlc` MCP server with `command: "test"` and `storyKey` set to the ticket key the user supplied (e.g. `PROJ-42`).
+<!-- GENERATED FILE — do not edit. Source: tools/otto/copilot/agents/. Regenerate: node tools/otto/scripts/generate-copilot-agents.mjs -->
+Call `otto_prompt` on the `otto` MCP server with `command: "test"` and `storyKey` set to the ticket key the user supplied (e.g. `PROJ-42`).
 
 If no ticket key was supplied, omit `storyKey` and ask the user which ticket to work on before continuing.
 

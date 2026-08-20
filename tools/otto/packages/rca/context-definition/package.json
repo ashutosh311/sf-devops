@@ -1,0 +1,17 @@
+{
+  "name": "@otto/rca-context-definition",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vendored RCA context-definition-editor (zero-dependency CJS) exposed in-process for MCP tools.",
+  "main": "src/index.js",
+  "types": "index.d.ts",
+  "files": [
+    "src",
+    "references",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "build": "node -e \"process.exit(0)\"",
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,6 +1,6 @@
 name: Release
 
-# Builds and publishes every Slalom SDLC release asset — the VS Code extension
+# Builds and publishes every Slalom Otto release asset — the VS Code extension
 # (VSIX), standalone CLI binaries, the instruction bundle, the Claude Code
 # plugin, and the GitHub Copilot pack — from a single git tag. The tag is the
 # only source of truth for the release version: no package.json bump, no local
@@ -24,7 +24,7 @@ name: Release
 #   Plain `vX.Y.Z` tags (no suffix) still require the tag to be on main.
 #
 # For local/dev builds that don't need a real version number, see
-# tools/slalom-sdlc/README.md → "Local builds".
+# tools/otto/README.md → "Local builds".
 
 on:
   push:
@@ -42,7 +42,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: tools/slalom-sdlc
+    working-directory: tools/otto
 
 jobs:
   release:
@@ -93,7 +93,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: tools/slalom-sdlc/pnpm-lock.yaml
+          cache-dependency-path: tools/otto/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -110,7 +110,7 @@ jobs:
           # packages/vscode/src/usage.ts). Requires a repo secret named
           # USAGE_TRACKING_ENDPOINT_URL under Settings → Secrets and variables →
           # Actions. If unset, this compiles in "" and usage tracking stays off.
-          SLALOM_SDLC_USAGE_ENDPOINT: ${{ secrets.USAGE_TRACKING_ENDPOINT_URL }}
+          OTTO_USAGE_ENDPOINT: ${{ secrets.USAGE_TRACKING_ENDPOINT_URL }}
         run: pnpm -r build
 
       - name: Typecheck
@@ -124,11 +124,11 @@ jobs:
           # Same secret as the "Build packages" step above — this step re-runs
           # esbuild (via the package script's `pnpm build`) before invoking vsce,
           # so it needs the env var again for the final VSIX to have it compiled in.
-          SLALOM_SDLC_USAGE_ENDPOINT: ${{ secrets.USAGE_TRACKING_ENDPOINT_URL }}
+          OTTO_USAGE_ENDPOINT: ${{ secrets.USAGE_TRACKING_ENDPOINT_URL }}
         run: pnpm --filter slalom-sdlc package
 
       - name: Package CLI binaries
-        run: pnpm --filter @sdlc/cli package
+        run: pnpm --filter @otto/cli package
 
       - name: Package instruction bundle
         run: node scripts/package-instructions.mjs --version "${{ steps.version.outputs.version }}"
@@ -143,14 +143,14 @@ jobs:
         run: |
           test -f dist/release/instructions.zip
           test -f dist/release/manifest.json
-          test -f dist/release/slalom-sdlc-plugin.zip
+          test -f dist/release/otto-plugin.zip
           test -f dist/plugin/server/server.js
           test -f dist/plugin/.mcp.json
-          test -f dist/release/slalom-sdlc-copilot.zip
+          test -f dist/release/otto-copilot.zip
           test -f dist/copilot/server/server.js
           test -f dist/copilot/install.sh
           ls dist/copilot/agents/*.agent.md
-          test -f dist/release/slalom-sdlc-copilot-marketplace.zip
+          test -f dist/release/otto-copilot-marketplace.zip
           test -f dist/copilot-plugin/.github/plugin/marketplace.json
           test -f dist/copilot-plugin/plugin/plugin.json
           test -f dist/copilot-plugin/plugin/.mcp.json
@@ -164,7 +164,7 @@ jobs:
       # built server bundle has to exist at a git ref. `plugin-dist` is that ref: a
       # branch holding only the assembled plugin, republished here on every release.
       # The marketplace entry in the repo-root .claude-plugin/marketplace.json points
-      # at it, so `claude plugin update slalom-sdlc` picks this up with no other moving
+      # at it, so `claude plugin update otto` picks this up with no other moving
       # parts. Skipped for pre-releases — a dry-run tag must never become what plugin
       # users install, exactly like `make_latest: false` on the release itself.
       - name: Publish plugin to plugin-dist branch
@@ -188,7 +188,7 @@ jobs:
           fi
 
           rm -rf "$WORK/plugin"
-          cp -R tools/slalom-sdlc/dist/plugin "$WORK/plugin"
+          cp -R tools/otto/dist/plugin "$WORK/plugin"
 
           cat > "$WORK/README.md" <<EOF
           # plugin-dist
@@ -197,8 +197,8 @@ jobs:
 
           It holds the built Claude Code plugin (\`plugin/\`) for the current release,
           republished by \`.github/workflows/release.yml\` on every \`vX.Y.Z\` tag. The
-          plugin source lives at \`tools/slalom-sdlc/plugin/\` on \`main\`; the bundled
-          server at \`plugin/server/server.js\` is built from \`tools/slalom-sdlc/packages/mcp\`.
+          plugin source lives at \`tools/otto/plugin/\` on \`main\`; the bundled
+          server at \`plugin/server/server.js\` is built from \`tools/otto/packages/mcp\`.
 
           Install: \`claude plugin marketplace add ${GITHUB_REPOSITORY}\`
 
@@ -214,7 +214,7 @@ jobs:
             exit 0
           fi
 
-          git -C "$WORK" commit -q -m "release: slalom-sdlc plugin ${TAG}"
+          git -C "$WORK" commit -q -m "release: otto plugin ${TAG}"
           git -C "$WORK" push origin plugin-dist
           echo "Published plugin ${TAG} to plugin-dist."
 
@@ -223,7 +223,7 @@ jobs:
       # ref: `copilot-dist`, republished here on every release, mirroring plugin-dist.
       # Users run `copilot plugin marketplace add Slalom/salesforce-devops` (the
       # `.github/plugin/marketplace.json` pointer on `main` resolves this branch)
-      # then `copilot plugin install slalom-sdlc@slalom`. Skipped for pre-releases for
+      # then `copilot plugin install otto@slalom`. Skipped for pre-releases for
       # the same reason plugin-dist is — a dry-run tag must never become what users install.
       - name: Publish Copilot plugin to copilot-dist branch
         if: steps.version.outputs.prerelease != 'true'
@@ -246,8 +246,8 @@ jobs:
           # The assembled tree is a branch root: .github/plugin/marketplace.json + plugin/.
           rm -rf "$WORK/.github/plugin" "$WORK/plugin"
           mkdir -p "$WORK/.github"
-          cp -R tools/slalom-sdlc/dist/copilot-plugin/.github/plugin "$WORK/.github/plugin"
-          cp -R tools/slalom-sdlc/dist/copilot-plugin/plugin "$WORK/plugin"
+          cp -R tools/otto/dist/copilot-plugin/.github/plugin "$WORK/.github/plugin"
+          cp -R tools/otto/dist/copilot-plugin/plugin "$WORK/plugin"
 
           cat > "$WORK/README.md" <<EOF
           # copilot-dist
@@ -256,13 +256,13 @@ jobs:
 
           It holds the built GitHub Copilot marketplace plugin for the current release:
           \`.github/plugin/marketplace.json\` (the \`slalom\` marketplace) and \`plugin/\`
-          (the \`slalom-sdlc\` plugin, including \`plugin/server/server.js\`). Republished by
+          (the \`otto\` plugin, including \`plugin/server/server.js\`). Republished by
           \`.github/workflows/release.yml\` on every \`vX.Y.Z\` tag. The plugin source lives at
-          \`tools/slalom-sdlc/copilot/plugin/\` on \`main\`; the bundled server is built from
-          \`tools/slalom-sdlc/packages/mcp\`.
+          \`tools/otto/copilot/plugin/\` on \`main\`; the bundled server is built from
+          \`tools/otto/packages/mcp\`.
 
           Install: \`copilot plugin marketplace add ${GITHUB_REPOSITORY}#copilot-dist\`
-          then \`copilot plugin install slalom-sdlc@slalom\`.
+          then \`copilot plugin install otto@slalom\`.
 
           Current release: ${TAG}
           EOF
@@ -276,7 +276,7 @@ jobs:
             exit 0
           fi
 
-          git -C "$WORK" commit -q -m "release: slalom-sdlc copilot plugin ${TAG}"
+          git -C "$WORK" commit -q -m "release: otto copilot plugin ${TAG}"
           git -C "$WORK" push origin copilot-dist
           echo "Published Copilot plugin ${TAG} to copilot-dist."
 
@@ -294,35 +294,35 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.prerelease == 'true' && format('Slalom SDLC {0} (pre-merge dry run — not for install)', steps.version.outputs.tag) || format('Slalom SDLC {0}', steps.version.outputs.tag) }}
+          name: ${{ steps.version.outputs.prerelease == 'true' && format('Slalom Otto {0} (pre-merge dry run — not for install)', steps.version.outputs.tag) || format('Slalom Otto {0}', steps.version.outputs.tag) }}
           body: |
             ${{ steps.version.outputs.prerelease == 'true' && 'Pre-merge dry-run build — validates the release pipeline from an unmerged commit. Not marked "latest"; the VS Code extension will never auto-sync to this.' || 'Automated release, built entirely from this tag — no manual version bump involved.' }}
 
             - **`*.vsix`** — the VS Code extension. Install via the Extensions panel → `···` → *Install from VSIX…* (first-time setup).
-            - **`slalom-sdlc-*`** — standalone CLI binaries (macOS/Windows/Linux) for headless or non-VS Code use.
+            - **`otto-*`** — standalone CLI binaries (macOS/Windows/Linux) for headless or non-VS Code use.
             - **`instructions.zip`** — the instruction bundle the installed extension downloads automatically on its daily background sync.
               Every file is checksum-validated against `manifest.json` before activation.
-            - **`slalom-sdlc-plugin.zip`** — the Claude Code plugin, for manual or air-gapped install.
+            - **`otto-plugin.zip`** — the Claude Code plugin, for manual or air-gapped install.
               Normally you don't need this file: `claude plugin marketplace add Slalom/salesforce-devops`
-              then `claude plugin install slalom-sdlc@slalom`, and `claude plugin update slalom-sdlc` thereafter.
-            - **`slalom-sdlc-copilot.zip`** — the GitHub Copilot pack (CLI + desktop app), for manual or
+              then `claude plugin install otto@slalom`, and `claude plugin update otto` thereafter.
+            - **`otto-copilot.zip`** — the GitHub Copilot pack (CLI + desktop app), for manual or
               air-gapped install. Normally you don't need this file: `copilot plugin marketplace add Slalom/salesforce-devops`
-              then `copilot plugin install slalom-sdlc@slalom`, and `copilot plugin update slalom-sdlc` thereafter.
-              To install from the zip instead, unzip and run `./install.sh` to add the SDLC agents at the user
+              then `copilot plugin install otto@slalom`, and `copilot plugin update otto` thereafter.
+              To install from the zip instead, unzip and run `./install.sh` to add the Otto agents at the user
               level (`~/.copilot/agents/`), then invoke them with `/agent slalom-about` (or discover/refine/design/build/test/release).
-            - **`slalom-sdlc-copilot-marketplace.zip`** — the same Copilot plugin as a self-contained
+            - **`otto-copilot-marketplace.zip`** — the same Copilot plugin as a self-contained
               marketplace tree, for adding a local marketplace air-gapped (`copilot plugin marketplace add ./<unzipped-dir>`).
           draft: true
           prerelease: ${{ steps.version.outputs.prerelease }}
           make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
           files: |
-            tools/slalom-sdlc/dist/release/instructions.zip
-            tools/slalom-sdlc/dist/release/manifest.json
-            tools/slalom-sdlc/dist/release/slalom-sdlc-plugin.zip
-            tools/slalom-sdlc/dist/release/slalom-sdlc-copilot.zip
-            tools/slalom-sdlc/dist/release/slalom-sdlc-copilot-marketplace.zip
-            tools/slalom-sdlc/packages/vscode/*.vsix
-            tools/slalom-sdlc/packages/cli/binaries/*
+            tools/otto/dist/release/instructions.zip
+            tools/otto/dist/release/manifest.json
+            tools/otto/dist/release/otto-plugin.zip
+            tools/otto/dist/release/otto-copilot.zip
+            tools/otto/dist/release/otto-copilot-marketplace.zip
+            tools/otto/packages/vscode/*.vsix
+            tools/otto/packages/cli/binaries/*
 
       - name: Publish GitHub Release
         working-directory: .
