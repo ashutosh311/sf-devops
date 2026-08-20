@@ -3,3 +3,5 @@ packages:
   - "packages/rca/*"
 allowBuilds:
   esbuild: true
+  keytar: true
+  "@vscode/vsce-sign": true
