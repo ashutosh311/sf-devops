@@ -1,0 +1,114 @@
+name: CI
+
+# Validates every pull request that touches the SDLC tool by running the same
+# build/typecheck/package pipeline as .github/workflows/release.yml — minus the
+# tag-driven version resolution and the steps that actually publish (GitHub
+# Release, plugin-dist / copilot-dist branches). This gives PR authors and
+# reviewers a green/red signal on compilation and packaging *before* merge,
+# without needing to push a `-rc.N` pre-release tag just to validate the
+# pipeline still works.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/slalom-sdlc/**"
+      - "package.json"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/release.yml"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: tools/slalom-sdlc
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: tools/slalom-sdlc/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Stamp dev version (PR build — never committed or published)
+        run: node scripts/sync-version.mjs --version "0.0.0-pr${{ github.event.pull_request.number }}"
+
+      - name: Build packages
+        run: pnpm -r build
+        # Intentionally omits SLALOM_SDLC_USAGE_ENDPOINT — PR builds never carry the
+        # real usage-tracking secret; usage tracking simply compiles in disabled ("").
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Verify Copilot agents are in sync
+        run: node scripts/generate-copilot-agents.mjs --check
+
+      - name: Package VS Code extension (VSIX)
+        run: pnpm --filter slalom-sdlc package
+
+      - name: Package CLI binaries
+        run: pnpm --filter @sdlc/cli package
+
+      - name: Package instruction bundle
+        run: node scripts/package-instructions.mjs --version "0.0.0-pr${{ github.event.pull_request.number }}"
+
+      - name: Package Claude Code plugin
+        run: node scripts/package-plugin.mjs --version "0.0.0-pr${{ github.event.pull_request.number }}"
+
+      - name: Package Copilot pack
+        run: node scripts/package-copilot.mjs --version "0.0.0-pr${{ github.event.pull_request.number }}"
+
+      - name: Verify assets
+        run: |
+          test -f dist/release/instructions.zip
+          test -f dist/release/manifest.json
+          test -f dist/release/slalom-sdlc-plugin.zip
+          test -f dist/plugin/server/server.js
+          test -f dist/plugin/.mcp.json
+          test -f dist/release/slalom-sdlc-copilot.zip
+          test -f dist/copilot/server/server.js
+          test -f dist/copilot/install.sh
+          ls dist/copilot/agents/*.agent.md
+          test -f dist/release/slalom-sdlc-copilot-marketplace.zip
+          test -f dist/copilot-plugin/.github/plugin/marketplace.json
+          test -f dist/copilot-plugin/plugin/plugin.json
+          test -f dist/copilot-plugin/plugin/.mcp.json
+          test -f dist/copilot-plugin/plugin/server/server.js
+          ls dist/copilot-plugin/plugin/agents/*.agent.md
+          ls packages/vscode/*.vsix
+          ls packages/cli/binaries/*
+          ls -lh dist/release packages/vscode/*.vsix packages/cli/binaries/*
+
+      # Lets a PR author or reviewer sanity-check the actual VSIX/CLI binaries from
+      # this PR without waiting for a release — download from the workflow run's
+      # Summary page. Never published anywhere; auto-expires.
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-${{ github.event.pull_request.number }}-build
+          retention-days: 7
+          path: |
+            tools/slalom-sdlc/packages/vscode/*.vsix
+            tools/slalom-sdlc/packages/cli/binaries/*
+            tools/slalom-sdlc/dist/release/*
