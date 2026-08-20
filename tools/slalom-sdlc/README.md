@@ -72,7 +72,7 @@ claude mcp remove slalom-sdlc
 **Recommended — marketplace plugin.** Add the Slalom marketplace and install the plugin; it updates in place thereafter:
 
 ```bash
-copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+copilot plugin marketplace add Slalom/salesforce-devops
 copilot plugin install slalom-sdlc@slalom
 ```
 
@@ -232,11 +232,11 @@ The marketplace entry points at the **`plugin-dist` branch**, a generated branch
 Add the marketplace and install the plugin — a one-time setup that then works across every project, exactly like the VSIX or the Claude plugin:
 
 ```bash
-copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+copilot plugin marketplace add Slalom/salesforce-devops
 copilot plugin install slalom-sdlc@slalom
 ```
 
-The marketplace entry lives on the generated **`copilot-dist` branch** (`.github/plugin/marketplace.json` + the assembled `plugin/`, including the built `server/server.js`), republished by the release workflow on every `vX.Y.Z` tag. `main` holds the plugin *source* at `tools/slalom-sdlc/copilot/plugin/`; no build output is committed there. Update with `copilot plugin update slalom-sdlc`.
+The marketplace pointer lives on `main` at `.github/plugin/marketplace.json`; its one entry's `source` references the generated **`copilot-dist` branch** (`repo` + `path: plugin` + `ref: copilot-dist`), where the assembled `plugin/` (including the built `server/server.js`) is republished by the release workflow on every `vX.Y.Z` tag. `main` holds only the pointer and the plugin *source* at `tools/slalom-sdlc/copilot/plugin/`; no build output is committed there. Update with `copilot plugin update slalom-sdlc`.
 
 **Required:** Node.js 20+ on `PATH`, GitHub Copilot access, GitHub account with access to `Slalom/salesforce-devops`.
 
@@ -484,7 +484,7 @@ tools/slalom-sdlc/
     └── generate-copilot-agents.mjs — regenerates the repo's .github/agents/ from copilot/agents/ (--check for CI)
 ```
 
-The repo-root `.claude-plugin/marketplace.json` is the other half of the Claude plugin — it's what `claude plugin marketplace add Slalom/salesforce-devops` reads. The GitHub Copilot marketplace is served from the generated **`copilot-dist` branch** (`copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist`), republished by the release workflow. The repo-root `.github/agents/*.agent.md` are generated from `copilot/agents/` by `generate-copilot-agents.mjs`, letting `copilot` discover the SDLC commands directly in this source repo. Regenerate them after editing any template:
+The repo-root `.claude-plugin/marketplace.json` is the other half of the Claude plugin — it's what `claude plugin marketplace add Slalom/salesforce-devops` reads. The repo-root `.github/plugin/marketplace.json` is its GitHub Copilot equivalent — what `copilot plugin marketplace add Slalom/salesforce-devops` reads; its plugin `source` points at the generated **`copilot-dist` branch** (`repo` + `path: plugin` + `ref: copilot-dist`), republished by the release workflow. The repo-root `.github/agents/*.agent.md` are generated from `copilot/agents/` by `generate-copilot-agents.mjs`, letting `copilot` discover the SDLC commands directly in this source repo. Regenerate them after editing any template:
 
 ```bash
 node tools/slalom-sdlc/scripts/generate-copilot-agents.mjs

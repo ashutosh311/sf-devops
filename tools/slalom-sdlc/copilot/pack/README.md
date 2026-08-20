@@ -8,7 +8,7 @@ VS Code and the plugin adds them to Claude Code.
 > route — no zip, and it self-updates:
 >
 > ```bash
-> copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+> copilot plugin marketplace add Slalom/salesforce-devops
 > copilot plugin install slalom-sdlc@slalom
 > ```
 >

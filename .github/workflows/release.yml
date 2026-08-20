@@ -221,7 +221,8 @@ jobs:
       # The GitHub Copilot CLI installs marketplace plugins by cloning a git ref too,
       # so the assembled Copilot plugin (with its built server bundle) needs its own
       # ref: `copilot-dist`, republished here on every release, mirroring plugin-dist.
-      # Users run `copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist`
+      # Users run `copilot plugin marketplace add Slalom/salesforce-devops` (the
+      # `.github/plugin/marketplace.json` pointer on `main` resolves this branch)
       # then `copilot plugin install slalom-sdlc@slalom`. Skipped for pre-releases for
       # the same reason plugin-dist is — a dry-run tag must never become what users install.
       - name: Publish Copilot plugin to copilot-dist branch
@@ -305,7 +306,7 @@ jobs:
               Normally you don't need this file: `claude plugin marketplace add Slalom/salesforce-devops`
               then `claude plugin install slalom-sdlc@slalom`, and `claude plugin update slalom-sdlc` thereafter.
             - **`slalom-sdlc-copilot.zip`** — the GitHub Copilot pack (CLI + desktop app), for manual or
-              air-gapped install. Normally you don't need this file: `copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist`
+              air-gapped install. Normally you don't need this file: `copilot plugin marketplace add Slalom/salesforce-devops`
               then `copilot plugin install slalom-sdlc@slalom`, and `copilot plugin update slalom-sdlc` thereafter.
               To install from the zip instead, unzip and run `./install.sh` to add the SDLC agents at the user
               level (`~/.copilot/agents/`), then invoke them with `/agent slalom-about` (or discover/refine/design/build/test/release).

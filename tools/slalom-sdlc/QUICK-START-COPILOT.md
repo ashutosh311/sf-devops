@@ -100,7 +100,7 @@ Configure the Azure DevOps MCP server with a Personal Access Token that has work
 The easiest install is the native Copilot marketplace. Add the Slalom marketplace once, then install the plugin:
 
 ```bash
-copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+copilot plugin marketplace add Slalom/salesforce-devops
 copilot plugin install slalom-sdlc@slalom
 ```
 
@@ -333,7 +333,7 @@ artifacts/
 | `slalom-*` agents not appearing in `/agent` list | **Plugin:** run `copilot plugin list` and confirm `slalom-sdlc@slalom` is installed (agents are namespaced `slalom-sdlc:*`). **Zip:** confirm `~/.copilot/agents/slalom-*.agent.md` files exist; re-run `./install.sh` |
 | `node: command not found` during install | Install Node.js 20+ and ensure it is on your `PATH` |
 | `/agent slalom-init` does not start | **Plugin:** re-run `copilot plugin update slalom-sdlc`. **Zip:** verify `~/.copilot/mcp-config.json` contains the `slalom-sdlc` entry; re-run the installer |
-| `marketplace add` fails | Confirm you have access to `Slalom/salesforce-devops` and are authenticated (`copilot auth login`); the marketplace lives on the `copilot-dist` branch (`Slalom/salesforce-devops#copilot-dist`) |
+| `marketplace add` fails | Confirm you have access to `Slalom/salesforce-devops` and are authenticated (`copilot auth login`); the pointer lives on `main` at `.github/plugin/marketplace.json` and resolves the plugin from the `copilot-dist` branch |
 | PM tool status updates not working | Confirm your PM tool MCP server is configured and accessible; check credentials |
 | `push-backlog` / `sync-pm` report no tools available | Verify the PM tool MCP server is registered in `~/.copilot/mcp-config.json` and your credentials are valid |
 | Sandbox deploy fails | Run `sf org list` and confirm the alias in `.sdlc/config.json` matches |

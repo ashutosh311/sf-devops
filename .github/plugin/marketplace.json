@@ -1,0 +1,26 @@
+{
+  "name": "slalom",
+  "owner": {
+    "name": "Slalom UK&I"
+  },
+  "metadata": {
+    "description": "Slalom UK&I delivery tooling for GitHub Copilot"
+  },
+  "plugins": [
+    {
+      "name": "slalom-sdlc",
+      "description": "Slalom's Agentic SDLC for Salesforce — phase agents for discovery, refinement, design, build, test, and release, driven by your project's JIRA/ADO board, org, and coding standards.",
+      "author": {
+        "name": "Slalom UK&I"
+      },
+      "category": "development",
+      "source": {
+        "source": "github",
+        "repo": "Slalom/salesforce-devops",
+        "path": "plugin",
+        "ref": "copilot-dist"
+      },
+      "homepage": "https://github.com/Slalom/salesforce-devops/tree/main/tools/slalom-sdlc"
+    }
+  ]
+}

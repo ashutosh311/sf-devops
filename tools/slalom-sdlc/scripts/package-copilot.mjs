@@ -136,8 +136,9 @@ console.log(`  ✓ dist/release/slalom-sdlc-copilot.zip`);
 // The same agents + server, assembled as a proper Copilot plugin behind a
 // marketplace manifest. This tree mirrors the `copilot-dist` branch the release
 // workflow publishes: the marketplace.json lives at `.github/plugin/` and points
-// at the sibling `plugin/` directory. Users then run:
-//   copilot plugin marketplace add Slalom/salesforce-devops#copilot-dist
+// at the sibling `plugin/` directory. The committed `.github/plugin/marketplace.json`
+// on `main` points at this branch instead, so users run:
+//   copilot plugin marketplace add Slalom/salesforce-devops
 //   copilot plugin install slalom-sdlc@slalom
 //
 // Unlike the pack (install.sh, which resolves an absolute server path), the plugin
