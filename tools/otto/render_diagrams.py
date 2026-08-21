@@ -40,7 +40,7 @@ def render(filename: str, text: str) -> None:
 # ── Diagram 1: Repo Structure ────────────────────────────────────────────────
 REPO_STRUCTURE = """
 ╔══════════════════════════════════════════════════════════════════════╗
-║              SLALOM SDLC EXTENSION — REPO STRUCTURE                 ║
+║              SLALOM OTTO EXTENSION — REPO STRUCTURE                 ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
   sf-uki-devops/  (Slalom internal repo)
@@ -86,7 +86,7 @@ BUILD_TIME = """
 
               ┌──────────────────────────────────────┐
               │          extension.js  (544 KB)       │
-              │      inside slalom-sdlc-0.1.0.vsix    │
+              │      inside slalom-sdlc-1.0.0.vsix    │
               │                                       │
               │  deploymentStr      = "# Sandbox…"   │ ← full markdown, baked in
               │  orgImpactStr       = "# Salesforce…"│ ← full markdown, baked in
@@ -119,7 +119,7 @@ INIT_FLOW = """
         ▼
   scaffoldRepo() writes to CLIENT repo:
 
-  ├── .sdlc/config.json           team + project settings
+  ├── .otto/config.json           team + project settings
   ├── .vscode/mcp.json            Salesforce + Atlassian MCP config
   ├── devops/standards/           coding standards (dev team reads these)
   │   ├── apex.md
@@ -150,7 +150,7 @@ RUNTIME_FLOW = """
           │                                 │
           ▼                                 ▼
   requireConfig()                   designTemplate  (Handlebars string)
-  reads .sdlc/config.json           ┌────────────────────────────┐
+  reads .otto/config.json           ┌────────────────────────────┐
   ┌───────────────────┐             │ ## Step 2 — Org discovery  │
   │ paths.artifacts   │             │                            │
   │ paths.standards   │             │ {{{instructions            │
@@ -217,7 +217,7 @@ WHAT_LIVES_WHERE = """
   │ Phase prompts /         │ packages/core/src/   │ ✗ never written          │
   │ Handlebars templates    │ templates/*.ts       │   compiled into .vsix    │
   ├─────────────────────────┼──────────────────────┼──────────────────────────┤
-  │ Project config          │ ✗                    │ ✓ .sdlc/config.json      │
+  │ Project config          │ ✗                    │ ✓ .otto/config.json      │
   │                         │                      │   written on /init       │
   ├─────────────────────────┼──────────────────────┼──────────────────────────┤
   │ MCP config              │ ✗                    │ ✓ .vscode/mcp.json       │
