@@ -3,13 +3,13 @@ import { z } from "zod/v3";
 import { renderCommand } from "./render.js";
 
 const STORY_KEY_SCHEMA = z.object({
-  storyKey: z.string().optional().describe("JIRA story key, e.g. PROJ-42"),
+  storyKey: z.string().optional().describe("JIRA story key (e.g. PROJ-42) or, for refine, an epic key or sprint to refine every unrefined story in it"),
 });
 type StoryKeyArgs = z.infer<typeof STORY_KEY_SCHEMA>;
 
 const PHASE_DESCRIPTIONS: Record<string, string> = {
   discover: "Discovery agent — maps requirements, identifies unknowns, drafts epics and stories",
-  refine:   "Refinement agent — acceptance criteria, open questions, effort estimate for a JIRA story",
+  refine:   "Refinement agent — acceptance criteria, open questions, effort estimate for a JIRA story, epic, or sprint (epic/sprint ⇒ refines all unrefined child stories)",
   design:   "Technical design agent — solution approach, data model, component breakdown, sub-tasks",
   build:    "Build agent — scaffolds Apex, LWC, config metadata; reviews with you; deploys to sandbox",
   test:     "Test agent — generates Apex test classes and JEST tests, validates coverage",

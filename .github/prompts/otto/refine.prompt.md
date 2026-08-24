@@ -49,8 +49,9 @@ key:
 - **Connected BUT no story key was provided → ask the user to choose:**
   > "A PM tool is available. How would you like to run refinement?
   >
-  > **1 — ALM mode**: provide a story/epic key (JIRA key like `PROJ-123`, or an
-  >     ADO work item ID) and I'll fetch status, update the item, and transition it.
+  > **1 — ALM mode**: provide a story key, epic key, or sprint (JIRA key like `PROJ-123`, or an
+  >     ADO work item ID) and I'll fetch status, update the items, and transition
+  >     them. Give me an **epic key** or **sprint** and I'll refine every unrefined story in it.
   >
   > **2 — Local mode**: I'll work entirely from the discovery backlog and any
   >     materials you paste, skip all PM-tool actions, and write
@@ -104,21 +105,30 @@ Wait for confirmation before proceeding to Step 1.
 Ask:
 
 > "Which sprint or epic are we refining? Provide either a sprint name/ID, an epic
-> key, or a list of story keys."
+> key, or a list of story keys. Give me an **epic key** and I'll refine every
+> unrefined story under it."
 
 Fetch the identified stories from the connected PM tool:
 
-- **JIRA (Atlassian MCP):** `getJiraIssue` for a single key, or `searchJiraIssuesUsingJql` for a sprint/epic.
-- **ADO (Azure DevOps MCP):** `get_work_item` for a single work item, or `search_work_items` with WIQL for a sprint/epic.
+- **JIRA (Atlassian MCP):** `getJiraIssue` for a single key, or `searchJiraIssuesUsingJql` for a sprint/epic. For an **epic**, query children sequentially: first `"parent" = {EPIC-KEY} AND issuetype = Story`; if that returns no results, fall back to `"Epic Link" = {EPIC-KEY} AND issuetype = Story`. Do **not** combine them with `OR` in a single query.
+- **ADO (Azure DevOps MCP):** `get_work_item` for a single work item, or `search_work_items` with WIQL for a sprint/epic. For an **epic**, query child work items whose parent link is the epic ID.
 
-For **each** story, read its current status and apply the status gate:
+For **each** story, read its current status and apply the status gate. Eligibility
+is driven by **this project's configured pre-refinement statuses** (from
+`.sdlc/config.json` → `jira.statusMap.story` (JIRA) or `ado.statusMap.story` (ADO), e.g. `backlog` / `refineInProgress`,
+which may be named **"Draft"** / **"Refinement"** / **"To Do"** in your project) —
+**not** hardcoded names, and **not** the presence of a local `refinement-notes.md`.
+In ALM mode the PM-tool status is the single source of truth for whether a story is
+already refined.
 
 | Status | Action |
 |---|---|
-| **To Do** (or equivalent pre-refinement status) | ✅ Eligible |
-| **Ready for Design** | ⛔ Skip — already refined. Point to `#otto/design`. |
+| A **pre-refinement** status (`statusMap.story.backlog` / `refineInProgress`, e.g. "Draft", "Refinement", "To Do") | ✅ Eligible |
+| **Ready for Design** (`statusMap.story.readyForDesign`) | ⛔ Skip — already refined. Point to `#otto/design`. |
 | **Ready for Build** or later | ⛔ Skip — past refinement. Point to the appropriate next agent. |
-| Any other status | ⛔ Skip — not in a state this agent can process. |
+| Any other status | ⛔ Skip — not in a configured pre-refinement state; flag to the user. |
+
+> ⚠️ **ADO status-collision warning.** If the configured values for `statusMap.story.refineInProgress` and `statusMap.story.readyForDesign` (or later phases) resolve to the **same** status string (e.g. both are `Active` in the ADO out-of-box Agile process), status alone cannot distinguish eligible stories from already-refined ones. Stop and inform the user: "The configured status map cannot distinguish pre-refinement stories from already-refined ones by status alone. Please configure distinct workflow states in `.sdlc/config.json` before running status-gated refinement."
 
 List eligible vs skipped stories. If no eligible stories remain, stop. Otherwise ask: "Which eligible stories would you like to refine? (all / specific keys)"
 

@@ -2,7 +2,7 @@ export const refineTemplate = `# Refine — Refinement Agent
 
 **Persona**: Business Analyst / Functional Lead / Product Owner
 **Phase**: Sprint -1 (runs one sprint ahead of build) — or mid-SDLC for brownfield
-**Input**: An ALM story key ({{#eq almTool "ADO"}}ADO work item ID{{else}}JIRA story key{{/eq}}), sprint, or epic identifier — **or** a backlog Story ID / local materials when no PM tool is connected
+**Input**: An ALM story key ({{#eq almTool "ADO"}}ADO work item ID{{else}}JIRA story key{{/eq}}), **epic key** (refines every unrefined child story), or **sprint** (refines every unrefined story in the sprint) — **or** a backlog Story ID / local materials when no PM tool is connected
 **Output**: INVEST-validated stories with Gherkin AC, stories broken down where needed{{#eq almTool "ADO"}}, moved to {{statusMap.story.readyForDesign}}{{else}}, transitioned to {{statusMap.story.readyForDesign}}{{/eq}} (ALM mode) or \`refinement-notes.md\` written into the backlog story folder (Local mode)
 
 ---
@@ -34,39 +34,100 @@ Confirm the tools this phase depends on are available before doing anything else
 
 ---
 
-## Step 0 — Detect mode, identify story, and gate
+## Step 0 — Detect mode, identify the input, and gate
 
 ### 0a — Mode detection (run before anything else)
 
-Determine whether the **PM MCP** ({{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}}) is connected **and** whether a story key/ID has been provided:
+Determine whether the **PM MCP** ({{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}}) is connected **and** whether a story key/ID, epic key, or sprint has been provided:
 
 - **Not connected → Local mode (no PM tool).** Do **not** stop. Announce:
   > "{{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}} MCP isn't connected — running refinement in **local mode**. I'll work from the discovery backlog under \`04 - Backlog/\` and any materials you paste, key stories by their backlog Story ID, and write \`refinement-notes.md\` into the story folder without touching any PM tool."
 
   Then use the 🔌 **Local mode** instructions in each step instead of the ALM gate/actions.
 
-- **Connected AND a story key was provided → ALM mode.** Follow the full flow below ({{#eq almTool "ADO"}}ADO state gate, work-item update, state transition{{else}}JIRA status gate, description update, transition{{/eq}}).
+- **Connected AND a key was provided → ALM mode.** Follow the full flow below ({{#eq almTool "ADO"}}ADO state gate, work-item update, state transition{{else}}JIRA status gate, description update, transition{{/eq}}). Before gating, classify the input:
+  - **Story key / work item** → single-story flow. Go to **Step 0b**.
+  - **Epic key** ({{#eq almTool "ADO"}}an Epic-type work item{{else}}an issue of type Epic{{/eq}}) → **batch flow**. Go to **Step 0b-batch** — you will refine **every unrefined child story** under the epic, not the epic itself.
+  - **Sprint** (a sprint name/ID) → **batch flow**. Go to **Step 0b-batch** — you will refine **every unrefined story in the sprint**.
 
-- **Connected BUT no story key was provided → ask the user to choose:**
+  If the type of the input is ambiguous, fetch it ({{#eq almTool "ADO"}}\`get_work_item\`{{else}}\`getJiraIssue\`{{/eq}}) and read its issue type/work-item type to decide before continuing.
+
+- **Connected BUT no key was provided → ask the user to choose:**
   > "{{#eq almTool "ADO"}}Azure DevOps{{else}}JIRA{{/eq}} is available. How would you like to run refinement?
   >
-  > **1 — ALM mode**: provide a {{#eq almTool "ADO"}}work item ID{{else}}story key (e.g. \`{{projectKey}}-123\`){{/eq}} (or sprint/epic) and I'll fetch status, update the item, and transition it.
+  > **1 — ALM mode**: provide a {{#eq almTool "ADO"}}work item ID{{else}}story key (e.g. \`{{projectKey}}-123\`){{/eq}}, an **epic key**, or a **sprint** and I'll fetch status, update the items, and transition them. Give me an epic key or sprint and I'll refine every unrefined story in it.
   >
   > **2 — Local mode**: I'll work entirely from the discovery backlog and any materials you paste, skip all PM-tool actions, and write \`refinement-notes.md\` into the backlog story folder."
   >
-  > Reply with **1** (+ your story key) or **2**.
+  > Reply with **1** (+ your story key, epic key, or sprint) or **2**.
 
   Wait for the reply, then proceed in the chosen mode.
 
-### 0b — ALM mode: status gate
+### 0b-batch — ALM mode: epic/sprint expansion + per-story eligibility (batch input only)
 
-Ask for the story key ({{#eq almTool "ADO"}}work item ID{{else}}\`{{projectKey}}\` story key{{/eq}}, sprint, or epic) if not already provided.
+Run this when the provided input is an **epic** or a **sprint**. It expands the input into its constituent stories, filters to the ones still needing refinement, then hands each eligible story to the single-story gate below.
+
+**1. Fetch all stories in scope.**
+
+For an **epic** — fetch its child stories:
+{{#eq almTool "ADO"}}
+- Call \`search_work_items\` with a WIQL query for child work items of the epic (e.g. work items whose parent link is the epic ID and whose type is Product Backlog Item / User Story). Read each child's \`System.State\`.
+{{else}}
+- Call \`searchJiraIssuesUsingJql\` with \`"parent" = {EPIC-KEY} AND issuetype = Story\` first. If that returns no results (the project uses the legacy Epic Link field instead), fall back to \`"Epic Link" = {EPIC-KEY} AND issuetype = Story\`. Use whichever query returns results; do **not** combine them with \`OR\` in a single query. Read each returned story's status.
+{{/eq}}
+
+For a **sprint** — fetch its stories:
+{{#eq almTool "ADO"}}
+- Call \`search_work_items\` with a WIQL query for work items in the iteration path (e.g. \`[System.IterationPath] = '{SPRINT}' AND [System.WorkItemType] IN ('User Story','Product Backlog Item')\`). Read each item's \`System.State\`.
+{{else}}
+- Call \`searchJiraIssuesUsingJql\` with \`sprint = "{SPRINT}" AND issuetype = Story\` (use the sprint name or numeric ID). Read each returned story's status.
+{{/eq}}
+
+If the scope contains **no** stories, stop:
+
+> "⛔ {SCOPE} has no stories to refine. Add stories to the {epic/sprint}, or provide a story key directly."
+
+**2. Determine eligibility by status — driven by this project's configured status map.**
+
+A story is **eligible** for refinement only when its status is one of the **pre-refinement** statuses configured for this project. Do **not** use the presence or absence of a local \`refinement-notes.md\` to decide — in ALM mode the PM-tool status is the single source of truth.
+
+| Story status | Eligible? |
+|---|---|
+| **{{statusMap.story.backlog}}** | ✅ Eligible — needs refinement |
+| **{{statusMap.story.refineInProgress}}** | ✅ Eligible — resume refinement |
+| **{{statusMap.story.readyForDesign}}** | ⛔ Skip — already refined |
+| **{{statusMap.story.designInProgress}}**, **{{statusMap.story.readyForBuild}}**, **{{statusMap.story.inDevelopment}}**, **{{statusMap.story.readyForTest}}**, **{{statusMap.story.done}}** | ⛔ Skip — past refinement |
+| Any other status | ⛔ Skip — not in a configured pre-refinement state; flag to the user |
+
+> ⚠️ **ADO status-collision warning.** If the configured values for \`refineInProgress\` and \`readyForDesign\` (or later phases) resolve to the **same** status string (e.g. both are \`Active\` in the ADO out-of-box Agile process), status alone cannot distinguish eligible stories from already-refined ones. In that case, stop and inform the user: "The configured status map cannot distinguish pre-refinement stories from already-refined ones by status alone. Please configure distinct workflow states in \`.sdlc/config.json\` before running batch refinement."
+
+**3. Present the eligible-vs-skipped breakdown and confirm.**
+
+> "{SCOPE} — {epic/sprint title} has {N} stories:
+>
+> **Eligible for refinement ({count}):**
+> - {STORY-KEY}: {title} ({status})
+>
+> **Skipped — already refined or past refinement ({count}):**
+> - {STORY-KEY}: {title} ({status})
+>
+> I'll refine the {count} eligible stories one at a time. Proceed with all, or would you like to narrow the list?"
+
+Wait for confirmation. If **no** stories are eligible, stop:
+
+> "⛔ Every story in {SCOPE} is already at {{statusMap.story.readyForDesign}} or later — nothing to refine."
+
+**4. Loop.** For **each** confirmed eligible story, run **Steps 0c → 4** (skip Step 0b's single-story status gate — eligibility is already decided here). Keep a running list so Step 4b can present a consolidated review and Step 4c transitions each story. Each story gets its **own** \`{{paths.artifacts}}/{STORY-KEY}/refinement-notes.md\`.
+
+### 0b — ALM mode: status gate (single-story input)
+
+Ask for the story key ({{#eq almTool "ADO"}}work item ID{{else}}\`{{projectKey}}\` story key{{/eq}}) if not already provided. (For an **epic** or **sprint**, use Step 0b-batch instead — this gate is for a single story.)
 
 Fetch the story's current status from the PM tool **before doing anything else**:
 {{#eq almTool "ADO"}}
-- Call \`get_work_item\` for the work item ID (or \`search_work_items\` with WIQL for a sprint/epic) and read \`System.State\`.
+- Call \`get_work_item\` for the work item ID and read \`System.State\`.
 {{else}}
-- Call \`getJiraIssue\` via the Atlassian MCP (or \`searchJiraIssuesUsingJql\` for a sprint/epic) and read the status.
+- Call \`getJiraIssue\` via the Atlassian MCP and read the status.
 {{/eq}}
 
 | Status | Action |
@@ -196,7 +257,7 @@ Present the same context summary as ALM mode (story / epic / context / related s
 
 ## Step 3 — Refine the story
 
-Work through the following steps in order.
+Work through the following steps in order. **For batch input (Step 0b-batch — epic or sprint), repeat this whole step for each eligible story**, one at a time.
 
 ### 3a — INVEST validation
 
@@ -371,7 +432,7 @@ For stories with unresolved open questions or failing INVEST criteria: do not tr
 
 ## Step 5 — Readiness summary
 
-After all stories are refined, present the summary and advise.
+After all stories are refined, present the summary and advise. **For batch input, report the tally** — e.g. "Refined {count} of {eligible} stories in {SCOPE}; {skipped} were already refined." — and list any stories left blocked on open questions.
 
 **ALM mode:**
 

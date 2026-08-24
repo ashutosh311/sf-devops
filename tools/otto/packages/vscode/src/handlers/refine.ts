@@ -162,12 +162,40 @@ async function runAlmMode(
 
   const scopePick = await vscode.window.showQuickPick(
     [
-      { label: "$(list-ordered) Specific story", description: `enter a ${almTool} key`, value: "key" as const },
+      { label: "$(list-ordered) Specific story", description: `enter a ${almTool} story key`, value: "key" as const },
+      { label: "$(symbol-class) Epic", description: `refine every unrefined story under a ${almTool} epic`, value: "epic" as const },
+      { label: "$(calendar) Sprint", description: `refine every unrefined story in a ${almTool} sprint`, value: "sprint" as const },
       { label: "$(checklist) All stories in Backlog status", description: `refine everything eligible in ${almTool}`, value: "all" as const },
     ],
     { title: "Refine Agent — ALM Mode", placeHolder: "What would you like to refine?", ignoreFocusOut: true }
   );
   if (!scopePick) { stream.markdown("Refinement cancelled."); return; }
+
+  const eligibleStatuses =
+    (almTool === "ADO"
+      ? (config.ado?.statusMap ?? config.jira?.statusMap)
+      : config.jira?.statusMap ?? config.ado?.statusMap
+    )?.story ?? DEFAULT_STATUS_MAP.story;
+  const preRefinementStatuses = `"${eligibleStatuses.backlog}" or "${eligibleStatuses.refineInProgress}"`;
+
+  // Batch (epic/sprint) refinement is status-gated, so a status map whose
+  // pre-refinement and later phases collide cannot tell eligible from refined.
+  const hasStatusCollision = (): boolean => {
+    const preRefinementSet = new Set([eligibleStatuses.backlog, eligibleStatuses.refineInProgress]);
+    const skipSet = new Set([
+      eligibleStatuses.readyForDesign,
+      eligibleStatuses.designInProgress,
+      eligibleStatuses.readyForBuild,
+      eligibleStatuses.inDevelopment,
+      eligibleStatuses.readyForTest,
+      eligibleStatuses.done,
+    ]);
+    return [...preRefinementSet].some((s) => skipSet.has(s));
+  };
+  const collisionMessage =
+    `⚠️ **Status-collision detected in the configured status map.** The configured status map cannot distinguish pre-refinement stories from already-refined ones by status alone ` +
+    `(e.g. \`refineInProgress\` and \`readyForDesign\` both map to \`"${eligibleStatuses.refineInProgress}"\`). ` +
+    `Please configure distinct workflow states in \`.sdlc/config.json\` before running batch refinement.`;
 
   let userMessage: string;
   if (scopePick.value === "key") {
@@ -179,8 +207,36 @@ async function runAlmMode(
     });
     if (!key?.trim()) { stream.markdown("Refinement cancelled."); return; }
     userMessage = key.trim();
+  } else if (scopePick.value === "epic") {
+    const epicKey = await vscode.window.showInputBox({
+      title: "Refine Agent — ALM Mode",
+      prompt: `Enter the ${almTool} epic key`,
+      placeHolder: `${projectKey}-100`,
+      ignoreFocusOut: true,
+    });
+    if (!epicKey?.trim()) { stream.markdown("Refinement cancelled."); return; }
+    if (hasStatusCollision()) { stream.markdown(collisionMessage); return; }
+    userMessage =
+      `Refine every unrefined story under epic ${epicKey.trim()}. ` +
+      `Expand the epic to its child stories, and treat a story as eligible only when its status is a configured pre-refinement status (${preRefinementStatuses}) — ` +
+      `use the ${almTool} status as the source of truth, not any local refinement-notes.md. ` +
+      `Skip stories already at "${eligibleStatuses.readyForDesign}" or later. Refine each eligible story in turn and transition it to "${eligibleStatuses.readyForDesign}".`;
+  } else if (scopePick.value === "sprint") {
+    const sprint = await vscode.window.showInputBox({
+      title: "Refine Agent — ALM Mode",
+      prompt: `Enter the ${almTool} sprint name or ID`,
+      placeHolder: "Sprint 12",
+      ignoreFocusOut: true,
+    });
+    if (!sprint?.trim()) { stream.markdown("Refinement cancelled."); return; }
+    if (hasStatusCollision()) { stream.markdown(collisionMessage); return; }
+    userMessage =
+      `Refine every unrefined story in sprint "${sprint.trim()}". ` +
+      `Expand the sprint to its stories, and treat a story as eligible only when its status is a configured pre-refinement status (${preRefinementStatuses}) — ` +
+      `use the ${almTool} status as the source of truth, not any local refinement-notes.md. ` +
+      `Skip stories already at "${eligibleStatuses.readyForDesign}" or later. Refine each eligible story in turn and transition it to "${eligibleStatuses.readyForDesign}".`;
   } else {
-    userMessage = `Refine all stories currently in Backlog status in project ${projectKey}.`;
+    userMessage = `Refine all stories currently in "${eligibleStatuses.backlog}" status in project ${projectKey}.`;
   }
 
   return runRefineAgent(config, request, stream, token, userMessage);

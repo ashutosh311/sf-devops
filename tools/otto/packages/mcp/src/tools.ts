@@ -63,7 +63,7 @@ type ScaffoldArgs = z.infer<typeof SCAFFOLD_SCHEMA>;
 
 const PROMPT_SCHEMA = z.object({
   command:  z.enum(COMMANDS).describe("SDLC command to activate"),
-  storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test"),
+  storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine, may also be an epic key or sprint to refine every unrefined child story."),
 });
 
 type PromptArgs = z.infer<typeof PROMPT_SCHEMA>;

@@ -6,6 +6,6 @@ allowed-tools: ["mcp__plugin_otto_otto__otto_prompt"]
 
 Call `otto_prompt` on the `otto` MCP server with `command: "refine"` and `storyKey: "$1"`.
 
-If no ticket key was supplied, omit `storyKey` and ask the user which ticket to work on before continuing.
+`$1` may be a **story key** (refine that one story), an **epic key** (refine every unrefined story under the epic), or a **sprint** (refine every unrefined story in the sprint). If no key was supplied, omit `storyKey` and ask the user which story, epic, or sprint to work on before continuing.
 
 Follow the returned instructions verbatim — they are the authoritative procedure for this phase, already resolved against this project's `Otto config` (ticket keys, status names, paths, coverage thresholds, ALM tool). Do not summarise them, skip steps, or substitute your own approach.
