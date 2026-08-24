@@ -38,6 +38,8 @@ Stop. Do not continue.
 
 **JIRA is the source of truth.** Always interrogate JIRA fully before falling back to local files. If JIRA has the needed content, you do not need the local file. Only stop and ask the user when **both JIRA and local artifacts** yield nothing.
 
+> 📌 **Reconcile before you build (ALM mode).** A local `artifacts/{KEY}/solution-design.md` from a prior session may be **stale**. Before using any local design file, fetch the latest design of record from JIRA / Azure DevOps (the design comment / sub-tasks below). If both exist and they differ, **the PM-tool design wins** — refresh the local working copy to match and tell the user *"Refreshed local `solution-design.md` from the latest design on {KEY} before building."* Only build straight from the local file when the PM tool has no design at all (fallback step). 🔌 In Local mode there is no PM tool — the `04 - Backlog/` files are the source of truth.
+
 #### Story → resolve via solution design
 
 Work this chain in order; stop at the first source that yields a complete design.
@@ -45,7 +47,7 @@ Work this chain in order; stop at the first source that yields a complete design
 1. **JIRA design comment** (preferred) — fetch the story's comments via the Atlassian MCP and look for the most recent "Solution Design" comment posted by `#otto/design`. Use it as the design source.
 2. **JIRA sub-tasks** — fetch sub-tasks of the story. If they have meaningful titles and descriptions (Data Model / Business Logic / UI / Config), use them collectively as the implementation breakdown.
 3. **Linked Confluence design page** — check remote issue links / Confluence links for pages titled or tagged as solution design, technical design, or architecture.
-4. **Local artifact (fallback)** — only if JIRA has nothing, check `artifacts/{KEY}/solution-design.md`. If present, use it.
+4. **Local artifact (fallback)** — only if JIRA has nothing, check `artifacts/{KEY}/solution-design.md`. If present, use it. (If JIRA *does* have a design, the reconcile note above applies — the JIRA design wins and the local copy is refreshed to match rather than used as-is.)
 5. **Nothing found in JIRA *or* local — stop and ask:**
 
    > "⛔ Cannot build {KEY}. No solution design found in JIRA (no design comment, no sub-tasks, no linked Confluence page) and no local `artifacts/{KEY}/solution-design.md`. Run `#otto/design` first, or paste the design content into the chat."

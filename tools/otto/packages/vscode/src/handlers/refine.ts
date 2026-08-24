@@ -18,6 +18,7 @@ import {
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { isDataDictionaryToken, openDataDictionary } from "./data-dictionary";
 import { scanEligibleStories, pickStoryScope, storyFolderPath } from "./backlog-scope";
+import { openPromptInAgentMode, mcpDisplayName } from "./agent-defer";
 
 type JiraStatusMap = { story: StoryStatusMap; epic: EpicStatusMap; subTask: SubTaskStatusMap };
 
@@ -59,7 +60,7 @@ export async function handleRefine(
   if (root && INLINE_KEY_RE.test(request.prompt)) {
     const config = existingConfig ?? await promptForJiraConfig(stream);
     if (!config) return;
-    return runRefineAgent(config, request, stream, token, request.prompt.trim());
+    return runRefineAgent(config, request, stream, token, request.prompt.trim(), { defer: true, root });
   }
 
   if (!root) {
@@ -239,7 +240,7 @@ async function runAlmMode(
     userMessage = `Refine all stories currently in "${eligibleStatuses.backlog}" status in project ${projectKey}.`;
   }
 
-  return runRefineAgent(config, request, stream, token, userMessage);
+  return runRefineAgent(config, request, stream, token, userMessage, { defer: true, root });
 }
 
 // ── Shared model call ────────────────────────────────────────────────────────
@@ -249,7 +250,8 @@ async function runRefineAgent(
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken,
-  userMessage: string
+  userMessage: string,
+  opts?: { defer?: boolean; root?: string }
 ): Promise<void> {
   let systemPrompt: string;
   try {
@@ -265,6 +267,21 @@ async function runRefineAgent(
     systemPrompt = systemPrompt
       .replace(/\{STORY_KEY\}/g, storyKey)
       .replace(/\{TICKET_KEY\}/g, storyKey);
+  }
+
+  // ALM mode must fetch/update the PM tool and delete the transient local
+  // refinement-notes.md after pushing AC — work that needs agent-mode tool access.
+  // A bare model.sendRequest has no tools, so defer to a Copilot Chat agent session.
+  if (opts?.defer && opts.root) {
+    const fullPrompt = `${systemPrompt}\n\n---\n\n${userMessage}`;
+    return openPromptInAgentMode({
+      root: opts.root,
+      phase: "refine",
+      phaseLabel: "Refine",
+      mcpName: mcpDisplayName(resolveAlmTool(config)),
+      fullPrompt,
+      stream,
+    });
   }
 
   const model = request.model;

@@ -46,6 +46,8 @@ Stop. Do not continue.
 
 **{{pmToolName}} is the source of truth.** Always interrogate {{pmToolName}} fully before falling back to local files. If {{pmToolName}} has the needed content, you do not need the local file. Only stop and ask the user when **both {{pmToolName}} and local artifacts** yield nothing.
 
+> 📌 **Reconcile before you build (ALM mode).** A local \`{{paths.artifacts}}/{KEY}/solution-design.md\` from a prior session may be **stale**. Before using any local design file, fetch the latest design of record from {{pmToolName}} (the design comment / sub-tasks below). If both exist and they differ, **the {{pmToolName}} design wins** — refresh the local working copy to match and tell the user *"Refreshed local \`solution-design.md\` from the latest design on {KEY} before building."* Only build straight from the local file when {{pmToolName}} has no design at all (step 4). 🔌 In Local mode there is no PM tool — the \`04 - Backlog/\` files are the source of truth.
+
 #### Story → resolve via solution design
 
 Work this chain in order; stop at the first source that yields a complete design.
@@ -53,7 +55,7 @@ Work this chain in order; stop at the first source that yields a complete design
 1. **{{pmToolName}} design comment** (preferred) — fetch the story's comments via the {{pmMcp}} and look for the most recent "Solution Design" comment posted by \`#otto/design\`. Use it as the design source.
 2. **{{pmToolName}} sub-tasks** — fetch sub-tasks of {KEY}. If they have meaningful titles/descriptions (Data Model, Business Logic, UI, Config), use them collectively as the implementation breakdown.
 3. **Linked {{#eq almTool "ADO"}}wiki{{else}}Confluence{{/eq}} design page** — check remote issue links / {{#eq almTool "ADO"}}wiki links{{else}}Confluence links{{/eq}} for pages tagged as solution design, technical design, or architecture.
-4. **Local artifact (fallback)** — only if {{pmToolName}} has nothing, check \`{{paths.artifacts}}/{KEY}/solution-design.md\`. If present, use it.
+4. **Local artifact (fallback / working copy)** — only if {{pmToolName}} has no design comment, sub-tasks, or linked page, check \`{{paths.artifacts}}/{KEY}/solution-design.md\`. If present, use it (in ALM mode this is an unpushed working copy; when {{pmToolName}} *does* have a design, that design of record takes precedence per the reconcile note above).
 5. **Nothing found in {{pmToolName}} *or* local — stop and ask the user**:
 
    > "⛔ Cannot build {KEY}. No solution design found in {{pmToolName}} (no design comment, no sub-tasks, no linked {{#eq almTool "ADO"}}wiki page{{else}}Confluence page{{/eq}}) and no local \`{{paths.artifacts}}/{KEY}/solution-design.md\`.

@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import { renderPrompt, CACHE_CURRENT_DIR, type OttoConfig, resolveProjectKey, extractStoryKey } from "@otto/core";
+import { renderPrompt, CACHE_CURRENT_DIR, type OttoConfig, resolveProjectKey, resolveAlmTool, extractStoryKey } from "@otto/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { isDataDictionaryToken, openDataDictionary } from "./data-dictionary";
 import { scanEligibleStories, pickStoryScope, storyFolderPath, type EligibleStory } from "./backlog-scope";
+import { openPromptInAgentMode, mcpDisplayName } from "./agent-defer";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ export async function handleDesign(
   // If the user already typed a PM key in the prompt → skip menu, PM mode
   const inlineKey = extractStoryKey(request.prompt, resolveProjectKey(config));
   if (inlineKey) {
-    return runAgent(ctx, request.prompt.trim());
+    return runAgent(ctx, request.prompt.trim(), { defer: true });
   }
 
   // ── Top-level action menu ────────────────────────────────────────────────────
@@ -130,7 +131,7 @@ async function runJiraMode(ctx: DesignCtx): Promise<void> {
     userMessage = `Design all stories currently in "Ready for Design" status in project ${resolveProjectKey(config)}.`;
   }
 
-  return runAgent(ctx, userMessage);
+  return runAgent(ctx, userMessage, { defer: true });
 }
 
 // ── Local mode ────────────────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
 
 // ── Shared agent runner ───────────────────────────────────────────────────────
 
-async function runAgent(ctx: DesignCtx, userMessage: string): Promise<void> {
+async function runAgent(ctx: DesignCtx, userMessage: string, opts?: { defer?: boolean }): Promise<void> {
   const { config, request, stream, token } = ctx;
 
   let systemPrompt: string;
@@ -194,6 +195,22 @@ async function runAgent(ctx: DesignCtx, userMessage: string): Promise<void> {
   } catch (err) {
     stream.markdown(`⛔ Could not render design prompt: ${String(err)}`);
     return;
+  }
+
+  // ALM mode must fetch the latest design from the PM tool, reconcile local working
+  // copies, create sub-tasks, and transition the story — work that needs agent-mode
+  // tool access. A bare model.sendRequest has no tools, so defer to a Copilot Chat
+  // agent session.
+  if (opts?.defer) {
+    const fullPrompt = `${systemPrompt}\n\n---\n\n${userMessage}`;
+    return openPromptInAgentMode({
+      root: ctx.root,
+      phase: "design",
+      phaseLabel: "Design",
+      mcpName: mcpDisplayName(resolveAlmTool(config)),
+      fullPrompt,
+      stream,
+    });
   }
 
   const model = request.model;

@@ -43,16 +43,34 @@ Determine whether the **PM MCP** ({{pmMcp}}) is connected **and** whether a stor
 
 Ask for the {{projectKey}} story key (ALM mode) or backlog Story ID (Local mode) if not already provided.
 
+### 0a-sync — Reconcile local working copies from {{pmToolName}} (ALM mode only)
+
+> 📌 **{{pmToolName}} is the source of truth in ALM mode.** Local files under
+> \`{{paths.artifacts}}/{STORY-KEY}/\` (\`sf-discovery.md\`, \`solution-design.md\`) are **working
+> copies**, and a prior session's copy may be stale. Before you read, gate on, or edit any of
+> them, **fetch the latest from {{pmToolName}} first and reconcile.**
+
+Run this immediately, before Steps 0b–0d touch any local file:
+
+1. Fetch the story from {{pmToolName}} via the {{pmMcp}}, including its **comments** and **sub-tasks** — the most recent "Solution Design" comment posted by \`#otto/design\` is the authoritative design of record.
+2. If a local \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` (or \`sf-discovery.md\`) exists, **compare it against the {{pmToolName}} design of record**:
+   - **In sync** → proceed; note "local working copy matches {{pmToolName}}".
+   - **{{pmToolName}} is newer / differs** → **overwrite the local working copy** from the {{pmToolName}} design comment so local matches the source of truth, and tell the user: *"Refreshed local \`solution-design.md\` from the latest design on {STORY-KEY}."*
+   - **Local exists but {{pmToolName}} has no design comment yet** → keep the local file; it is an unpushed draft from an interrupted prior session.
+3. Use the reconciled local files (or the {{pmToolName}} design directly when no local copy exists) for the mode detection in 0c–0d below.
+
+🔌 **Local mode.** Skip 0a-sync entirely — there is no PM tool. The files under \`04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` are the source of truth.
+
 ### 0b — Check for local artifacts
 
-Check whether \`{{paths.artifacts}}/{STORY-KEY}/\` exists and contains any files.
+Check whether \`{{paths.artifacts}}/{STORY-KEY}/\` exists and contains any files (after 0a-sync has reconciled them in ALM mode).
 
-- **Greenfield** — local artifacts exist (e.g. \`refinement-notes.md\` from \`#otto/refine\`)
-- **Brownfield** — no local artifacts; all context must be gathered from {{pmToolName}} and related systems
+- **Greenfield** — the story has refined AC. In **ALM mode** the AC lives on the {{pmToolName}} story (\`#otto/refine\` no longer leaves a local \`refinement-notes.md\`); in 🔌 **Local mode** the AC is in \`refinement-notes.md\` under \`04 - Backlog/\`.
+- **Brownfield** — no refined AC / no local artifacts; all context must be gathered from {{pmToolName}} and related systems.
 
 ### 0c — {{pmToolName}} status & mode detection (ALM mode)
 
-Fetch the story from {{pmToolName}} via the {{pmMcp}}. Combine the status with whether \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` exists to pick the mode:
+Fetch the story from {{pmToolName}} via the {{pmMcp}}. Combine the status with whether \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` exists **(as reconciled in 0a-sync — never judge from a stale local copy)** to pick the mode:
 
 | {{pmToolName}} status | \`solution-design.md\` | Mode |
 |---|---|---|
@@ -79,7 +97,7 @@ Then combine with whether \`.../{STORY-KEY}/solution-design.md\` exists to pick 
 
 If Review Mode is selected, do **not** redo org discovery, do **not** rewrite the design, do **not** re-create sub-tasks, and do **not** re-transition {{pmToolName}}. Instead:
 
-1. Load \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` (and \`sf-discovery.md\` if present). If the design artifact is missing but {{pmToolName}} sub-tasks exist, summarise the design from {{pmToolName}} into a fresh \`solution-design.md\` skeleton for review purposes only.
+1. Load \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` (and \`sf-discovery.md\` if present) — **already reconciled against {{pmToolName}} in 0a-sync**. If the design artifact is missing but {{pmToolName}} sub-tasks or a design comment exist, summarise the design from {{pmToolName}} into a fresh \`solution-design.md\` skeleton for review purposes only.
 2. Fetch the {{pmToolName}} story, its sub-tasks, and any comments added since the design was finalised.
 3. Run a **gap check** and report findings in one message:
 
@@ -102,8 +120,8 @@ Review Mode never produces new \`{{paths.forceApp}}/\` code, never runs build co
 
 ### Greenfield mode
 
-1. Load \`{{paths.artifacts}}/{STORY-KEY}/refinement-notes.md\` — this is the primary requirements source.
-2. Fetch the {{pmToolName}} story for any updates since refinement (new comments, AC changes).
+1. **Load the refined AC — {{pmToolName}} is the primary source in ALM mode.** Fetch the {{pmToolName}} story and read its description/AC and comments: \`#otto/refine\` pushes the agreed Gherkin AC onto the story and deletes its transient local \`refinement-notes.md\`, so **do not expect a local \`refinement-notes.md\` in ALM mode**. Only if a local \`{{paths.artifacts}}/{STORY-KEY}/refinement-notes.md\` happens to exist (an unpushed draft) should you use it as a supplement.
+2. Read all story comments for technical decisions, constraints, or AC changes since refinement.
 3. Fetch the parent epic description for broader scope context.
 
 ### 🔌 Local mode — source from the \`04 - Backlog\` folder

@@ -85,8 +85,25 @@ Stop. Otherwise continue to the Local-mode resume check below (skip the JIRA
 status matrix — there is no JIRA status in Local mode; the gate is simply
 "has `refinement-notes.md`, lacks `solution-design.md`").
 
+### 0a-sync — Reconcile local working copies from JIRA / Azure DevOps (ALM mode only)
+
+> 📌 **The PM tool (JIRA / Azure DevOps) is the source of truth in ALM mode.** Local
+> files under `artifacts/{STORY-KEY}/` (`sf-discovery.md`, `solution-design.md`) are
+> **working copies** and may be stale. Before you read or trust them, **fetch the
+> latest from the PM tool first and reconcile.**
+
+For each story in scope (ALM mode):
+1. Fetch the story and any **design comment** / sub-tasks from the PM tool (Atlassian or ADO MCP).
+2. Compare against the local `artifacts/{STORY-KEY}/solution-design.md` (and `sf-discovery.md`):
+   - **No local copy** → nothing to reconcile; use the PM-tool design directly.
+   - **PM tool is newer / differs** → **overwrite the local working copy** from the PM-tool design comment so local matches the source of truth, and tell the user: *"Refreshed local `solution-design.md` from the latest design on {STORY-KEY}."*
+   - **Local exists but the PM tool has no design comment yet** → keep the local file; it is an unpushed draft from an interrupted prior session.
+3. Use the reconciled local files (or the PM-tool design directly when no local copy exists) for the mode detection below.
+
+🔌 **Local mode.** Skip 0a-sync entirely — there is no PM tool. The files under `04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/` are the source of truth.
+
 ### Prerequisite gate & mode detection (JIRA mode)
-For each story in scope, fetch the JIRA status (via Atlassian MCP) and check whether `artifacts/{STORY-KEY}/solution-design.md` exists. Use this matrix to decide what to do:
+For each story in scope, fetch the JIRA status (via Atlassian MCP) and check whether `artifacts/{STORY-KEY}/solution-design.md` exists **(as reconciled in 0a-sync — never judge from a stale local copy)**. Use this matrix to decide what to do:
 
 | JIRA status | `solution-design.md` | Action |
 |---|---|---|
@@ -103,9 +120,13 @@ If the story status is **To Do** or any status earlier than Ready for Design:
 
 Stop. Do not continue.
 
-If the story is in **Ready for Design** and `artifacts/{STORY-KEY}/refinement-notes.md` is **missing**:
+In **ALM mode the acceptance criteria live on the JIRA / Azure DevOps story** —
+`#otto/refine` pushes the agreed Gherkin AC onto the story and deletes its transient
+local `refinement-notes.md`. So **do not require or expect a local
+`artifacts/{STORY-KEY}/refinement-notes.md`**; read the AC from the story
+description/comments. Only if the story genuinely has **no AC** on it:
 
-> "⛔ Cannot design {STORY-KEY}. `artifacts/{STORY-KEY}/refinement-notes.md` is missing — run `#otto/refine` first to produce the acceptance criteria and refinement notes."
+> "⛔ Cannot design {STORY-KEY}. The story has no acceptance criteria — run `#otto/refine` first to produce and push the AC."
 
 Stop. Do not continue.
 
@@ -113,7 +134,7 @@ Stop. Do not continue.
 
 If Review Mode is selected, do **not** redo discovery, do **not** rewrite the design, do **not** re-create sub-tasks, and do **not** re-transition JIRA. Instead:
 
-1. Load `artifacts/{STORY-KEY}/solution-design.md` (and `sf-discovery.md` if present). If the design artifact is missing but JIRA sub-tasks exist, summarise the design from JIRA into a fresh `solution-design.md` skeleton for review purposes only.
+1. Load `artifacts/{STORY-KEY}/solution-design.md` (and `sf-discovery.md` if present) — **already reconciled against the PM tool in 0a-sync**. If the design artifact is missing but JIRA sub-tasks or a design comment exist, summarise the design from JIRA into a fresh `solution-design.md` skeleton for review purposes only.
 2. Fetch the JIRA story, its sub-tasks, and any comments added since the design was finalised.
 3. Run a **gap check** against the design and report findings in a single message:
 
@@ -194,7 +215,15 @@ Stories to design:
   ...
 ```
 
+**Read the refined AC from the story — the PM tool is the primary source in ALM mode.**
+`#otto/refine` pushes the agreed Gherkin AC onto the JIRA / Azure DevOps story and
+deletes its transient local `refinement-notes.md`, so **do not expect a local
+`refinement-notes.md` in ALM mode**. Read each story's description/AC and comments.
+Only if a local `artifacts/{STORY-KEY}/refinement-notes.md` happens to exist (an
+unpushed draft) should you use it as a supplement.
+
 🔌 **Local mode — selection & eligibility.** There is no JIRA to query. Instead:
+
 - Enumerate stories from the backlog (`04 - Backlog/_index.md` + `epics/…`, or the
   workbook). Each story's key is its **backlog Story ID** (or its JIRA key if the
   backlog already recorded one).

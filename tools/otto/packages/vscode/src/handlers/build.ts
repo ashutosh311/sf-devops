@@ -5,6 +5,7 @@ import { getWorkspaceRoot, loadConfig } from "../config";
 import { isDataDictionaryToken, openDataDictionary } from "./data-dictionary";
 import { scanEligibleStories, pickStoryScope, storyFolderPath } from "./backlog-scope";
 import { runPhaseAgent } from "./run-phase-agent";
+import { mcpDisplayName } from "./agent-defer";
 
 /**
  * Build agent — menu-first, mirroring Design/Refine: an explicit action + mode
@@ -41,7 +42,9 @@ export async function handleBuild(
 
   // Inline PM key → skip all menus, direct ALM invocation.
   if (INLINE_KEY_RE.test(request.prompt)) {
-    return runPhaseAgent("build", config, request, stream, token, request.prompt.trim());
+    return runPhaseAgent("build", config, request, stream, token, request.prompt.trim(), {
+      defer: { root, phaseLabel: "Build", mcpName: mcpDisplayName(resolveAlmTool(config)) },
+    });
   }
 
   // ── Top-level action menu ──────────────────────────────────────────────────
@@ -71,7 +74,7 @@ export async function handleBuild(
   if (modePick.value === "local") {
     return runLocalMode(root, config, request, stream, token);
   }
-  return runAlmMode(config, request, stream, token);
+  return runAlmMode(root, config, request, stream, token);
 }
 
 // ── Local mode ────────────────────────────────────────────────────────────────
@@ -130,6 +133,7 @@ async function runLocalMode(
 // ── ALM mode ──────────────────────────────────────────────────────────────────
 
 async function runAlmMode(
+  root: string,
   config: OttoConfig,
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
@@ -161,5 +165,7 @@ async function runAlmMode(
     userMessage = `Build all stories currently in Ready for Build status in project ${projectKey}.`;
   }
 
-  return runPhaseAgent("build", config, request, stream, token, userMessage);
+  return runPhaseAgent("build", config, request, stream, token, userMessage, {
+    defer: { root, phaseLabel: "Build", mcpName: mcpDisplayName(almTool) },
+  });
 }

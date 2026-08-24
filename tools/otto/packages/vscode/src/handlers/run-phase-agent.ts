@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { renderPrompt, CACHE_CURRENT_DIR, resolveProjectKey, extractStoryKey, type OttoConfig } from "@otto/core";
+import { openPromptInAgentMode } from "./agent-defer";
 
 /**
  * Shared model-call helper for phase agents that need to run with a custom,
@@ -7,6 +8,10 @@ import { renderPrompt, CACHE_CURRENT_DIR, resolveProjectKey, extractStoryKey, ty
  * the raw chat prompt — used by Build and Test's local-mode flows. Renders the
  * phase's system prompt, substitutes `{STORY_KEY}`/`{TICKET_KEY}` if a key is
  * present, guards against oversized prompts, and streams the response.
+ *
+ * When `opts.defer` is set, the rendered prompt is opened pre-filled in Copilot
+ * Chat for an agent-mode run instead of a bare `model.sendRequest` — required for
+ * ALM-mode flows that must fetch/update the PM tool and read/write local files.
  */
 export async function runPhaseAgent(
   phase: string,
@@ -14,7 +19,8 @@ export async function runPhaseAgent(
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken,
-  userMessage: string
+  userMessage: string,
+  opts?: { defer?: { root: string; phaseLabel: string; mcpName: string } }
 ): Promise<void> {
   let systemPrompt: string;
   try {
@@ -29,6 +35,18 @@ export async function runPhaseAgent(
     systemPrompt = systemPrompt
       .replace(/\{STORY_KEY\}/g, storyKey)
       .replace(/\{TICKET_KEY\}/g, storyKey);
+  }
+
+  if (opts?.defer) {
+    const fullPrompt = `${systemPrompt}\n\n---\n\n${userMessage}`;
+    return openPromptInAgentMode({
+      root: opts.defer.root,
+      phase,
+      phaseLabel: opts.defer.phaseLabel,
+      mcpName: opts.defer.mcpName,
+      fullPrompt,
+      stream,
+    });
   }
 
   const model = request.model;
