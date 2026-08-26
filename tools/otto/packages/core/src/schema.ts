@@ -94,6 +94,51 @@ export function extractStoryKey(text: string, projectKey: string): string {
   return match ? match[0].toUpperCase() : "";
 }
 
+// ── Design deliverable (solution-design publishing target) ────────────────────
+
+/**
+ * Where the Design agent publishes the cross-story **synthesis** design.
+ * The per-story "Solution Design" comment (the design of record established by
+ * PR #50) is ALWAYS posted regardless of this target — this only controls the
+ * additional epic-level readout layer above it.
+ *
+ * - "confluence" — a Confluence page (JIRA projects)
+ * - "wiki"       — an Azure DevOps wiki page (ADO projects)
+ * - "local"      — a markdown file under the artifacts folder only
+ * - "pm-comment" — no synthesis page; the per-story comment is the whole output (today's behaviour)
+ */
+export const DeliverableTargetSchema = z.enum(["confluence", "wiki", "local", "pm-comment"]);
+export type DeliverableTarget = z.infer<typeof DeliverableTargetSchema>;
+
+/** At what level the synthesis design is published. Accepted so a config that already
+ *  carries the key still validates, but currently **unused** — no template branches on
+ *  it. Wire it before relying on it; do not treat it as a supported knob. */
+export const DeliverableGranularitySchema = z.enum(["epic", "story", "both"]);
+export type DeliverableGranularity = z.infer<typeof DeliverableGranularitySchema>;
+
+export const DesignDeliverableSchema = z.object({
+  /** Publishing target. Absent → resolved per PM tool (JIRA→confluence, ADO→wiki, LOCAL→local). */
+  target: DeliverableTargetSchema.optional(),
+  /** Confluence space key (persisted so the agent stops re-asking each run). JIRA/confluence only. */
+  spaceKey: z.string().optional(),
+  /** Optional parent page/wiki node the synthesis page is created under.
+   *  Config-file-only, like `sections` — no interview widget asks for it. */
+  parentPageId: z.string().optional(),
+  /** Azure DevOps wiki identifier (name or ID) the synthesis page is published to.
+   *  ADO wikis have no "space" concept — this is the wiki-side equivalent of `spaceKey`.
+   *  Config-file-only, like `parentPageId`/`sections` — no interview widget asks for it,
+   *  since `spaceKey`'s `when` gate never fires for ADO projects. */
+  wikiIdentifier: z.string().optional(),
+  /** Optional wiki page path prefix the synthesis page is created under (e.g. `/Architecture`).
+   *  ADO wiki equivalent of `parentPageId`. Config-file-only. */
+  wikiPath: z.string().optional(),
+  /** Overrides the default section list. Absent → DEFAULT_DESIGN_SECTIONS. Config-file-only. */
+  sections: z.array(z.string()).optional(),
+  /** Reserved — accepted but not yet honoured by any template. */
+  granularity: DeliverableGranularitySchema.optional(),
+});
+export type DesignDeliverable = z.infer<typeof DesignDeliverableSchema>;
+
 // ── ADO status maps ───────────────────────────────────────────────────────────
 
 export const AdoStatusMapSchema = z.object({
@@ -146,6 +191,15 @@ export const OttoConfigSchema = z.object({
    */
   revenueCloud: z.object({
     enabled: z.boolean(),
+  }).optional(),
+
+  /**
+   * Design-phase deliverable configuration. When absent, the Design agent resolves
+   * sensible defaults per PM tool (see resolveDeliverable). Present only when a
+   * project overrides the publishing target, space, sections, or granularity.
+   */
+  design: z.object({
+    deliverable: DesignDeliverableSchema.optional(),
   }).optional(),
 
   jira: z.object({
@@ -231,3 +285,70 @@ export const DEFAULT_STATUS_MAP = {
   epic: DEFAULT_EPIC_STATUS_MAP,
   subTask: DEFAULT_SUBTASK_STATUS_MAP,
 } satisfies JiraStatusMap;
+
+// The fixed 10-section epic synthesis design page. Overridable per project via
+// design.deliverable.sections — this is only the default.
+export const DEFAULT_DESIGN_SECTIONS = [
+  "Introduction",
+  "Traceability",
+  "Profile/Perms",
+  "Data Model Diagram",
+  "Process Diagram",
+  "Objects/Fields",
+  "UI",
+  "Automation",
+  "Key Components",
+  "Linked Stories",
+] as const;
+
+/** The publishing target a project falls back to when none is configured. */
+export function defaultDeliverableTarget(almTool: "JIRA" | "ADO" | "LOCAL"): DeliverableTarget {
+  if (almTool === "ADO") return "wiki";
+  if (almTool === "LOCAL") return "local";
+  return "confluence";
+}
+
+export interface ResolvedDeliverable {
+  target: DeliverableTarget;
+  spaceKey?: string;
+  parentPageId?: string;
+  wikiIdentifier?: string;
+  wikiPath?: string;
+  sections: string[];
+}
+
+/**
+ * Coerce a configured target onto one the active ALM tool can actually reach.
+ *
+ * Without this a `JIRA` project carrying `target: "wiki"` renders Azure DevOps wiki
+ * instructions to be executed against the Atlassian MCP (and vice versa) — the prompt
+ * would name tools that do not exist in that session. `local` and `pm-comment` are
+ * tool-neutral and always pass through.
+ */
+export function coerceTargetForTool(target: DeliverableTarget, almTool: "JIRA" | "ADO" | "LOCAL"): DeliverableTarget {
+  if (almTool === "LOCAL") return "local";
+  if (almTool === "ADO" && target === "confluence") return "wiki";
+  if (almTool === "JIRA" && target === "wiki") return "confluence";
+  return target;
+}
+
+/**
+ * Resolve the effective design-deliverable settings, applying per-tool defaults.
+ * Exposed to templates as `{{deliverable.*}}` so the design prompt stays declarative.
+ * LOCAL mode always forces `target: local` — there is no PM tool or Confluence/wiki.
+ *
+ * `granularity` is deliberately not resolved: no template branches on it, so exposing
+ * it would advertise a knob that does nothing.
+ */
+export function resolveDeliverable(config: OttoConfig, almTool: "JIRA" | "ADO" | "LOCAL"): ResolvedDeliverable {
+  const d = config.design?.deliverable;
+  const target = coerceTargetForTool(d?.target ?? defaultDeliverableTarget(almTool), almTool);
+  return {
+    target,
+    spaceKey: d?.spaceKey,
+    parentPageId: d?.parentPageId,
+    wikiIdentifier: d?.wikiIdentifier,
+    wikiPath: d?.wikiPath,
+    sections: d?.sections && d.sections.length > 0 ? d.sections : [...DEFAULT_DESIGN_SECTIONS],
+  };
+}

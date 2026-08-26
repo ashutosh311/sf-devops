@@ -1,4 +1,4 @@
-import type { OttoConfig, Phase, EstimationApproach, StoryStatusMap, EpicStatusMap, SubTaskStatusMap } from "./schema.js";
+import type { OttoConfig, Phase, EstimationApproach, StoryStatusMap, EpicStatusMap, SubTaskStatusMap, DeliverableTarget } from "./schema.js";
 import { DEFAULT_STANDARDS } from "./schema.js";
 
 export type QuestionType =
@@ -29,7 +29,19 @@ export interface Question<T = unknown> {
   max?: number;
   /** Text sub-type, for front ends whose input widgets understand one. */
   format?: "email" | "uri";
+  /** A blank answer is a valid answer. Form-based front ends (MCP elicitation) must
+   *  leave these out of the form's `required` list, otherwise the client rejects or
+   *  re-prompts on the empty value the question is designed to accept. */
+  optional?: boolean;
 }
+
+/**
+ * Answer type for the design publishing target. `"default"` is an explicit sentinel
+ * meaning *"don't write a target, let the engine resolve one per PM tool"* — it is
+ * deliberately not the empty string, because form-based front ends render a select as
+ * a `oneOf` of `const` values and an empty `const` is not reliably selectable.
+ */
+export type DeliverableTargetAnswer = DeliverableTarget | "default";
 
 export interface InterviewAnswers {
   projectName: string;
@@ -49,6 +61,10 @@ export interface InterviewAnswers {
   orgSandbox: string;
   apexCoverageThreshold: number;
   revenueCloudEnabled: boolean;
+  // Design deliverable (only relevant when the design phase is in scope)
+  designDeliverableTarget?: DeliverableTargetAnswer;
+  designDeliverableSpaceKey?: string;
+  designDeliverableWikiIdentifier?: string;
 }
 
 export const PHASE_OPTIONS: SelectOption<Phase>[] = [
@@ -65,6 +81,21 @@ export const ESTIMATION_OPTIONS: SelectOption<EstimationApproach>[] = [
   { label: "Team vote in sprint planning", value: "team-vote" },
   { label: "Both options available per story", value: "both" },
 ];
+
+// Publishing target for the epic-level synthesis design. "default" = use the
+// PM-tool default (JIRA→Confluence, ADO→wiki, LOCAL→local), which config-builder
+// leaves unset so the engine resolves it. The per-story design comment is always
+// posted regardless of this choice.
+export const DESIGN_DELIVERABLE_TARGET_OPTIONS: SelectOption<DeliverableTargetAnswer>[] = [
+  { label: "Use PM-tool default (recommended)", value: "default" },
+  { label: "Confluence page", value: "confluence" },
+  { label: "Azure DevOps wiki page", value: "wiki" },
+  { label: "Local markdown file only", value: "local" },
+  { label: "PM-tool comment only (no synthesis page)", value: "pm-comment" },
+];
+
+const designInScope = (a: Partial<InterviewAnswers>): boolean =>
+  Array.isArray(a.phases) ? a.phases.includes("design") : true;
 
 export const QUESTIONS: Question[] = [
   // ── Project ──────────────────────────────────────────────────────────────
@@ -233,6 +264,48 @@ export const QUESTIONS: Question[] = [
     hint: "Turn on for pricing procedures, quoting runtime, DocGen, context definitions and ARM approvals. Leave off for non-RCA projects.",
     type: "confirm",
     default: false,
+  },
+
+  // ── Design deliverable ─────────────────────────────────────────────────────
+  {
+    id: "designDeliverableTarget",
+    section: "Design",
+    label: "Where should the epic-level solution design be published?",
+    hint: "The per-story design comment is always posted; this controls the additional cross-story synthesis page.",
+    type: "select",
+    options: DESIGN_DELIVERABLE_TARGET_OPTIONS,
+    default: "default",
+    when: (a) => designInScope(a as Partial<InterviewAnswers>),
+  },
+  {
+    id: "designDeliverableSpaceKey",
+    section: "Design",
+    label: "Confluence space key for design pages (optional)",
+    hint: "e.g. SOLDES — stored so the agent stops asking each run. Leave blank to be prompted the first time.",
+    type: "text",
+    default: "",
+    optional: true,
+    when: (a) => {
+      const ans = a as Partial<InterviewAnswers>;
+      if (!designInScope(ans)) return false;
+      const t = ans.designDeliverableTarget;
+      return t === "confluence" || ((t === "default" || t === undefined) && ans.pmTool === "JIRA");
+    },
+  },
+  {
+    id: "designDeliverableWikiIdentifier",
+    section: "Design",
+    label: "Azure DevOps wiki identifier for design pages (optional)",
+    hint: "e.g. AcmeProj.wiki — stored so the agent stops asking each run. Leave blank to be prompted the first time.",
+    type: "text",
+    default: "",
+    optional: true,
+    when: (a) => {
+      const ans = a as Partial<InterviewAnswers>;
+      if (!designInScope(ans)) return false;
+      const t = ans.designDeliverableTarget;
+      return t === "wiki" || ((t === "default" || t === undefined) && ans.pmTool === "ADO");
+    },
   },
 ];
 

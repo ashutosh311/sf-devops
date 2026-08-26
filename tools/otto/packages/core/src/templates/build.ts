@@ -32,7 +32,7 @@ Confirm the tools this phase depends on are available before doing anything else
 
 Ask for the {{projectKey}} ticket key if not already provided (story or bug). Fetch the issue from {{pmToolName}} via the {{pmMcp}} and read both its **status** and **issue type**.
 
-> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: skip the status gate and all transitions, read \`refinement-notes.md\` and \`solution-design.md\` from \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (where \`#otto/refine\` and \`#otto/design\` write them in local mode) instead of querying the PM tool, and record progress in those local files only. Everything else about the build work is identical.
+> 🔌 **Local mode (no PM tool).** If the {{pmToolName}} MCP isn't connected, run in **local mode**: skip the status gate and all transitions, read \`refinement-notes.md\` and \`solution-design.md\` from \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` (where \`#otto/refine\` and \`#otto/design\` write them in local mode) instead of querying the PM tool, and record progress in those local files only. If a sibling \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/epic-design.md\` exists (the epic synthesis design \`#otto/design\` writes in local batch runs), read it too for **cross-story architecture context only** — never as the design of record for this story. Everything else about the build work is identical.
 
 ### 0a — {{pmToolName}} status gate
 
@@ -54,7 +54,7 @@ Work this chain in order; stop at the first source that yields a complete design
 
 1. **{{pmToolName}} design comment** (preferred) — fetch the story's comments via the {{pmMcp}} and look for the most recent "Solution Design" comment posted by \`#otto/design\`. Use it as the design source.
 2. **{{pmToolName}} sub-tasks** — fetch sub-tasks of {KEY}. If they have meaningful titles/descriptions (Data Model, Business Logic, UI, Config), use them collectively as the implementation breakdown.
-3. **Linked {{#eq almTool "ADO"}}wiki{{else}}Confluence{{/eq}} design page** — check remote issue links / {{#eq almTool "ADO"}}wiki links{{else}}Confluence links{{/eq}} for pages tagged as solution design, technical design, or architecture.
+3. **Linked {{#eq almTool "ADO"}}wiki{{else}}Confluence{{/eq}} design page, or its local fallback file** — check remote issue links / {{#eq almTool "ADO"}}wiki links{{else}}Confluence links{{/eq}} for pages tagged as solution design, technical design, or architecture. This includes the **epic synthesis design** \`#otto/design\` publishes and links from each designed story — use it for **cross-story architecture context** (shared objects, sequencing, key components), but the per-story **Solution Design comment (step 1) remains the design of record**; never let the synthesis page override it. If no link is found but \`{{paths.artifacts}}/{EPIC-KEY}/epic-design.md\` exists, read that instead — \`#otto/design\` writes it there when Confluence/wiki write was unavailable at publish time, and it carries the same cross-story-context-only status.
 4. **Local artifact (fallback / working copy)** — only if {{pmToolName}} has no design comment, sub-tasks, or linked page, check \`{{paths.artifacts}}/{KEY}/solution-design.md\`. If present, use it (in ALM mode this is an unpushed working copy; when {{pmToolName}} *does* have a design, that design of record takes precedence per the reconcile note above).
 5. **Nothing found in {{pmToolName}} *or* local — stop and ask the user**:
 

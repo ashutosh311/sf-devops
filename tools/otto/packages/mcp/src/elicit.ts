@@ -137,7 +137,12 @@ async function askQuestions(
       properties[q.id] = toSchema(q, current ?? resolveExistingAnswer(q.id, existing) ?? q.default);
     }
 
-    const content = await askForm(server, prompt, properties, applicable.map((q) => q.id));
+    const content = await askForm(
+      server,
+      prompt,
+      properties,
+      applicable.filter((q) => !q.optional).map((q) => q.id)
+    );
     if (content === ABORTED) return ABORTED;
 
     for (const q of applicable) {

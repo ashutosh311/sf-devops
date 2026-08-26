@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import { renderPrompt, CACHE_CURRENT_DIR, type OttoConfig, resolveProjectKey, resolveAlmTool, extractStoryKey } from "@otto/core";
+import { renderPrompt, CACHE_CURRENT_DIR, type OttoConfig, resolveProjectKey, resolveAlmTool, resolveDeliverable, extractStoryKey } from "@otto/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { isDataDictionaryToken, openDataDictionary } from "./data-dictionary";
 import { scanEligibleStories, pickStoryScope, storyFolderPath, type EligibleStory } from "./backlog-scope";
@@ -68,13 +68,13 @@ export async function handleDesign(
     [
       {
         label: "$(folder) Local mode",
-        description: "work from backlog + refinement-notes.md — no JIRA required",
+        description: "work from backlog + refinement-notes.md — no PM tool required",
         mode: "local" as const,
       },
       {
-        label: "$(cloud) JIRA mode",
-        description: "fetch story status, create sub-tasks, transition in JIRA",
-        mode: "jira" as const,
+        label: "$(cloud) ALM mode",
+        description: "fetch story status, create sub-tasks, transition in JIRA/ADO",
+        mode: "alm" as const,
       },
     ],
     {
@@ -85,32 +85,47 @@ export async function handleDesign(
   );
   if (!modePick) { stream.markdown("Design cancelled."); return; }
 
-  if (modePick.mode === "jira") {
-    return runJiraMode(ctx);
+  if (modePick.mode === "alm") {
+    return runAlmMode(ctx);
   }
   return runLocalMode(ctx);
 }
 
-// ── JIRA mode ─────────────────────────────────────────────────────────────────
+// ── ALM mode ──────────────────────────────────────────────────────────────────
 
-async function runJiraMode(ctx: DesignCtx): Promise<void> {
+async function runAlmMode(ctx: DesignCtx): Promise<void> {
   const { config, stream } = ctx;
+  const almTool = resolveAlmTool(config);
+  const projectKey = resolveProjectKey(config);
+  const statusMap = (almTool === "ADO" ? config.ado?.statusMap : config.jira?.statusMap)?.story;
+  const readyForDesign = statusMap?.readyForDesign ?? "Ready for Design";
+  const designInProgress = statusMap?.designInProgress ?? "In Design";
 
   const scopePick = await vscode.window.showQuickPick(
     [
       {
-        label: "$(list-ordered) Specific story or epic",
-        description: "enter a JIRA key",
-        scope: "key",
+        label: "$(list-ordered) Specific story",
+        description: `enter a ${almTool} story key`,
+        scope: "key" as const,
       },
       {
-        label: "$(checklist) All stories in Ready for Design",
-        description: "design everything eligible in JIRA",
-        scope: "all",
+        label: "$(symbol-class) Epic",
+        description: `design every eligible child story under a ${almTool} epic, then the epic synthesis design`,
+        scope: "epic" as const,
+      },
+      {
+        label: "$(calendar) Sprint",
+        description: `design every eligible story in a ${almTool} sprint, then the epic synthesis design(s)`,
+        scope: "sprint" as const,
+      },
+      {
+        label: `$(checklist) All stories in ${readyForDesign}`,
+        description: `design everything eligible in ${almTool} (${readyForDesign} or resumable ${designInProgress})`,
+        scope: "all" as const,
       },
     ],
     {
-      title: "Design Agent — JIRA Mode",
+      title: "Design Agent — ALM Mode",
       placeHolder: "What would you like to design?",
       ignoreFocusOut: true,
     }
@@ -120,15 +135,33 @@ async function runJiraMode(ctx: DesignCtx): Promise<void> {
   let userMessage: string;
   if (scopePick.scope === "key") {
     const key = await vscode.window.showInputBox({
-      title: "Design Agent — JIRA Mode",
-      prompt: "Enter the JIRA story or epic key",
-    placeHolder: `${resolveProjectKey(config)}-123`,
+      title: "Design Agent — ALM Mode",
+      prompt: `Enter the ${almTool} story key`,
+      placeHolder: `${projectKey}-123`,
       ignoreFocusOut: true,
     });
     if (!key?.trim()) { stream.markdown("Design cancelled."); return; }
     userMessage = key.trim();
+  } else if (scopePick.scope === "epic") {
+    const epicKey = await vscode.window.showInputBox({
+      title: "Design Agent — ALM Mode",
+      prompt: `Enter the ${almTool} epic key`,
+      placeHolder: `${projectKey}-100`,
+      ignoreFocusOut: true,
+    });
+    if (!epicKey?.trim()) { stream.markdown("Design cancelled."); return; }
+    userMessage = epicKey.trim();
+  } else if (scopePick.scope === "sprint") {
+    const sprint = await vscode.window.showInputBox({
+      title: "Design Agent — ALM Mode",
+      prompt: `Enter the ${almTool} sprint name or ID`,
+      placeHolder: "Sprint 12",
+      ignoreFocusOut: true,
+    });
+    if (!sprint?.trim()) { stream.markdown("Design cancelled."); return; }
+    userMessage = `Design all stories currently eligible for design in sprint "${sprint.trim()}" in project ${projectKey}.`;
   } else {
-    userMessage = `Design all stories currently in "Ready for Design" status in project ${resolveProjectKey(config)}.`;
+    userMessage = `Design all stories currently eligible for design in project ${projectKey} — status "${readyForDesign}" (not yet started) or "${designInProgress}" (resume an interrupted design).`;
   }
 
   return runAgent(ctx, userMessage, { defer: true });
@@ -210,6 +243,7 @@ async function runAgent(ctx: DesignCtx, userMessage: string, opts?: { defer?: bo
       mcpName: mcpDisplayName(resolveAlmTool(config)),
       fullPrompt,
       stream,
+      extraToolsNote: designPublishNote(config),
     });
   }
 
@@ -257,4 +291,19 @@ async function runAgent(ctx: DesignCtx, userMessage: string, opts?: { defer?: bo
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * When the epic synthesis design is published to Confluence/wiki, the deferred
+ * agent session needs write access to that product — remind the user to check it.
+ */
+function designPublishNote(config: OttoConfig): string | undefined {
+  const { target } = resolveDeliverable(config, resolveAlmTool(config));
+  if (target === "confluence") {
+    return "For epic-level design, also confirm **Confluence write** access is available (the agent publishes/refreshes the epic synthesis page). If not, it falls back to a local design file.";
+  }
+  if (target === "wiki") {
+    return "For epic-level design, also confirm **Azure DevOps wiki write** access is available (the agent publishes/refreshes the epic synthesis page). If not, it falls back to a local design file.";
+  }
+  return undefined;
+}
 

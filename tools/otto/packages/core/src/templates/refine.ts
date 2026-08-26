@@ -106,7 +106,12 @@ A story is **eligible** for refinement only when its status is one of the **pre-
 | **{{statusMap.story.designInProgress}}**, **{{statusMap.story.readyForBuild}}**, **{{statusMap.story.inDevelopment}}**, **{{statusMap.story.readyForTest}}**, **{{statusMap.story.done}}** | ⛔ Skip — past refinement |
 | Any other status | ⛔ Skip — not in a configured pre-refinement state; flag to the user |
 
-> ⚠️ **ADO status-collision warning.** If the configured values for \`refineInProgress\` and \`readyForDesign\` (or later phases) resolve to the **same** status string (e.g. both are \`Active\` in the ADO out-of-box Agile process), status alone cannot distinguish eligible stories from already-refined ones. In that case, stop and inform the user: "The configured status map cannot distinguish pre-refinement stories from already-refined ones by status alone. Please configure distinct workflow states in \`.sdlc/config.json\` before running batch refinement."
+> ⚠️ **Status-collision fallback — degrade to human selection, never dead-end.** If the configured values for \`refineInProgress\` and \`readyForDesign\` (or later phases) resolve to the **same** status string, status alone cannot separate eligible stories from already-refined ones. This is the **default** for ADO's out-of-box Agile process, where \`refineInProgress\`, \`readyForDesign\`, \`designInProgress\`, \`readyForBuild\` and \`inDevelopment\` are all \`Active\` — so do **not** stop, or batch refinement would be unreachable for every default ADO project. Instead:
+>
+> 1. Tell the user why automatic filtering is off: *"Your status map maps several refinement gates to the same status ({STATUS}), so I can't tell pre-refinement stories from already-refined ones by status alone. I'll list everything in scope and let you choose."*
+> 2. List **every** story in scope with its status and, as **information for you only**, whether its description already contains Gherkin acceptance criteria. This is a hint for the human, **not** an automatic eligibility decision — the AC-marker heuristic is never allowed to decide on its own.
+> 3. Ask the user to confirm which stories to refine. Their selection replaces the status filter for this run.
+> 4. Mention once that configuring distinct workflow states in the Otto config restores automatic filtering.
 
 **3. Present the eligible-vs-skipped breakdown and confirm.**
 

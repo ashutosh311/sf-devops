@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 import type { OttoConfig } from "./schema.js";
-import { resolveAlmTool, resolveProjectKey, DEFAULT_STATUS_MAP } from "./schema.js";
+import { resolveAlmTool, resolveProjectKey, resolveDeliverable, DEFAULT_STATUS_MAP } from "./schema.js";
 import { discoverTemplate } from "./templates/discover.js";
 import { refineTemplate } from "./templates/refine.js";
 import { designTemplate } from "./templates/design.js";
@@ -71,6 +71,26 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
   const pmMcp = almTool === "ADO" ? "Azure DevOps MCP" : almTool === "LOCAL" ? "a PM MCP" : "Atlassian MCP";
   const itemNoun = almTool === "ADO" ? "work item" : "story";
 
+  // Resolved design-deliverable settings (publishing target, space, sections) with
+  // per-tool defaults applied and the target coerced onto a tool the session can
+  // actually reach. Exposed as {{deliverable.*}} so the design template stays
+  // declarative and non-regressive.
+  const deliverable = resolveDeliverable(config, almTool);
+
+  // Pre-formatted status lists for the design agent's batch queries. Built here
+  // rather than in the template because Handlebars has no join/dedupe: a project
+  // whose gates collide (ADO's out-of-box Agile process maps several to "Active")
+  // would otherwise render `IN ('Active','Active')`.
+  const designEligibleStatuses = [
+    ...new Set([statusMap?.story.readyForDesign, statusMap?.story.designInProgress].filter(Boolean) as string[]),
+  ];
+  const designEligible = {
+    jql: designEligibleStatuses.map((s) => `"${s}"`).join(", "),
+    wiql: designEligibleStatuses.map((s) => `'${s}'`).join(", "),
+    /** True when the gates collide, so status alone cannot drive eligibility. */
+    collides: designEligibleStatuses.length < 2,
+  };
+
   // Fail loudly on misconfiguration: a template that references a status map
   // ({{statusMap.*}} or the legacy {{jira.statusMap.*}}) with none configured
   // would otherwise render blank cells silently.
@@ -100,6 +120,8 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
     pmToolName,
     pmMcp,
     itemNoun,
+    deliverable,
+    designEligible,
   });
 }
 

@@ -179,8 +179,11 @@ async function runAlmMode(
     )?.story ?? DEFAULT_STATUS_MAP.story;
   const preRefinementStatuses = `"${eligibleStatuses.backlog}" or "${eligibleStatuses.refineInProgress}"`;
 
-  // Batch (epic/sprint) refinement is status-gated, so a status map whose
-  // pre-refinement and later phases collide cannot tell eligible from refined.
+  // Batch (epic/sprint) refinement is status-gated; a status map whose pre-refinement
+  // and later phases collide cannot tell eligible from refined by status alone. Rather
+  // than blocking the run (unreachable on ADO's default Agile process, where every
+  // gate is "Active"), flag it to the agent so it degrades to human selection per the
+  // status-collision fallback in the refine template.
   const hasStatusCollision = (): boolean => {
     const preRefinementSet = new Set([eligibleStatuses.backlog, eligibleStatuses.refineInProgress]);
     const skipSet = new Set([
@@ -193,10 +196,10 @@ async function runAlmMode(
     ]);
     return [...preRefinementSet].some((s) => skipSet.has(s));
   };
-  const collisionMessage =
-    `⚠️ **Status-collision detected in the configured status map.** The configured status map cannot distinguish pre-refinement stories from already-refined ones by status alone ` +
-    `(e.g. \`refineInProgress\` and \`readyForDesign\` both map to \`"${eligibleStatuses.refineInProgress}"\`). ` +
-    `Please configure distinct workflow states in \`.sdlc/config.json\` before running batch refinement.`;
+  const collisionNote =
+    ` Note: this project's status map cannot distinguish pre-refinement stories from already-refined ones by status alone ` +
+    `(e.g. "${eligibleStatuses.refineInProgress}" is used for more than one gate) — list every story in scope with its status ` +
+    `and let me choose which ones to refine, per the status-collision fallback.`;
 
   let userMessage: string;
   if (scopePick.value === "key") {
@@ -216,12 +219,12 @@ async function runAlmMode(
       ignoreFocusOut: true,
     });
     if (!epicKey?.trim()) { stream.markdown("Refinement cancelled."); return; }
-    if (hasStatusCollision()) { stream.markdown(collisionMessage); return; }
     userMessage =
       `Refine every unrefined story under epic ${epicKey.trim()}. ` +
       `Expand the epic to its child stories, and treat a story as eligible only when its status is a configured pre-refinement status (${preRefinementStatuses}) — ` +
       `use the ${almTool} status as the source of truth, not any local refinement-notes.md. ` +
-      `Skip stories already at "${eligibleStatuses.readyForDesign}" or later. Refine each eligible story in turn and transition it to "${eligibleStatuses.readyForDesign}".`;
+      `Skip stories already at "${eligibleStatuses.readyForDesign}" or later. Refine each eligible story in turn and transition it to "${eligibleStatuses.readyForDesign}".` +
+      (hasStatusCollision() ? collisionNote : "");
   } else if (scopePick.value === "sprint") {
     const sprint = await vscode.window.showInputBox({
       title: "Refine Agent — ALM Mode",
@@ -230,12 +233,12 @@ async function runAlmMode(
       ignoreFocusOut: true,
     });
     if (!sprint?.trim()) { stream.markdown("Refinement cancelled."); return; }
-    if (hasStatusCollision()) { stream.markdown(collisionMessage); return; }
     userMessage =
       `Refine every unrefined story in sprint "${sprint.trim()}". ` +
       `Expand the sprint to its stories, and treat a story as eligible only when its status is a configured pre-refinement status (${preRefinementStatuses}) — ` +
       `use the ${almTool} status as the source of truth, not any local refinement-notes.md. ` +
-      `Skip stories already at "${eligibleStatuses.readyForDesign}" or later. Refine each eligible story in turn and transition it to "${eligibleStatuses.readyForDesign}".`;
+      `Skip stories already at "${eligibleStatuses.readyForDesign}" or later. Refine each eligible story in turn and transition it to "${eligibleStatuses.readyForDesign}".` +
+      (hasStatusCollision() ? collisionNote : "");
   } else {
     userMessage = `Refine all stories currently in "${eligibleStatuses.backlog}" status in project ${projectKey}.`;
   }

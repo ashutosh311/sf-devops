@@ -30,8 +30,10 @@ export async function openPromptInAgentMode(opts: {
   mcpName: string;
   fullPrompt: string;
   stream: vscode.ChatResponseStream;
+  /** Extra tool-scope note appended to the banner (e.g. Confluence/wiki write access for design publishing). */
+  extraToolsNote?: string;
 }): Promise<void> {
-  const { root, phase, phaseLabel, mcpName, fullPrompt, stream } = opts;
+  const { root, phase, phaseLabel, mcpName, fullPrompt, stream, extraToolsNote } = opts;
 
   const configDirName = path.basename(resolveConfigDir(root));
   const generatedPromptPath = path.join(root, configDirName, "prompts", `${phase}.md`);
@@ -41,6 +43,17 @@ export async function openPromptInAgentMode(opts: {
   } catch {
     // non-fatal — best-effort
   }
+
+  // Lightweight size guard on the injected prompt. The batch expansion happens at
+  // agent runtime, so length is only a proxy for the real risk. Measured renders:
+  // design ≈ 11.5k tokens, or ≈ 21k with the Revenue Cloud skills inlined; every
+  // other phase is under 8k. The threshold sits between the two so it fires on the
+  // genuinely heavy configurations instead of never (40k) or always (12k).
+  const approxTokens = Math.round(fullPrompt.length / 4);
+  const sizeNote =
+    approxTokens >= 16000
+      ? `\n\n⚠️ The rendered prompt is large (~${approxTokens.toLocaleString()} tokens). For an epic/sprint batch, prefer a model with a large context window and consider designing in smaller scopes if the agent runs short on context.`
+      : "";
 
   try {
     await vscode.commands.executeCommand("workbench.action.chat.open", {
@@ -53,8 +66,10 @@ export async function openPromptInAgentMode(opts: {
       `**Before pressing Enter:**\n` +
       `- Switch to the **Copilot Chat** panel (it should now be in focus)\n` +
       `- Make sure **Agent mode** is selected (not Ask or Edit) so it can fetch/update ${mcpName} and read, write, and delete local artifact files\n` +
-      `- Verify the **${mcpName} MCP** is listed in the tools section — without it the agent will fall back to local mode\n\n` +
-      `Then press **Enter** to run.`
+      `- Verify the **${mcpName} MCP** is listed in the tools section — without it the agent will fall back to local mode\n` +
+      (extraToolsNote ? `- ${extraToolsNote}\n` : "") +
+      `\nThen press **Enter** to run.` +
+      sizeNote
     );
   } catch {
     // Fallback: the command may not exist or have a different signature on some
@@ -65,7 +80,9 @@ export async function openPromptInAgentMode(opts: {
       `**To run it:**\n` +
       `1. Open **Copilot Chat** and switch to **Agent mode**\n` +
       `2. Verify the **${mcpName} MCP** is connected\n` +
-      `3. Type: \`Read ${configDirName}/prompts/${phase}.md and follow its instructions.\`\n`
+      (extraToolsNote ? `   - ${extraToolsNote}\n` : "") +
+      `3. Type: \`Read ${configDirName}/prompts/${phase}.md and follow its instructions.\`\n` +
+      sizeNote
     );
   }
 }

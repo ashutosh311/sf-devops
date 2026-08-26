@@ -1,11 +1,13 @@
 import {
   CONFIG_VERSION,
   DEFAULT_PATHS,
+  coerceTargetForTool,
   type OttoConfig,
   type StoryStatusMap,
   type EpicStatusMap,
   type SubTaskStatusMap,
   type Phase,
+  type DeliverableTarget,
 } from "./schema.js";
 import { TOOL_VERSION } from "./version.js";
 import type { InterviewAnswers } from "./questions.js";
@@ -62,6 +64,35 @@ export function defaultStatusMapFor(pmTool: InterviewAnswers["pmTool"]): StatusM
 }
 
 /**
+ * Emit a `design.deliverable` block only when the user set an explicit publishing
+ * target, space key, or wiki identifier. Absent → the engine resolves per-tool
+ * defaults, so existing configs and default runs are entirely unchanged.
+ *
+ * The target is coerced onto the connected PM tool before persisting — e.g. a
+ * JIRA project that picked "Azure DevOps wiki page" from the (tool-agnostic)
+ * target list gets `target: "confluence"` written, not `"wiki"`. Without this,
+ * the persisted config would contradict what actually renders: `resolveDeliverable`
+ * coerces again at render time regardless, so an uncoerced `"wiki"` in a JIRA
+ * config would silently become `"confluence"` there too, leaving the config file
+ * as a permanent, misleading record of a choice the user never got.
+ */
+function buildDesignBlock(answers: InterviewAnswers): { design?: { deliverable: Record<string, unknown> } } {
+  const rawTarget = (answers.designDeliverableTarget || "").trim();
+  // "default" is the sentinel for "resolve per PM tool" — never persist it.
+  const target = rawTarget && rawTarget !== "default"
+    ? coerceTargetForTool(rawTarget as DeliverableTarget, answers.pmTool)
+    : "";
+  const spaceKey = (answers.designDeliverableSpaceKey || "").trim();
+  const wikiIdentifier = (answers.designDeliverableWikiIdentifier || "").trim();
+  const deliverable: Record<string, unknown> = {};
+  if (target) deliverable.target = target;
+  if (spaceKey) deliverable.spaceKey = spaceKey;
+  if (wikiIdentifier) deliverable.wikiIdentifier = wikiIdentifier;
+  if (Object.keys(deliverable).length === 0) return {};
+  return { design: { deliverable } };
+}
+
+/**
  * Assemble a validated-shape OttoConfig from interview answers.
  *
  * `statusMap` is ignored for LOCAL projects — they never transition a remote work
@@ -85,6 +116,7 @@ export function buildOttoConfig(
     branching:  "gitflow" as const,
     paths:      DEFAULT_PATHS,
     ...(answers.revenueCloudEnabled ? { revenueCloud: { enabled: true } } : {}),
+    ...buildDesignBlock(answers),
   };
 
   if (answers.pmTool === "LOCAL") {
@@ -143,6 +175,9 @@ export function resolveExistingAnswer(questionId: string, existing?: Partial<Ott
     orgSandbox:            existing.salesforce?.orgs.sandbox,
     apexCoverageThreshold: existing.standards?.apexCoverageThreshold,
     revenueCloudEnabled:   existing.revenueCloud?.enabled ?? false,
+    designDeliverableTarget:   existing.design?.deliverable?.target ?? "default",
+    designDeliverableSpaceKey: existing.design?.deliverable?.spaceKey ?? "",
+    designDeliverableWikiIdentifier: existing.design?.deliverable?.wikiIdentifier ?? "",
   };
 
   return map[questionId];

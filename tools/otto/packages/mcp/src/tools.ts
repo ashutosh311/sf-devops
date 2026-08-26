@@ -42,6 +42,9 @@ const SCAFFOLD_SCHEMA = z.object({
   orgSandbox:            z.string().min(1).describe("Salesforce CLI sandbox org alias"),
   apexCoverageThreshold: z.number().int().min(0).max(100).describe("Apex test coverage threshold (%)"),
   revenueCloudEnabled:   z.boolean().optional().describe("Enable Revenue Cloud Advanced (RCA) skills & tooling"),
+  designDeliverableTarget:   z.enum(["confluence", "wiki", "local", "pm-comment"]).optional().describe("Where the epic-level synthesis design is published (default: per PM tool). The per-story design comment is always posted."),
+  designDeliverableSpaceKey: z.string().optional().describe("Confluence space key for design pages (persisted so the agent stops asking each run)"),
+  designDeliverableWikiIdentifier: z.string().optional().describe("Azure DevOps wiki identifier for design pages (persisted so the agent stops asking each run)"),
   storyBacklog:          z.string().optional().describe("Story: not started"),
   storyRefineInProgress: z.string().optional().describe("Story: refinement in progress"),
   storyReadyForDesign:   z.string().optional().describe("Story: refinement complete (gate)"),
@@ -63,7 +66,7 @@ type ScaffoldArgs = z.infer<typeof SCAFFOLD_SCHEMA>;
 
 const PROMPT_SCHEMA = z.object({
   command:  z.enum(COMMANDS).describe("SDLC command to activate"),
-  storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine, may also be an epic key or sprint to refine every unrefined child story."),
+  storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine and design, may also be an epic key or sprint to process every eligible child story."),
 });
 
 type PromptArgs = z.infer<typeof PROMPT_SCHEMA>;
@@ -188,6 +191,9 @@ function toAnswers(args: ScaffoldArgs): InterviewAnswers {
     orgSandbox:            args.orgSandbox,
     apexCoverageThreshold: args.apexCoverageThreshold,
     revenueCloudEnabled:   args.revenueCloudEnabled ?? false,
+    designDeliverableTarget:   args.designDeliverableTarget ?? "default",
+    designDeliverableSpaceKey: args.designDeliverableSpaceKey ?? "",
+    designDeliverableWikiIdentifier: args.designDeliverableWikiIdentifier ?? "",
   };
 }
 
