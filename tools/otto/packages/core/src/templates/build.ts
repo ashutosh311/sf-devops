@@ -52,13 +52,13 @@ Stop. Do not continue.
 
 Work this chain in order; stop at the first source that yields a complete design.
 
-1. **{{pmToolName}} design comment** (preferred) — fetch the story's comments via the {{pmMcp}} and look for the most recent "Solution Design" comment posted by \`#otto/design\`. Use it as the design source.
+1. **{{pmToolName}} design of record** (preferred) — {{#if deliverable.storyField}}first read the **\`{{deliverable.storyField}}\`** field on {KEY} ({{#eq almTool "ADO"}}via \`get_work_item\`{{else}}via \`getJiraIssue\` requesting that field{{/eq}}) — this project writes the per-story design of record there as a flat build checklist (\`#otto/design\`). If that field is empty, fall back to the most recent "Solution Design" comment posted by \`#otto/design\`.{{else}}fetch the story's comments via the {{pmMcp}} and look for the most recent "Solution Design" comment posted by \`#otto/design\`.{{/if}} Use it as the design source.
 2. **{{pmToolName}} sub-tasks** — fetch sub-tasks of {KEY}. If they have meaningful titles/descriptions (Data Model, Business Logic, UI, Config), use them collectively as the implementation breakdown.
 3. **Linked {{#eq almTool "ADO"}}wiki{{else}}Confluence{{/eq}} design page, or its local fallback file** — check remote issue links / {{#eq almTool "ADO"}}wiki links{{else}}Confluence links{{/eq}} for pages tagged as solution design, technical design, or architecture. This includes the **epic synthesis design** \`#otto/design\` publishes and links from each designed story — use it for **cross-story architecture context** (shared objects, sequencing, key components), but the per-story **Solution Design comment (step 1) remains the design of record**; never let the synthesis page override it. If no link is found but \`{{paths.artifacts}}/{EPIC-KEY}/epic-design.md\` exists, read that instead — \`#otto/design\` writes it there when Confluence/wiki write was unavailable at publish time, and it carries the same cross-story-context-only status.
 4. **Local artifact (fallback / working copy)** — only if {{pmToolName}} has no design comment, sub-tasks, or linked page, check \`{{paths.artifacts}}/{KEY}/solution-design.md\`. If present, use it (in ALM mode this is an unpushed working copy; when {{pmToolName}} *does* have a design, that design of record takes precedence per the reconcile note above).
 5. **Nothing found in {{pmToolName}} *or* local — stop and ask the user**:
 
-   > "⛔ Cannot build {KEY}. No solution design found in {{pmToolName}} (no design comment, no sub-tasks, no linked {{#eq almTool "ADO"}}wiki page{{else}}Confluence page{{/eq}}) and no local \`{{paths.artifacts}}/{KEY}/solution-design.md\`.
+   > "⛔ Cannot build {KEY}. No solution design found in {{pmToolName}} ({{#if deliverable.storyField}}no \`{{deliverable.storyField}}\` field content, {{/if}}no design comment, no sub-tasks, no linked {{#eq almTool "ADO"}}wiki page{{else}}Confluence page{{/eq}}) and no local \`{{paths.artifacts}}/{KEY}/solution-design.md\`.
    >
    > Please either:
    > - Run \`@otto /design {KEY}\` to produce a design, or

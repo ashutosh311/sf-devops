@@ -134,6 +134,14 @@ export const DesignDeliverableSchema = z.object({
   wikiPath: z.string().optional(),
   /** Overrides the default section list. Absent → DEFAULT_DESIGN_SECTIONS. Config-file-only. */
   sections: z.array(z.string()).optional(),
+  /** Target custom field for the per-story deliverable ("Solution Description").
+   *  When set, the Design agent writes a **flat sequential build checklist** to this
+   *  field instead of posting the full "Solution Design" comment: JIRA → the field key
+   *  (`customfield_...`) via `editJiraIssue`; ADO → the field reference name via
+   *  `update_work_item`. When **unset**, behaviour is unchanged — the full comment is
+   *  posted. ALM-only: Local mode has no PM field and ignores this (it still writes
+   *  `solution-design.md` to the story folder). Config-file-only — no interview widget. */
+  storyField: z.string().optional(),
   /** Reserved — accepted but not yet honoured by any template. */
   granularity: DeliverableGranularitySchema.optional(),
 });
@@ -315,6 +323,7 @@ export interface ResolvedDeliverable {
   wikiIdentifier?: string;
   wikiPath?: string;
   sections: string[];
+  storyField?: string;
 }
 
 /**
@@ -350,5 +359,6 @@ export function resolveDeliverable(config: OttoConfig, almTool: "JIRA" | "ADO" |
     wikiIdentifier: d?.wikiIdentifier,
     wikiPath: d?.wikiPath,
     sections: d?.sections && d.sections.length > 0 ? d.sections : [...DEFAULT_DESIGN_SECTIONS],
+    storyField: d?.storyField,
   };
 }
