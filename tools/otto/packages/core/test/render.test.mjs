@@ -60,6 +60,11 @@ const jiraFieldCfg = {
   design: { deliverable: { storyField: "customfield_10123" } },
 };
 
+const adoFieldCfg = {
+  ...adoCfg,
+  design: { deliverable: { storyField: "Custom.SolutionDescription" } },
+};
+
 const PHASES = ["discover", "refine", "design", "build", "test", "release"];
 
 test("all example configs validate against the schema", () => {
@@ -188,6 +193,54 @@ test("build without storyField still uses the comment as the design of record (r
   assert.ok(
     out.includes("Solution Design comment (step 1) remains the design of record"),
     "build should still name the comment as the design of record when storyField is not configured"
+  );
+});
+
+test("ADO field mode stays platform-neutral — no JIRA vocabulary leaks into the ADO branch", () => {
+  for (const phase of ["design", "build"]) {
+    const out = renderPrompt(phase, adoFieldCfg);
+    assert.ok(out.includes("Custom.SolutionDescription"), `${phase} should name the configured ADO field`);
+    assert.ok(
+      !out.includes("customfield_"),
+      `${phase} must not tell an ADO project to use a JIRA customfield_ key`
+    );
+    assert.ok(
+      !/getJiraIssue|editJiraIssue|getJiraIssueTypeMetaWithFields/.test(out),
+      `${phase} must not instruct JIRA MCP calls on an ADO project`
+    );
+  }
+});
+
+test("field-mode verification guard is present and per-tool correct", () => {
+  const jira = renderPrompt("design", jiraFieldCfg);
+  assert.ok(
+    jira.includes("getJiraIssueTypeMetaWithFields"),
+    "JIRA should verify the field against the editable-field schema"
+  );
+  assert.ok(
+    jira.includes("customfield_10123`), not the display name"),
+    "JIRA guard should explain the internal-key requirement"
+  );
+
+  const ado = renderPrompt("design", adoFieldCfg);
+  assert.ok(ado.includes("get_work_item"), "ADO should verify via get_work_item");
+  assert.ok(
+    ado.includes("reference name"),
+    "ADO guard should explain the reference-name requirement, not JIRA's key format"
+  );
+  // An unset-but-valid ADO field is omitted from get_work_item, so the guard must not
+  // treat absence as a failure — that would hard-stop correctly-configured projects.
+  assert.ok(
+    ado.includes("inconclusive and proceed"),
+    "ADO guard must not treat an omitted (unpopulated) field as a config failure"
+  );
+});
+
+test("field mode keeps a pre-existing design comment as a fallback source", () => {
+  const out = renderPrompt("design", jiraFieldCfg);
+  assert.ok(
+    out.includes("or a design comment (from before"),
+    "Review Mode should still consider a legacy comment when storyField is configured"
   );
 });
 
