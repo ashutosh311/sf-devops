@@ -139,6 +139,21 @@ test("LOCAL config renders without a status map (falls back to defaults, no thro
   assert.ok(out.includes("Local mode"), "LOCAL should describe Local mode");
 });
 
+test("no imperative literal mcp__ tool calls leak into rendered output (host-naming regression)", () => {
+  // Illustrative mentions (e.g. `mcp__Salesforce_DX__get_username` as a Claude Code
+  // example, or the `mcp__<server>__<tool>` pattern) are fine — this only guards
+  // against reintroducing an imperative "Call `mcp__...`" instruction that hardcodes
+  // one host's naming convention as the way to invoke a tool.
+  const imperativeMcpCall = /\b(?:call|invoke)\s+`mcp__/i;
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const all = renderAllPrompts(cfg);
+    for (const phase of PHASES) {
+      const match = all[phase].match(imperativeMcpCall);
+      assert.equal(match, null, `${phase} has an imperative literal mcp__ call: ${match}`);
+    }
+  }
+});
+
 test("/init offers JIRA, ADO and LOCAL, and gates credential questions correctly", () => {
   const pmTool = QUESTIONS.find((q) => q.id === "pmTool");
   assert.ok(pmTool, "pmTool question must exist");

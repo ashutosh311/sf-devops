@@ -114,9 +114,9 @@ Wait for confirmation before proceeding to Step 1.
 
    Wait for confirmation before editing files.
 
-4. Check the active SF org via the **Salesforce DX MCP** — call `mcp__Salesforce_DX__get_username` (and `mcp__Salesforce_DX__list_all_orgs` if the user wants to switch). Show the user which org changes will target. Ask to confirm if unexpected. Do **not** shell out to `sf config get target-org` — prefer the MCP tool so the agent stays inside the structured tool envelope.
+4. Check the active SF org via the **Salesforce DX MCP** — call its `get_username` tool (and `list_all_orgs` if the user wants to switch). Show the user which org changes will target. Ask to confirm if unexpected. Do **not** shell out to `sf config get target-org` — prefer the MCP tool so the agent stays inside the structured tool envelope.
 
-> **Tool preference for Salesforce work:** Use the Salesforce DX MCP tools (`mcp__Salesforce_DX__*`) wherever they exist — `get_username`, `list_all_orgs`, `run_soql_query`, `retrieve_metadata`, `deploy_metadata`, `run_apex_test`, `assign_permission_set`, `open_org`. Only fall back to a `sf …` Bash command when no MCP tool covers the operation (e.g. project scaffolding) — and call that out explicitly to the user.
+> **Tool preference for Salesforce work:** Use the Salesforce DX MCP tools wherever they exist — `get_username`, `list_all_orgs`, `run_soql_query`, `retrieve_metadata`, `deploy_metadata`, `run_apex_test`, `assign_permission_set`, `open_org`. Their exact names depend on your host (e.g. `mcp__Salesforce_DX__get_username` in Claude Code, `Salesforce_DX-get_username` in the Copilot App) — match the Salesforce DX MCP server segment, not a fixed prefix. Only fall back to a `sf …` Bash command when no MCP tool covers the operation (e.g. project scaffolding) — and call that out explicitly to the user.
 
 ---
 
@@ -159,7 +159,7 @@ After scaffolding, list all files created/modified and ask: "Does this scaffoldi
 
 Before deploying, run Apex tests for any classes created or modified using the **Salesforce DX MCP**:
 
-- Call `mcp__Salesforce_DX__run_apex_test` with the class names you created or modified. Capture the result summary into `artifacts/{KEY}/` (write the structured output as `apex-test-result.json`).
+- Call the Salesforce DX MCP's `run_apex_test` tool with the class names you created or modified. Capture the result summary into `artifacts/{KEY}/` (write the structured output as `apex-test-result.json`).
 
 If tests fail, fix the issues before proceeding. Do not deploy with failing tests.
 
@@ -174,7 +174,7 @@ npm run test:unit -- --coverage
 
 Deploy the scaffolded components using the **Salesforce DX MCP**:
 
-- Call `mcp__Salesforce_DX__deploy_metadata` with the source directory (typically `force-app/`) and the target-org username confirmed in Step 1.
+- Call the Salesforce DX MCP's `deploy_metadata` tool with the source directory (typically `force-app/`) and the target-org username confirmed in Step 1.
 - Inspect the structured deploy result — surface any failed components and error messages to the user verbatim.
 
 If deployment fails, diagnose the root cause and fix — do not move on with a failed deployment. Do **not** fall back to a `sf project deploy start` Bash invocation unless the MCP call itself errors with a tool-level failure (not a deployment failure).

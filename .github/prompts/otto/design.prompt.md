@@ -43,6 +43,16 @@ Determine whether a **PM MCP** is connected (Atlassian for JIRA, or the Azure
 DevOps MCP for ADO) **and** whether the user has already supplied a story/epic
 key:
 
+> **Detect by server segment, not a fixed prefix.** MCP tool names vary by host —
+> the same tool may appear as `mcp__<server>__<tool>` (Claude Code), `<server>-<tool>`
+> (Copilot App), or `<server>_<tool>`. Treat the PM MCP as **connected** if any tool
+> in your list has a server segment that identifies it (case-insensitive): `atlassian`
+> or `jira` for JIRA (so `atlassian-*`, `atlassian-mcp-*`, and `mcp__Atlassian__*` all
+> count); `azure`, whole-segment `ado`/`azuredevops`, or `workitem` for ADO. Only fall
+> to Local mode when **no** such tool exists. Apply the same server-segment rule to
+> the Salesforce DX MCP gate below (`salesforce`, or whole-segment `sf`/`sfdx`) — do
+> not stop at a fixed-prefix check there either.
+
 - **Not connected → Local mode (no PM tool).** Do **not** stop. Announce:
   > "No PM MCP is connected — running design in **local mode**. I'll work
   > from the discovery backlog and `refinement-notes.md`, key stories by their

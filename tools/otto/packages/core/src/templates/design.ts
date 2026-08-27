@@ -41,6 +41,14 @@ Confirm the tools this phase depends on are available before doing anything else
 
 Determine whether the **PM MCP** ({{pmMcp}}) is connected **and** whether a story key/ID has been provided:
 
+> **Detect by server segment, not a fixed prefix.** MCP tool names vary by host —
+> the same tool may appear as \`mcp__<server>__<tool>\` (Claude Code), \`<server>-<tool>\`
+> (Copilot App), or \`<server>_<tool>\`. Treat a dependency as **connected** if any tool
+> in your list has a server segment that identifies it (case-insensitive), per §0 of
+> the environment check above — for the PM MCP: {{pmMcp}}; for org discovery below:
+> the Salesforce DX MCP (\`salesforce\`, or whole-segment \`sf\`/\`sfdx\`/\`salesforce_dx\`).
+> Only fall to Local mode when **no** such tool exists for that dependency.
+
 - **Not connected → Local mode (no PM tool).** Do **not** stop. Announce:
   > "{{pmToolName}} MCP isn't connected — running design in **local mode**. I'll read the refinement notes from the discovery backlog under \`04 - Backlog/\`, key the story by its backlog Story ID, and write \`sf-discovery.md\` + \`solution-design.md\` into the story folder without touching any PM tool. The epic synthesis design is written as a local markdown file (\`target: local\`)."
 

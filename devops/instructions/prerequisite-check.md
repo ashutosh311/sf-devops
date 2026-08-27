@@ -9,12 +9,45 @@ enforce: always
 
 Before doing any phase-specific work, confirm the tools this phase depends on are actually available. Do not assume — check, and only check what this phase actually uses.
 
+## 0. MCP tool naming varies by host — match on the server segment
+
+The **same** MCP tool is exposed under different name shapes depending on the host
+you are running in. Do **not** look for one hardcoded prefix. The forms you may see
+for a tool `<tool>` on a server `<server>` are:
+
+- `mcp__<server>__<tool>` (Claude Code / Claude plugin)
+- `<server>-<tool>` (GitHub Copilot App / CLI)
+- `<server>_<tool>` or `<server>.<tool>` (other hosts)
+
+So detect a dependency by testing whether **any** tool in your available list has a
+**server segment** that identifies it, matched **case-insensitively**. The server
+segment is the part before the tool name in whichever shape above applies — and it
+is whatever name the user chose in their MCP config, so it may carry suffixes (e.g.
+`atlassian-mcp`, `Salesforce_DX`). To test a **whole-segment** match, split the
+server segment on `-`, `_`, and `.` into tokens (e.g. `ado-mcp` → `ado`, `mcp`;
+`salesforce-devops` → `salesforce`, `devops`) and check whether the term equals one
+of those tokens exactly. Match by identity, not exact equality:
+
+| Dependency | Matches if the server segment… |
+|---|---|
+| **JIRA / Atlassian** | contains `atlassian` or `jira` (case-insensitive) |
+| **Azure DevOps** | contains `azure`, is a **whole segment** `ado` or `azuredevops`, or contains `workitem` |
+| **Salesforce DX** | contains `salesforce`, or is a **whole segment** `sf` / `sfdx` / `salesforce_dx` |
+
+Anchor the short, generic tokens (`sf`, `ado`) as a **whole segment** — never as a
+bare substring — or you will false-match unrelated names (e.g. a project called
+`salesforce-devops`, or any `sf`-containing word). Do **not** add a bare `devops`
+token for Azure DevOps: `azure-devops` and `azuredevops` already match via `azure`,
+and a bare `devops` token would false-match on `salesforce-devops`. The distinctive
+tokens (`salesforce`, `atlassian`, `jira`, `azure`) are safe as case-insensitive
+substrings.
+
 ## 1. Dependencies by phase
 
 | Dependency | Needed by | How to detect |
 |---|---|---|
-| **PM tool MCP** (Atlassian for JIRA / Azure DevOps for ADO) | refine, design, build, test, release; **optional** in discover (only `push-backlog` and `sync-pm` sub-commands use it) | For JIRA: look for `mcp__Atlassian__*` tools. For ADO: look for `mcp__ado__*` (or equivalently named) tools in your available tool list. Check `.sdlc/config.json` → `alm.tool` to know which one is expected. |
-| **Salesforce DX MCP** | design (org discovery), build (deploy/test), test (org validation), release (deploy) | Look for `mcp__Salesforce_DX__*` tools in your available tool list. |
+| **PM tool MCP** (Atlassian for JIRA / Azure DevOps for ADO) | refine, design, build, test, release; **optional** in discover (only `push-backlog` and `sync-pm` sub-commands use it) | Apply the §0 server-segment match: JIRA → a server segment containing `atlassian`/`jira`; ADO → `azure` / whole-segment `ado`/`azuredevops` / `workitem`. Names appear as `mcp__Atlassian__*`, `atlassian-*`, `atlassian-mcp-*`, etc. — all match. Check `.sdlc/config.json` → `alm.tool` to know which one is expected. |
+| **Salesforce DX MCP** | design (org discovery), build (deploy/test), test (org validation), release (deploy) | Apply the §0 match: a server segment containing `salesforce` or the whole segment `sf`/`sfdx`/`salesforce_dx` (e.g. `mcp__Salesforce_DX__*`, `Salesforce_DX-*`). |
 | **Salesforce CLI (`sf`)** | build, release — fallback for the few operations with no MCP equivalent (e.g. `sf org login web`, `sf project deploy start`) | Run `sf --version` via Bash. |
 | **Node.js & npm** | build, test — running LWC Jest tests (`npm run test:unit`) | Run `node --version` and `npm --version` via Bash. |
 | **Git** | build, release — branching, committing, raising PRs | Run `git --version` via Bash. |
@@ -22,7 +55,11 @@ Before doing any phase-specific work, confirm the tools this phase depends on ar
 
 ## 2. Check MCP tool availability
 
-For each MCP dependency the current phase needs, check whether at least one tool matching that server's namespace is present in your available tool list. Do not call the tool speculatively just to test it — only check for its presence.
+For each MCP dependency the current phase needs, check whether at least one tool
+whose **server segment** identifies that server (per the §0 case-insensitive,
+segment-based rules) is present in your available tool list — regardless of whether
+your host spells it `mcp__<server>__<tool>`, `<server>-<tool>`, or `<server>_<tool>`.
+Do not call the tool speculatively just to test it — only check for its presence.
 
 ## 3. Check CLI dependencies
 
@@ -36,9 +73,9 @@ If something required is missing, stop before the phase's own Step 0 and tell th
 
 | Missing | Tell the user |
 |---|---|
-| Atlassian MCP (JIRA projects) | "The Atlassian MCP isn't connected, so I can't read or write JIRA/Confluence. Add it to your MCP config (`.mcp.json` or `.vscode/mcp.json`) — see your team's Atlassian MCP setup docs, or ask your tech lead for the project's connection details." |
-| Azure DevOps MCP (ADO projects) | "The Azure DevOps MCP isn't connected, so I can't read or write Azure DevOps work items. Add the `@azure-devops/mcp` server entry to your `.vscode/mcp.json` (or `.mcp.json`) and restart VS Code. Your tech lead can provide the exact config for your organisation." |
-| Salesforce DX MCP | "The Salesforce DX MCP isn't connected, so I can't query or deploy to your org through the structured tool envelope. Install it with `npm install -g @salesforce/mcp`, add it to your MCP config, then authenticate an org with `sf org login web`." |
+| Atlassian MCP (JIRA projects) | "The Atlassian MCP isn't connected, so I can't read or write JIRA/Confluence. Add it to your MCP config — `.mcp.json`, `.vscode/mcp.json`, or `~/.copilot/mcp-config.json` (GitHub Copilot App) — see your team's Atlassian MCP setup docs, or ask your tech lead. If it *is* declared but I still can't see its tools, the server likely failed to start or hasn't finished auth — restart the app/session and re-run; the tools appear as `atlassian-*` (Copilot) or `mcp__atlassian__*` (Claude Code)." |
+| Azure DevOps MCP (ADO projects) | "The Azure DevOps MCP isn't connected, so I can't read or write Azure DevOps work items. Add the `@azure-devops/mcp` server entry to your `.vscode/mcp.json`, `.mcp.json`, or `~/.copilot/mcp-config.json` (Copilot App) and restart the app/session. Your tech lead can provide the exact config for your organisation." |
+| Salesforce DX MCP | "The Salesforce DX MCP isn't connected, so I can't query or deploy to your org through the structured tool envelope. Install it with `npm install -g @salesforce/mcp`, add it to your MCP config (`.mcp.json`, `.vscode/mcp.json`, or `~/.copilot/mcp-config.json`), then authenticate an org with `sf org login web`." |
 | Salesforce CLI (`sf`) | "The Salesforce CLI isn't installed. Install it with `npm install -g @salesforce/cli`, then authenticate a sandbox with `sf org login web --alias sandbox --instance-url https://test.salesforce.com`." |
 | Node.js / npm | "Node.js isn't installed, so I can't run the Jest test suite for LWC components. Install the LTS release from https://nodejs.org, or via a version manager such as `nvm install --lts`." |
 | Git | "Git isn't installed, so I can't branch, commit, or raise a PR. Install it via your OS package manager, e.g. `brew install git` (macOS) or `apt install git` (Linux), or from https://git-scm.com/downloads." |

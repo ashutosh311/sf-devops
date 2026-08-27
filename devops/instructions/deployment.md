@@ -9,7 +9,7 @@ enforce: always
 
 Agents MUST follow this procedure whenever metadata is about to be deployed to a Salesforce org. Do not skip or abbreviate any step.
 
-> **Tool preference:** Use the **Salesforce DX MCP tools** (`mcp__Salesforce_DX__*`) for every operation that has an MCP equivalent — `get_username`, `list_all_orgs`, `run_soql_query`, `retrieve_metadata`, `deploy_metadata`, `run_apex_test`, `assign_permission_set`, `open_org`. Only fall back to a `sf …` CLI command via Bash for operations that have no MCP equivalent (notably the interactive web-login flow `sf org login web`). When you do fall back to a CLI command, call it out to the user.
+> **Tool preference:** Use the **Salesforce DX MCP tools** for every operation that has an MCP equivalent — `get_username`, `list_all_orgs`, `run_soql_query`, `retrieve_metadata`, `deploy_metadata`, `run_apex_test`, `assign_permission_set`, `open_org`. Their exact names depend on your host (e.g. `mcp__Salesforce_DX__get_username` in Claude Code, `Salesforce_DX-get_username` in the Copilot App) — match the Salesforce DX MCP server segment rather than a fixed prefix. Only fall back to a `sf …` CLI command via Bash for operations that have no MCP equivalent (notably the interactive web-login flow `sf org login web`). When you do fall back to a CLI command, call it out to the user.
 
 ---
 
@@ -38,7 +38,7 @@ Do not proceed with any deployment until the user explicitly confirms.
 
 ### 2a — Check current default org (via SF MCP)
 
-Call `mcp__Salesforce_DX__get_username` to retrieve the current default target-org username.
+Call the Salesforce DX MCP's `get_username` tool to retrieve the current default target-org username.
 
 If a default org is returned, display it and ask:
 
@@ -48,7 +48,7 @@ If the user confirms → skip to Step 3.
 
 ### 2b — No default org, or user wants a different one
 
-Call `mcp__Salesforce_DX__list_all_orgs` to list all authenticated orgs. Present the list and ask:
+Call the Salesforce DX MCP's `list_all_orgs` tool to list all authenticated orgs. Present the list and ask:
 
 > "Which sandbox would you like to deploy to? Pick from the orgs above, or tell me if the target sandbox is not yet authenticated and I'll guide you through the web-login flow."
 
@@ -68,7 +68,7 @@ sf org login web --alias {TARGET} --instance-url https://test.salesforce.com
 
 > **Note:** Use `--instance-url https://login.salesforce.com` for production or developer orgs. Use `https://test.salesforce.com` for all sandboxes.
 
-After authentication completes, re-call `mcp__Salesforce_DX__list_all_orgs` to verify the org now appears, then confirm the username matches what the user expects before continuing.
+After authentication completes, re-call the Salesforce DX MCP's `list_all_orgs` tool to verify the org now appears, then confirm the username matches what the user expects before continuing.
 
 ---
 
@@ -90,7 +90,7 @@ Confirm:
 
 Deploy via the **Salesforce DX MCP**:
 
-- Call `mcp__Salesforce_DX__deploy_metadata` with `sourceDir` set to the component path you actually changed (a specific object or class folder), not the entire `force-app/` tree unless the whole tree is genuinely in scope.
+- Call the Salesforce DX MCP's `deploy_metadata` tool with `sourceDir` set to the component path you actually changed (a specific object or class folder), not the entire `force-app/` tree unless the whole tree is genuinely in scope.
 - Inspect the structured deploy result — surface any failed components and error messages verbatim.
 
 ### On deployment failure
@@ -99,7 +99,7 @@ Deploy via the **Salesforce DX MCP**:
 2. Diagnose the root cause — do not guess or retry blindly.
 3. Fix the issue in the local metadata files.
 4. Re-run the review step (Step 1 above) so the user can see what changed.
-5. Re-call `mcp__Salesforce_DX__deploy_metadata` only when the user confirms again.
+5. Re-call the Salesforce DX MCP's `deploy_metadata` tool only when the user confirms again.
 
 Do not move to the next SDLC step with a failed or partially-failed deployment. Do **not** fall back to a `sf project deploy start` Bash invocation unless the MCP call itself errors with a tool-level failure (not a deployment failure).
 

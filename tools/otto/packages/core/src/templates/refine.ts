@@ -45,7 +45,13 @@ Confirm the tools this phase depends on are available before doing anything else
 
 ### 0a — Mode detection (run before anything else)
 
-Determine whether the **PM MCP** ({{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}}) is connected **and** whether a story key/ID, epic key, or sprint has been provided:
+Determine whether the **PM MCP** ({{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}}) is connected **and** whether a story key/ID, epic key, or sprint has been provided.
+
+> **Detect by server segment, not a fixed prefix.** MCP tool names vary by host —
+> the same tool may appear as \`mcp__<server>__<tool>\` (Claude Code), \`<server>-<tool>\`
+> (Copilot App), or \`<server>_<tool>\`. Treat the PM MCP as **connected** if any tool
+> in your list has a server segment that identifies it (case-insensitive), per §0 of
+> the environment check above: {{#eq almTool "ADO"}}\`azure\`, whole-segment \`ado\`/\`azuredevops\`, or \`workitem\`{{else}}\`atlassian\` or \`jira\` (so \`atlassian-*\`, \`atlassian-mcp-*\`, and \`mcp__Atlassian__*\` all count){{/eq}}. Only fall to Local mode when **no** such tool exists.
 
 - **Not connected → Local mode (no PM tool).** Do **not** stop. Announce:
   > "{{#eq almTool "ADO"}}Azure DevOps{{else}}Atlassian{{/eq}} MCP isn't connected — running refinement in **local mode**. I'll work from the discovery backlog under \`04 - Backlog/\` and any materials you paste, key stories by their backlog Story ID, and write \`refinement-notes.md\` into the story folder without touching any PM tool."
