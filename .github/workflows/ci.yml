@@ -99,16 +99,18 @@ jobs:
           ls packages/cli/binaries/*
           ls -lh dist/release packages/vscode/*.vsix packages/cli/binaries/*
 
-      # Lets a PR author or reviewer sanity-check the actual VSIX/CLI binaries from
-      # this PR without waiting for a release — download from the workflow run's
-      # Summary page. Never published anywhere; auto-expires.
-      - name: Upload build artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-${{ github.event.pull_request.number }}-build
-          retention-days: 7
-          path: |
-            tools/otto/packages/vscode/*.vsix
-            tools/otto/packages/cli/binaries/*
-            tools/otto/dist/release/*
+      # NOTE: this workflow deliberately uploads **no** build artifacts.
+      #
+      # It used to publish the VSIX, the four CLI binaries and the release zips via
+      # actions/upload-artifact so a reviewer could download them from the run summary.
+      # That cost ~103 MB of Actions storage *per push* (the CLI binaries alone are
+      # ~250 MB raw across four platforms), which on an internal repo is billed against
+      # the org plan — 21 live artifacts had accumulated to 2.1 GB.
+      #
+      # Removing it costs no validation: every packaging step above still runs, and
+      # "Verify assets" already asserts each artifact exists on disk. Only the download
+      # convenience is gone. If you need a real binary to test, either build it locally
+      # (`pnpm --filter slalom-sdlc package` / `pnpm --filter @otto/cli package`) or push
+      # a `vX.Y.Z-rc.N` pre-release tag, which publishes a proper GitHub Release.
+      #
+      # Please don't re-add an unconditional upload here.
