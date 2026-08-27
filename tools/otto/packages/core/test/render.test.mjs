@@ -55,6 +55,11 @@ const localCfg = {
   // deliberately no jira/ado block — engine falls back to DEFAULT_STATUS_MAP
 };
 
+const jiraFieldCfg = {
+  ...jiraCfg,
+  design: { deliverable: { storyField: "customfield_10123" } },
+};
+
 const PHASES = ["discover", "refine", "design", "build", "test", "release"];
 
 test("all example configs validate against the schema", () => {
@@ -137,6 +142,53 @@ test("LOCAL config renders without a status map (falls back to defaults, no thro
   const out = renderPrompt("design", localCfg);
   assert.ok(out.includes("Ready for Build"), "LOCAL should render default stage labels");
   assert.ok(out.includes("Local mode"), "LOCAL should describe Local mode");
+});
+
+test("design.deliverable.storyField switches design to field mode, not the full comment", () => {
+  const out = renderPrompt("design", jiraFieldCfg);
+  assert.ok(out.includes("customfield_10123"), "design should name the configured field");
+  assert.ok(out.includes("Field mode"), "design should describe field mode");
+  assert.ok(
+    out.includes("flat build checklist") || out.includes("flat numbered list"),
+    "design should describe the checklist deliverable, not the full comment"
+  );
+  assert.ok(
+    !/post the full solution design as a comment/.test(out.replace(/\{\{[^}]*\}\}/g, "")),
+    "design should not instruct posting the full comment when storyField is configured"
+  );
+  // §5c step 1 verification guard must be present so a misconfigured field key fails
+  // loudly instead of silently falling back to comment mode.
+  assert.ok(out.includes("isn't a valid, writable field"), "design should verify the field before writing to it");
+});
+
+test("design.deliverable.storyField keeps state-machine decisions (0a-sync, resume matrix) mode-aware", () => {
+  const out = renderPrompt("design", jiraFieldCfg);
+  assert.ok(
+    out.includes("customfield_10123` field still empty") || out.includes("customfield_10123\\` field still empty"),
+    "resume matrix should test field emptiness, not a hardcoded design comment, in field mode"
+  );
+  assert.ok(
+    !out.includes("no design comment yet"),
+    "field mode should not fall back to comment-only language in the resume matrix"
+  );
+});
+
+test("build reads design.deliverable.storyField first, and still names the field as the design of record", () => {
+  const out = renderPrompt("build", jiraFieldCfg);
+  assert.ok(out.includes("customfield_10123"), "build should read the configured field");
+  assert.ok(out.includes("getJiraIssue"), "build should fetch the field via getJiraIssue");
+  assert.ok(
+    !out.includes("Solution Design comment (step 1) remains the design of record"),
+    "build should not contradict itself by calling the comment the design of record in field mode"
+  );
+});
+
+test("build without storyField still uses the comment as the design of record (regression)", () => {
+  const out = renderPrompt("build", jiraCfg);
+  assert.ok(
+    out.includes("Solution Design comment (step 1) remains the design of record"),
+    "build should still name the comment as the design of record when storyField is not configured"
+  );
 });
 
 test("no imperative literal mcp__ tool calls leak into rendered output (host-naming regression)", () => {

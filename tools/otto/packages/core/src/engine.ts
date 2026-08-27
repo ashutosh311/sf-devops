@@ -73,8 +73,8 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
 
   // Resolved design-deliverable settings (publishing target, space, sections) with
   // per-tool defaults applied and the target coerced onto a tool the session can
-  // actually reach. Exposed as {{deliverable.*}} so the design template stays
-  // declarative and non-regressive.
+  // actually reach. Exposed as {{deliverable.*}} so both the design and build templates
+  // stay declarative and non-regressive.
   const deliverable = resolveDeliverable(config, almTool);
 
   // Pre-formatted status lists for the design agent's batch queries. Built here

@@ -100,7 +100,7 @@ A story is **eligible** for design only when its status is a **pre-design** stat
 > ⚠️ **Status-collision fallback — degrade to human selection, never dead-end.** The configured values for \`designInProgress\` and \`readyForDesign\` (or later phases) resolve to the **same** status string in this project, so status alone cannot separate eligible stories from already-designed ones. This is the **default** for ADO's out-of-box Agile process, where \`readyForDesign\`, \`designInProgress\`, \`readyForBuild\` and \`inDevelopment\` are all \`Active\` — so do **not** stop, or epic design would be unreachable for every default ADO project. Instead:
 >
 > 1. Tell the user why automatic filtering is off: *"Your status map maps several design gates to the same status ({STATUS}), so I can't tell pre-design stories from already-designed ones by status alone. I'll list everything in scope and let you choose."*
-> 2. List **every** story in scope with its status and, as **information for you only**, whether it already carries a Solution Design comment and/or sub-tasks. This is a hint for the human, **not** an automatic eligibility decision — the comment-marker heuristic is never allowed to decide on its own.
+> 2. List **every** story in scope with its status and, as **information for you only**, whether it already carries {{#if deliverable.storyField}}content in the \`{{deliverable.storyField}}\` field{{else}}a Solution Design comment{{/if}} and/or sub-tasks. This is a hint for the human, **not** an automatic eligibility decision — the {{#if deliverable.storyField}}field-content{{else}}comment-marker{{/if}} heuristic is never allowed to decide on its own.
 > 3. Ask the user to confirm which stories to design. Their selection replaces the status filter for this run.
 > 4. Mention once that configuring distinct workflow states in the Otto config restores automatic filtering.
 {{/if}}
@@ -127,7 +127,7 @@ A story is **eligible** for design only when its status is a **pre-design** stat
 
 Wait for confirmation. If **no** stories are eligible, stop: *"⛔ Nothing in {SCOPE} is eligible for design (all already designed or not yet refined)."*
 
-**4. Loop.** For **each** confirmed eligible story, run **0a-sync → Steps 1–5** one at a time. On pickup, transition the story to **{{statusMap.story.designInProgress}}** so a mid-batch interruption leaves a detectable state; on completion, transition to **{{statusMap.story.readyForBuild}}**. Keep a running list **grouped by parent epic** so Step 5 can present **one consolidated review** (sectioned per epic when more than one is in scope) and each epic's synthesis design is published **once**, after all of that epic's eligible stories are designed. Each story keeps its **own** \`{{paths.artifacts}}/{STORY-KEY}/\` artifacts and its own Solution Design comment.
+**4. Loop.** For **each** confirmed eligible story, run **0a-sync → Steps 1–5** one at a time. On pickup, transition the story to **{{statusMap.story.designInProgress}}** so a mid-batch interruption leaves a detectable state; on completion, transition to **{{statusMap.story.readyForBuild}}**. Keep a running list **grouped by parent epic** so Step 5 can present **one consolidated review** (sectioned per epic when more than one is in scope) and each epic's synthesis design is published **once**, after all of that epic's eligible stories are designed. Each story keeps its **own** \`{{paths.artifacts}}/{STORY-KEY}/\` artifacts and its own {{#if deliverable.storyField}}\`{{deliverable.storyField}}\` field content{{else}}Solution Design comment{{/if}}.
 
 ### 0a-sync — Reconcile local working copies from {{pmToolName}} (ALM mode only)
 
@@ -138,11 +138,11 @@ Wait for confirmation. If **no** stories are eligible, stop: *"⛔ Nothing in {S
 
 Run this immediately, before Steps 0b–0d touch any local file:
 
-1. Fetch the story from {{pmToolName}} via the {{pmMcp}}, including its **comments** and **sub-tasks** — the most recent "Solution Design" comment posted by \`#otto/design\` is the authoritative design of record.
+1. Fetch the story from {{pmToolName}} via the {{pmMcp}}, including its **comments** and **sub-tasks**{{#if deliverable.storyField}}, and read the **\`{{deliverable.storyField}}\`** field ({{#eq almTool "ADO"}}via \`get_work_item\`{{else}}via \`getJiraIssue\` requesting that field{{/eq}}) — the field's content is the authoritative design of record on this project; a "Solution Design" comment (if one exists from before \`storyField\` was configured) is a fallback only.{{else}} — the most recent "Solution Design" comment posted by \`#otto/design\` is the authoritative design of record.{{/if}}
 2. If a local \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` (or \`sf-discovery.md\`) exists, **compare it against the {{pmToolName}} design of record**:
    - **In sync** → proceed; note "local working copy matches {{pmToolName}}".
-   - **{{pmToolName}} is newer / differs** → **overwrite the local working copy** from the {{pmToolName}} design comment so local matches the source of truth, and tell the user: *"Refreshed local \`solution-design.md\` from the latest design on {STORY-KEY}."*
-   - **Local exists but {{pmToolName}} has no design comment yet** → keep the local file; it is an unpushed draft from an interrupted prior session.
+   - **{{pmToolName}} is newer / differs** → **overwrite the local working copy** from the {{pmToolName}} design of record ({{#if deliverable.storyField}}the \`{{deliverable.storyField}}\` field content{{else}}the design comment{{/if}}) so local matches the source of truth, and tell the user: *"Refreshed local \`solution-design.md\` from the latest design on {STORY-KEY}."*
+   - **Local exists but {{pmToolName}} has {{#if deliverable.storyField}}nothing in the \`{{deliverable.storyField}}\` field yet{{else}}no design comment yet{{/if}}** → keep the local file; it is an unpushed draft from an interrupted prior session.
 3. Use the reconciled local files (or the {{pmToolName}} design directly when no local copy exists) for the mode detection in 0c–0d below.
 
 🔌 **Local mode.** Skip 0a-sync entirely — there is no PM tool. The files under \`04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\` are the source of truth.
@@ -163,14 +163,14 @@ Fetch the story from {{pmToolName}} via the {{pmMcp}}. Combine the status with w
 | **{{statusMap.story.readyForDesign}}** | missing | **Design Mode** — proceed to Step 1 |
 | **{{statusMap.story.readyForDesign}}** | exists | **Review Mode** (incomplete) — design started but story not transitioned |
 | **{{statusMap.story.designInProgress}}** | missing | **Design Mode** — resume: a prior session transitioned the story into design (pickup transition, Step 1a) but was interrupted before any local artifact was written. Proceed to Step 1. |
-| **{{statusMap.story.designInProgress}}** | exists, no design comment yet | **Design Mode** — resume: local work exists but nothing was posted back to {{pmToolName}} before the interruption. Proceed from where the local artifact leaves off. |
-| **{{statusMap.story.designInProgress}}** | exists, design comment exists | **Review Mode** (incomplete) — design was drafted and posted but the story was never transitioned to {{statusMap.story.readyForBuild}}; review, then complete §5c step 4. |
+| **{{statusMap.story.designInProgress}}** | exists, {{#if deliverable.storyField}}\`{{deliverable.storyField}}\` field still empty{{else}}no design comment yet{{/if}} | **Design Mode** — resume: local work exists but nothing was posted back to {{pmToolName}} before the interruption. Proceed from where the local artifact leaves off. |
+| **{{statusMap.story.designInProgress}}** | exists, {{#if deliverable.storyField}}\`{{deliverable.storyField}}\` field already populated{{else}}design comment exists{{/if}} | **Review Mode** (incomplete) — design was drafted and posted but the story was never transitioned to {{statusMap.story.readyForBuild}}; review, then complete §5c step 4. |
 | **{{statusMap.story.readyForBuild}}**, **{{statusMap.story.inDevelopment}}**, **{{statusMap.story.readyForTest}}**, **{{statusMap.story.done}}** | exists | **Review Mode** — design already complete; only review for gaps |
 | **{{statusMap.story.readyForBuild}}** or later | missing | **Review Mode** (recover) — design happened elsewhere; reconstruct from {{pmToolName}} and review for gaps |
 | **{{statusMap.story.backlog}}**, **{{statusMap.story.refineInProgress}}**, To Do, or any pre-design status (greenfield) | any | ⛔ Stop — story has not been refined yet. Run \`@otto /refine\` first to add AC and get business sign-off. |
 | **{{statusMap.story.backlog}}**, **{{statusMap.story.refineInProgress}}**, To Do, or any pre-design status (brownfield) | any | Warn, then confirm:<br>"⚠️ {STORY-KEY} is in '{status}'. For a brownfield story this may be expected — proceed with design?" |
 
-> ⚠️ **If \`designInProgress\` and \`readyForDesign\` resolve to the same status** (the status-collision case), this row is indistinguishable from the first two rows by status alone — fall back to whether a design comment exists (per 0a-sync) to choose between Design Mode and Review Mode, per the same degrade-to-human-selection principle as the batch collision fallback above.
+> ⚠️ **If \`designInProgress\` and \`readyForDesign\` resolve to the same status** (the status-collision case), this row is indistinguishable from the first two rows by status alone — fall back to whether {{#if deliverable.storyField}}the \`{{deliverable.storyField}}\` field is populated{{else}}a design comment exists{{/if}} (per 0a-sync) to choose between Design Mode and Review Mode, per the same degrade-to-human-selection principle as the batch collision fallback above.
 
 ### 0c (Local) 🔌 — Local-mode prerequisite gate
 
@@ -188,7 +188,7 @@ Then combine with whether \`.../{STORY-KEY}/solution-design.md\` exists to pick 
 
 If Review Mode is selected, do **not** redo org discovery, do **not** rewrite the design, do **not** re-create sub-tasks, and do **not** re-transition {{pmToolName}}. Instead:
 
-1. Load \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` (and \`sf-discovery.md\` if present) — **already reconciled against {{pmToolName}} in 0a-sync**. If the design artifact is missing but {{pmToolName}} sub-tasks or a design comment exist, summarise the design from {{pmToolName}} into a fresh \`solution-design.md\` skeleton for review purposes only.
+1. Load \`{{paths.artifacts}}/{STORY-KEY}/solution-design.md\` (and \`sf-discovery.md\` if present) — **already reconciled against {{pmToolName}} in 0a-sync**. If the design artifact is missing but {{pmToolName}} sub-tasks{{#if deliverable.storyField}}, the \`{{deliverable.storyField}}\` field,{{else}} or a design comment{{/if}} exist, summarise the design from {{pmToolName}} into a fresh \`solution-design.md\` skeleton for review purposes only.
 2. Fetch the {{pmToolName}} story, its sub-tasks, and any comments added since the design was finalised.
 3. Run a **gap check** and report findings in one message:
 
@@ -453,7 +453,7 @@ Confirm that \`sf-discovery.md\` and \`solution-design.md\` (per story) — and 
 - **ALM mode:** write per-story files to \`{{paths.artifacts}}/{STORY-KEY}/\`; in a batch run also write the epic-level \`sf-discovery.md\` to \`{{paths.artifacts}}/{EPIC-KEY}/\`.
 - 🔌 **Local mode:** write per-story files to \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-KEY}/\`. Then **skip §5b–5c** (zero PM-tool actions). In a **batch** run §5d still runs, to write the local epic synthesis file; in a **single-story** run skip §5d too. Go to Step 6.
 
-### 5b — Scaffold {{pmToolName}} sub-tasks and design comment (pending approval)
+### 5b — Scaffold {{pmToolName}} sub-tasks and design deliverable (pending approval)
 
 Prepare the sub-tasks to be created — one per non-empty design section, in dependency order. Present them to the user first:
 
@@ -475,6 +475,7 @@ For **each** designed story, perform these steps **in order** — every one is m
 
 1. **Post the per-story deliverable to {STORY-KEY} (design of record).**
 {{#if deliverable.storyField}}   **Field mode.** This project sets \`design.deliverable.storyField\` — write the deliverable to the **\`{{deliverable.storyField}}\`** field (a "Solution Description"–style field) **instead of posting the full Solution Design comment.**
+   - **Verify the field before writing, on the first story of this run only** (skip this re-check on subsequent stories in the same batch). {{#eq almTool "ADO"}}Call \`get_work_item\` with the fields list and confirm \`{{deliverable.storyField}}\` is a valid, writable field reference name on this work item type.{{else}}Call \`getJiraIssueTypeMetaWithFields\` (or fetch the issue's edit metadata) and confirm \`{{deliverable.storyField}}\` resolves to an actual field on this issue type.{{/eq}} If it does not exist or isn't editable, **stop before writing anything** and tell the user: *"⛔ The configured \`design.deliverable.storyField\` (\`{{deliverable.storyField}}\`) isn't a valid, writable field on {STORY-KEY}. JIRA fields must use the internal key (e.g. \`customfield_10123\`), not the display name. Fix \`design.deliverable.storyField\` in the Otto config, or remove it to fall back to posting a comment."* Do not fall back to comment mode silently — a missing/misconfigured field is a config error the user must fix.
 {{#eq almTool "ADO"}}   - Use the {{pmMcp}} \`update_work_item\` to set the \`{{deliverable.storyField}}\` field (HTML/Markdown body — Azure DevOps does not use ADF).{{else}}   - Use the {{pmMcp}} \`editJiraIssue\` to set \`{{deliverable.storyField}}\` with \`contentFormat: adf\` (follow \`.github/instructions/jira-item-protocol.instructions.md\` — never plain text with \`\\n\`).{{/eq}}
    - The field content MUST be **a single flat numbered list of sequential implementation steps** — nothing else. No section headers, no "what to build" preamble, no separate open-questions / risks / definition-of-done sections. Each top-level step:
      - **Names the exact component** to create or change (record type, field, flow, validation rule, permission set, page layout, etc.) using its real/proposed API name.
@@ -545,7 +546,7 @@ Publish the cross-story **synthesis** design **once per epic in scope**, after a
    On update, replace **only** the content between matching markers; leave everything else (TA annotations, extra sections) untouched. Maintain a short **changelog / version line** at the top (*"Rev {n} — {date} — designed {STORY-KEYS}"*). Because {{#eq deliverable.target "local"}}the file{{/eq}}{{#eq deliverable.target "confluence"}}\`getConfluencePage\`/\`updateConfluencePage\` is read-modify-write with no locking{{/eq}}{{#eq deliverable.target "wiki"}}\`get_wiki_page\`/\`update_wiki_page\` is read-modify-write with no locking{{/eq}}, always **re-fetch immediately before writing** to reduce the risk of two TAs overwriting each other, and note the last editor in the changelog.
 
 **4. Link each designed story to the page.**
-{{#eq deliverable.target "local"}}   - Reference the epic file path in each story's Solution Design comment header (already done in §5c step 1).{{else}}   - Create a **remote issue link** from every designed child story to the synthesis page{{#eq almTool "ADO"}} (work-item hyperlink){{/eq}}, titled *"Epic Solution Design"*. This is how \`#otto/build\` discovers a linked design page, and how a developer on one story reaches the epic architecture.
+{{#eq deliverable.target "local"}}   - Reference the epic file path in each story's {{#if deliverable.storyField}}\`{{deliverable.storyField}}\` field content{{else}}Solution Design comment header{{/if}} (already done in §5c step 1).{{else}}   - Create a **remote issue link** from every designed child story to the synthesis page{{#eq almTool "ADO"}} (work-item hyperlink){{/eq}}, titled *"Epic Solution Design"*. This is how \`#otto/build\` discovers a linked design page, and how a developer on one story reaches the epic architecture.
    - Also add/refresh a link on the epic itself.{{/eq}}
 
 **5. Never silent.** Before creating or overwriting the page, show the user the section list and the target location and get explicit go-ahead (folded into the §5b consolidated approval).
