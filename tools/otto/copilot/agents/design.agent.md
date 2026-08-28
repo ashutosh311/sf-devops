@@ -2,7 +2,11 @@
 name: otto-design
 description: Technical design agent — solution approach, data model, sub-tasks
 target: github-copilot
-tools: ["otto/*", "read", "edit", "search", "execute"]
+# "*" (not a narrow allowlist): this phase's prompt instructs the agent to call
+# out to whatever ALM/Salesforce MCP server the host has configured (Atlassian,
+# ADO, Salesforce DX) — their tool/server names vary per project, so an explicit
+# allowlist here would silently strip that access when Copilot switches personas.
+tools: ["*"]
 mcp-servers:
   otto:
     type: local
