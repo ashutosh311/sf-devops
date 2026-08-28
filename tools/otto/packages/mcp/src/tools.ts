@@ -24,7 +24,30 @@ import {
 
 const PM_TOOLS = ["JIRA", "ADO", "LOCAL"] as const;
 
+/**
+ * Some hosts (notably GitHub Copilot Desktop) do not reliably report the open
+ * workspace folder to a local MCP server — neither `roots/list` nor the
+ * spawned process's own `cwd` can be trusted to match what the user sees.
+ * Every tool that reads or writes project files accepts this as an explicit
+ * override so the calling model can supply the absolute path it already knows
+ * from its own session context. Once given, it's cached for the rest of the
+ * session (see `resolveProjectRoot` in config.ts), so it only needs to be
+ * passed once — but it's safe, and recommended, to pass it on every call.
+ */
+const PROJECT_ROOT_FIELD = z
+  .string()
+  .min(1)
+  .optional()
+  .describe(
+    "Absolute path to this project's root directory (the folder you are operating in). " +
+    "Always supply this if you can determine it from your own session/working-directory " +
+    "context — some hosts (notably GitHub Copilot) don't reliably tell MCP servers which " +
+    "folder is open, which otherwise causes this tool to silently read/write the wrong " +
+    "directory while still reporting success."
+  );
+
 const SCAFFOLD_SCHEMA = z.object({
+  projectRoot:           PROJECT_ROOT_FIELD,
   projectName:           z.string().min(1).describe("Client / project name"),
   pmTool:                z.enum(PM_TOOLS).default("JIRA").describe("Where work items live"),
   // JIRA — required when pmTool is JIRA
@@ -65,11 +88,24 @@ const SCAFFOLD_SCHEMA = z.object({
 type ScaffoldArgs = z.infer<typeof SCAFFOLD_SCHEMA>;
 
 const PROMPT_SCHEMA = z.object({
-  command:  z.enum(COMMANDS).describe("SDLC command to activate"),
-  storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine and design, may also be an epic key or sprint to process every eligible child story."),
+  command:     z.enum(COMMANDS).describe("SDLC command to activate"),
+  storyKey:    z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine and design, may also be an epic key or sprint to process every eligible child story."),
+  projectRoot: PROJECT_ROOT_FIELD,
 });
 
 type PromptArgs = z.infer<typeof PROMPT_SCHEMA>;
+
+const STATUS_SCHEMA = z.object({
+  projectRoot: PROJECT_ROOT_FIELD,
+});
+
+type StatusArgs = z.infer<typeof STATUS_SCHEMA>;
+
+const INIT_SCHEMA = z.object({
+  projectRoot: PROJECT_ROOT_FIELD,
+});
+
+type InitArgs = z.infer<typeof INIT_SCHEMA>;
 
 export function registerTools(server: McpServer, mcpVersion: string): void {
   registerInit(server, mcpVersion);
@@ -95,11 +131,15 @@ export function registerTools(server: McpServer, mcpVersion: string): void {
 function registerInit(server: McpServer, mcpVersion: string): void {
   server.tool(
     "otto_init",
-    "Set up or reconfigure the SDLC for this project. Run this for /init — it conducts the setup interview and writes the config itself. Call it with no arguments.",
-    {},
-    async () => {
+    "Set up or reconfigure the SDLC for this project. Run this for /init — it conducts the setup interview and writes the config itself. Pass `projectRoot` (see its description) if you know the project's absolute path.",
+    INIT_SCHEMA.shape,
+    async (args: InitArgs) => {
       try {
         const inner = server.server;
+
+        // Resolve (and cache) the root up front so it's pinned for this whole
+        // session even if the caller only supplies it on this first call.
+        const root = await resolveProjectRoot(args.projectRoot);
 
         // No elicitation support (older client, or the CLI): hand the model the
         // interview to conduct in conversation, finishing with otto_scaffold.
@@ -107,8 +147,7 @@ function registerInit(server: McpServer, mcpVersion: string): void {
           return { content: [{ type: "text" as const, text: INIT_PROMPT }] };
         }
 
-        const root = await resolveProjectRoot();
-        const existing = (await loadConfig()) ?? undefined;
+        const existing = (await loadConfig(root)) ?? undefined;
 
         const answers = await runElicitedInterview(inner, existing);
         if (answers === ABORTED) return cancelled();
@@ -144,12 +183,12 @@ function cancelled() {
 function registerScaffold(server: McpServer): void {
   server.tool(
     "otto_scaffold",
-    "Write the Otto config (.otto/config.json) and scaffold standards, artifact dirs, and MCP config files from answers you have already collected. Prefer otto_init, which runs the interview itself — only call this after conducting the interview conversationally.",
+    "Write the Otto config (.otto/config.json) and scaffold standards, artifact dirs, and MCP config files from answers you have already collected. Prefer otto_init, which runs the interview itself — only call this after conducting the interview conversationally. Pass `projectRoot` (see its description) if you know the project's absolute path.",
     SCAFFOLD_SCHEMA.shape,
     async (args: ScaffoldArgs) => {
       try {
-        const root = await resolveProjectRoot();
-        const existing = await loadConfig();
+        const root = await resolveProjectRoot(args.projectRoot);
+        const existing = await loadConfig(root);
 
         const missing = missingPmFields(args);
         if (missing.length) {
@@ -234,10 +273,10 @@ async function validateAndScaffold(config: OttoConfig, root: string, isReconfigu
   }
 
   const result = await scaffoldRepo(validated.data, root);
-  return { content: [{ type: "text" as const, text: summarise(validated.data, result, isReconfigure) }] };
+  return { content: [{ type: "text" as const, text: summarise(validated.data, result, isReconfigure, root) }] };
 }
 
-function summarise(config: OttoConfig, result: ScaffoldResult, isReconfigure: boolean): string {
+function summarise(config: OttoConfig, result: ScaffoldResult, isReconfigure: boolean, root: string): string {
   const pmTool = config.alm?.tool ?? "JIRA";
   const workItems =
     config.alm?.tool === "ADO"   ? `Azure DevOps — ${config.alm.project}` :
@@ -247,6 +286,10 @@ function summarise(config: OttoConfig, result: ScaffoldResult, isReconfigure: bo
   const lines: string[] = [
     `✅ ${config.project.name} — SDLC ${isReconfigure ? "reconfigured" : "initialised"}`,
     ``,
+    // Surfaced explicitly so a wrong root (a host misreporting the workspace
+    // folder) is visible immediately, instead of a silent "success" against
+    // the wrong directory — see the `projectRoot` param on this tool.
+    `Project root: ${root}`,
     `Work items: ${workItems}`,
     `Phases:     ${config.phases.join(", ")}`,
     `Sandbox:    ${config.salesforce.orgs.sandbox}`,
@@ -287,10 +330,11 @@ function errorResult(message: string) {
 function registerStatus(server: McpServer): void {
   server.tool(
     "otto_status",
-    "Check whether this project is configured and report the active SDLC settings",
-    async () => {
+    "Check whether this project is configured and report the active SDLC settings. Pass `projectRoot` (see its description) if you know the project's absolute path.",
+    STATUS_SCHEMA.shape,
+    async (args: StatusArgs) => {
       try {
-        const { config } = await requireConfig();
+        const { config, root } = await requireConfig(args.projectRoot);
         const pmTool = config.alm?.tool ?? "JIRA";
         const workItems =
           config.alm?.tool === "ADO"   ? `Azure DevOps — ${config.alm.organization} / ${config.alm.project}` :
@@ -299,6 +343,7 @@ function registerStatus(server: McpServer): void {
 
         const lines = [
           `✅ SDLC configured: ${config.project.name}`,
+          `Project root: ${root}`,
           `Work items: ${workItems}`,
           `Phases:     ${config.phases.join(", ")}`,
           `Sandbox:    ${config.salesforce.orgs.sandbox}`,
@@ -326,10 +371,10 @@ function registerStatus(server: McpServer): void {
 function registerPromptTool(server: McpServer, mcpVersion: string): void {
   server.tool(
     "otto_prompt",
-    "Return the full, project-specific instruction set for an SDLC command, rendered against the project's Otto config. Follow the returned instructions verbatim.",
+    "Return the full, project-specific instruction set for an SDLC command, rendered against the project's Otto config. Follow the returned instructions verbatim. Pass `projectRoot` (see its description) if you know the project's absolute path.",
     PROMPT_SCHEMA.shape,
     async (args: PromptArgs) => {
-      const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey);
+      const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey, args.projectRoot);
       return {
         content: [{ type: "text" as const, text }],
         ...(ok ? {} : { isError: true }),

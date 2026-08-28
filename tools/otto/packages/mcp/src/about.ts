@@ -108,6 +108,10 @@ export const INIT_PROMPT = `
 
 You are setting up Slalom Otto for a Salesforce project. Your job is to conduct a brief interview, collect the project configuration, then call the \`otto_scaffold\` tool to write the config and scaffold the project.
 
+## Step 0 — Pin down the project root
+
+Before anything else, determine the **absolute path** of the project folder you're operating in (the one the user opened/selected for this session) — from your own session context, or by running an equivalent of \`pwd\` yourself. Some hosts do not reliably tell this MCP server which folder is open, so pass that absolute path as \`projectRoot\` on the \`otto_scaffold\` call below. Getting this wrong means the config and standards get written somewhere the user can't see, while the tool still reports success — always double-check the \`Project root:\` line in \`otto_scaffold\`'s response against the folder you intended, and if it doesn't match, re-run with the correct \`projectRoot\`.
+
 ## Interview steps
 
 Work through these in order. State which section you're on. Suggest sensible defaults.
@@ -150,9 +154,9 @@ Otherwise ask: *"Do you want to customise status names, or use the defaults?"*
 
 ## After collecting all answers
 
-Check whether an Otto config already exists (\`.otto/config.json\`, or a legacy \`.sdlc/config.json\` in projects set up before the Otto rename). If either does, inform the user this is a **reconfigure** — existing standards files and artifact directories will be preserved.
+Check whether an Otto config already exists at the project root from Step 0 (\`.otto/config.json\`, or a legacy \`.sdlc/config.json\` in projects set up before the Otto rename). If either does, inform the user this is a **reconfigure** — existing standards files and artifact directories will be preserved.
 
-Call \`otto_scaffold\` with all collected values, including \`pmTool\`. Omit any status name the user didn't customise — the tool fills in the right default for their PM tool.
+Call \`otto_scaffold\` with all collected values, including \`pmTool\` and the \`projectRoot\` you pinned down in Step 0. Omit any status name the user didn't customise — the tool fills in the right default for their PM tool.
 
-After scaffolding completes, summarise what was created/updated and remind the user to run \`${cmd("discover")}\` to start a discovery session.
+After scaffolding completes, confirm the \`Project root:\` line in the response matches the folder you intended, then summarise what was created/updated and remind the user to run \`${cmd("discover")}\` to start a discovery session.
 `.trim();

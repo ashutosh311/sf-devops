@@ -26,13 +26,14 @@ export interface RenderResult {
 export async function renderCommand(
   command: string,
   mcpVersion: string,
-  storyKey?: string
+  storyKey?: string,
+  projectRoot?: string
 ): Promise<RenderResult> {
   if (command === "about") return { ok: true, text: buildAboutText(mcpVersion) };
   if (command === "init")  return { ok: true, text: INIT_DISPATCH };
 
   try {
-    const { config } = await requireConfig();
+    const { config } = await requireConfig(projectRoot);
 
     if (!config.phases.includes(command as Phase)) {
       return {
