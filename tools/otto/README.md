@@ -274,17 +274,20 @@ This means:
 
 ## Usage Tracking
 
-The VS Code extension records **command and feedback usage** so Slalom can understand adoption
-by person, project, and agent. Events are pushed to a Power Automate HTTP trigger that writes to
-the **Salesforce DevOps Log** SharePoint list (surfaced in Power BI).
+Both the VS Code extension **and** the MCP server (the shared backend for the Claude Code plugin
+and the GitHub Copilot pack/plugin) record **command usage** so Slalom can understand adoption by
+person, project, and agent — across every surface, not just VS Code. Events are pushed to a Power
+Automate HTTP trigger that writes to the **Salesforce DevOps Log** SharePoint list (surfaced in
+Power BI). The two front ends share one queue mechanism and event shape (`packages/core/src/usage.ts`)
+but each owns its own gate and identity resolution — see below.
 
 ### Disclosure
 
 This records a **named individual's identity** (see `User` below) against the commands they run
-and any feedback they submit. The resulting data is visible to the Slalom delivery team via Power
-BI. Treat it the same as any other internal tooling telemetry/analytics — it is not hidden or
-covert, but it is not anonymous either. It does not run for client-distributed builds (see
-Slalom-only gate below).
+and (VS Code only) any feedback they submit. The resulting data is visible to the Slalom delivery
+team via Power BI. Treat it the same as any other internal tooling telemetry/analytics — it is not
+hidden or covert, but it is not anonymous either. It does not run for client-distributed builds
+(see the gates below).
 
 ### What is captured
 
@@ -292,83 +295,97 @@ Each event is a single row with these fields only:
 
 | Field | Example | Notes |
 |---|---|---|
-| `Command` | `build`, `refine`, `Feedback` | The agent command, or `Feedback` for feedback entries |
+| `Command` | `build`, `refine`, `init`, `Feedback` | The agent command, or `Feedback` for VS Code feedback entries |
 | `Date` | `2026-07-15T12:34:00Z` | ISO 8601 timestamp |
-| `User` | `jane.doe` | GitHub session label, falling back to git `user.name` |
-| `Project` | `protas-sc` | From `.sdlc/config.json` |
-| `Story` | `PSC-42` | Extracted from the prompt via a strict `KEY-<number>` regex only |
-| `Model` | `gpt-4o` | The active Copilot model family |
-| `Tokens` | `142` | See limitation below — **input estimate only, not a credit count** |
-| `Comment` | free text | Populated only for `Feedback` entries |
+| `User` | `jane.doe@slalom.com` | Git identity, layered with richer session lookups on VS Code — see `src/usage.ts` on each front end |
+| `Project` | `protas-sc` | From `.otto/config.json` |
+| `Story` | `PSC-42` | VS Code: extracted from the prompt via a strict `KEY-<number>` regex. MCP: the `storyKey` argument the tool call already carries |
+| `Model` | `gpt-4o` | VS Code only — the active Copilot model family. Always blank from the MCP server, which has no visibility into which model the host is running |
+| `Tokens` | `142` | VS Code only, see limitation below — **input estimate only, not a credit count**. Always `0` from the MCP server |
+| `Comment` | free text | VS Code only — populated for `Feedback` entries |
 
 **Privacy.** Request prompts and model responses are **never** transmitted — only the fields
 above. The single exception is `Comment`, which is the feedback text a user deliberately submits
-via `/feedback` or the `/discover` feedback prompt (Copilot's stable thumbs up/down API exposes
-only a 👍/👎 `.kind`, not free text, so thumbs feedback carries a fixed placeholder, never user
-text — see limitation below).
+via VS Code's `/feedback` or the `/discover` feedback prompt (Copilot's stable thumbs up/down API
+exposes only a 👍/👎 `.kind`, not free text, so thumbs feedback carries a fixed placeholder, never
+user text — see limitation below). The MCP server has no feedback flow and never sends `Comment`.
 
 **Credits/tokens limitation.** The VS Code Language Model API does not expose Copilot
 premium-request credits at all. `Tokens` is a best-effort tokeniser count of **the user's own raw
 message only** — it does not include the fully-rendered system prompt each agent builds
 internally, nor the model's response, so it under-counts the true cost of a command. `Model`
 (the active model family) is recorded reliably and is the more useful adoption signal of the two.
+Neither is available at all from the MCP server (Claude Code / Copilot Desktop) — the MCP protocol
+gives a local server no visibility into the host's model or token usage.
 
-### Slalom-only gate
+### Gates
 
-Tracking requires **both** of the following, or it stays fully inert:
-1. **A resolvable endpoint.** The Power Automate URL contains a SAS signature (`sig=`) that is
-   itself the write credential to the SharePoint list — it is never committed to source. It is
-   injected at build time, in CI only, from a GitHub Actions secret (`USAGE_TRACKING_ENDPOINT_URL`)
-   via esbuild's `define` (see `packages/vscode/esbuild.mjs` and `src/usage.ts`). Local/dev builds
-   compile in an empty string, so tracking is off regardless of anything else.
-2. **Proven private-repo access.** The daily instruction sync must have actually succeeded at
-   least once (i.e. downloaded a release asset from the private `Slalom/salesforce-devops` repo).
-   This is checked directly via the sync service's own status — **not** by checking for the
-   presence of `GITHUB_TOKEN`/`GH_TOKEN`/`OTTO_GITHUB_TOKEN` or any other ambient token,
-   since a client build can easily have one of those set (e.g. their own CI) with zero access to
-   Slalom's private repo. Token *presence* is never treated as proof of being a Slalom consultant.
+Both trackers require a resolvable endpoint (the Power Automate URL contains a SAS signature
+(`sig=`) that is itself the write credential — never committed to source, injected at build time,
+in CI only, from a GitHub Actions secret named `USAGE_TRACKING_ENDPOINT_URL`, via esbuild's
+`define`; see `packages/vscode/esbuild.mjs` + `packages/vscode/src/usage.ts` and
+`packages/mcp/esbuild.mjs` + `packages/mcp/src/usage.ts`). Local/dev builds of either package
+compile in an empty string, so tracking is off regardless of anything else.
+
+**VS Code additionally requires proven private-repo access**: the daily instruction sync must have
+actually succeeded at least once (i.e. downloaded a release asset from the private
+`Slalom/salesforce-devops` repo), checked directly via the sync service's own status — **not** by
+checking for the presence of `GITHUB_TOKEN`/`GH_TOKEN`/`OTTO_GITHUB_TOKEN` or any other ambient
+token, since a client build can easily have one of those set (e.g. their own CI) with zero access
+to Slalom's private repo. Token *presence* is never treated as proof of being a Slalom consultant.
+
+**The MCP server has no equivalent second check** — per this README's "Instruction auto-update"
+section, it never performs its own sync, so there is no sync-status signal to consult. Endpoint
+presence alone is the gate: the secret is only ever injected by the release workflow's "Build
+packages" step, the same step that produces the `packages/mcp/dist/server.js` that
+`scripts/package-plugin.mjs` and `scripts/package-copilot.mjs` copy into the Claude Code plugin and
+GitHub Copilot pack — a client's own fork/rebuild of `packages/mcp` compiles in `""` and stays
+inert, exactly like an unofficial VSIX build.
 
 **Residual risk (accepted trade-off).** Because the endpoint is still compiled into
-`dist/extension.js`, it remains extractable from a distributed `.vsix` by unzipping it — this is
-inherent to a SAS-URL-as-bearer-token design and was accepted rather than standing up a separate
-auth proxy. If this risk profile changes, consider fronting Power Automate with a thin
-authenticated proxy (e.g. an Azure Function validating a signed header) instead of relying on the
-SAS URL as the sole credential.
+`dist/extension.js` / `dist/server.js`, it remains extractable from a distributed `.vsix`, plugin,
+or Copilot pack by unzipping it — this is inherent to a SAS-URL-as-bearer-token design and was
+accepted rather than standing up a separate auth proxy. If this risk profile changes, consider
+fronting Power Automate with a thin authenticated proxy (e.g. an Azure Function validating a
+signed header) instead of relying on the SAS URL as the sole credential.
 
 ### Reliability & storage
 
-Events are written as individual files under `~/.slalom-sdlc/usage-queue/` (one JSON file per
-event, not a single shared array) and flushed in the background — pushing is asynchronous and
-never blocks a command. A per-file queue avoids a read-modify-write race across multiple VS Code
-windows: each enqueue is a single atomic file create, and each flush POSTs and deletes one file at
-a time. Failed pushes are left in place and retried on the next flush and on the next activation.
-The queue is capped (500 files / 14 days, pruned during flush housekeeping).
+Events are written as individual files under `~/.otto/usage-queue/` (one JSON file per event, not
+a single shared array) and flushed in the background — pushing is asynchronous and never blocks a
+command. A per-file queue avoids a read-modify-write race across multiple concurrent
+processes/windows (including a VS Code window and an MCP server running side by side, since they
+share this same machine-local directory): each enqueue is a single atomic file create, and each
+flush POSTs and deletes one file at a time. Failed pushes are left in place and retried on the next
+flush. The queue is capped (500 files / 14 days, pruned during flush housekeeping).
 
 ### Overriding the endpoint (local testing only)
 
-Set `OTTO_USAGE_URL` (a **runtime** env var, read by the extension when it runs — distinct
+Set `OTTO_USAGE_URL` (a **runtime** env var, read by either front end when it runs — distinct
 from the **build-time** `OTTO_USAGE_ENDPOINT` used by CI) to point at a test endpoint and
 force-enable tracking for manual verification of the queue/flush pipeline. This is a deliberate,
-explicit action taken by whoever runs the extension — never something a client environment would
-have set for itself.
+explicit action taken by whoever runs the extension or MCP server — never something a client
+environment would have set for itself.
 
 ### Debugging tracking
 
-If a queue file is created under `~/.slalom-sdlc/usage-queue/` but never disappears, the flush
-(the POST to Power Automate) is failing — by design this fails silently in normal operation so
-tracking can never disrupt a user. To see why, opt in to verbose logging:
+If a queue file is created under `~/.otto/usage-queue/` but never disappears, the flush (the POST
+to Power Automate) is failing — by design this fails silently in normal operation so tracking can
+never disrupt a user. To see why, opt in to verbose logging:
 
 ```
-OTTO_USAGE_DEBUG=1 code
+OTTO_USAGE_DEBUG=1 code                 # VS Code
+OTTO_USAGE_DEBUG=1 <your MCP host>      # Claude Code / Copilot Desktop / CLI
 ```
 
-This appends one line per event to `~/.slalom-sdlc/usage-queue/.debug.log` — `enqueue`,
-`flush-skip` (not enabled / already flushing / empty queue), `flush-attempt`, `flush-success`
-(with HTTP status), and `flush-error` (with HTTP status or the underlying Node error code, e.g.
-`ENOTFOUND`, `ECONNREFUSED`, `ETIMEDOUT`). Watch it live with:
+This appends one line per event to `~/.otto/usage-queue/.debug.log` (both trackers share the file,
+each line tagged `[mcp]` when written by the MCP server) — `enqueue`, `flush-skip` (not enabled /
+already flushing / empty queue), `flush-attempt`, `flush-success` (with HTTP status), and
+`flush-error` (with HTTP status or the underlying Node error code, e.g. `ENOTFOUND`,
+`ECONNREFUSED`, `ETIMEDOUT`). Watch it live with:
 
 ```
-tail -f ~/.slalom-sdlc/usage-queue/.debug.log
+tail -f ~/.otto/usage-queue/.debug.log
 ```
 
 The log **never contains the full endpoint URL or its `sig=` SAS token** (only the hostname) and

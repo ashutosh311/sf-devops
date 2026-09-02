@@ -14,6 +14,15 @@ const ctx = await esbuild.context({
   banner: {
     js: "#!/usr/bin/env node",
   },
+  define: {
+    // Usage-tracking endpoint (a SAS URL — the credential itself). Same secret
+    // as packages/vscode/esbuild.mjs, already present in the release
+    // workflow's "Build packages" step env. Never committed; local/dev builds
+    // compile in "" (tracking disabled). See src/usage.ts for the consuming
+    // code and src/global.d.ts for the ambient declaration that keeps
+    // `tsc --noEmit` happy without esbuild.
+    __USAGE_ENDPOINT_URL__: JSON.stringify(process.env.OTTO_USAGE_ENDPOINT ?? ""),
+  },
 });
 
 if (watch) {

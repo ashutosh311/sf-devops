@@ -9,6 +9,7 @@ export * from "./standards.js";
 export * from "./skills.js";
 export * from "./cache.js";
 export * from "./projectDir.js";
+export * from "./usage.js";
 export { pushBacklogAdoTemplate, pushBacklogJiraTemplate } from "./templates/push-backlog.js";
 export { syncPmAdoTemplate, syncPmJiraTemplate } from "./templates/sync-pm.js";
 export { dataDictionaryTemplate } from "./templates/data-dictionary.js";

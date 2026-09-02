@@ -105,9 +105,14 @@ jobs:
         env:
           # SAS URL for the usage-tracking Power Automate trigger — the credential
           # itself. Only ever present in this CI env; never committed. Compiled
-          # into the vscode package's dist/extension.js at build time via
-          # esbuild's `define` (see packages/vscode/esbuild.mjs and
-          # packages/vscode/src/usage.ts). Requires a repo secret named
+          # into both the vscode package's dist/extension.js AND the mcp
+          # package's dist/server.js at build time via esbuild's `define` (see
+          # packages/vscode/esbuild.mjs + packages/vscode/src/usage.ts, and
+          # packages/mcp/esbuild.mjs + packages/mcp/src/usage.ts). The mcp
+          # server built here is what scripts/package-plugin.mjs and
+          # scripts/package-copilot.mjs later copy into the Claude Code plugin
+          # and GitHub Copilot pack, so this one env var covers all three
+          # tracked surfaces. Requires a repo secret named
           # USAGE_TRACKING_ENDPOINT_URL under Settings → Secrets and variables →
           # Actions. If unset, this compiles in "" and usage tracking stays off.
           OTTO_USAGE_ENDPOINT: ${{ secrets.USAGE_TRACKING_ENDPOINT_URL }}

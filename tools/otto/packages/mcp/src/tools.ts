@@ -15,6 +15,7 @@ import { COMMANDS, PHASES, renderCommand } from "./render.js";
 import { INIT_PROMPT } from "./about.js";
 import { cmd } from "./surface.js";
 import { registerRcaTools } from "./rca.js";
+import { trackCommand } from "./usage.js";
 import {
   ABORTED,
   supportsElicitation,
@@ -144,6 +145,7 @@ function registerInit(server: McpServer, mcpVersion: string): void {
         // No elicitation support (older client, or the CLI): hand the model the
         // interview to conduct in conversation, finishing with otto_scaffold.
         if (!supportsElicitation(inner)) {
+          void trackCommand({ command: "init", cwd: root }).catch(() => undefined);
           return { content: [{ type: "text" as const, text: INIT_PROMPT }] };
         }
 
@@ -161,7 +163,9 @@ function registerInit(server: McpServer, mcpVersion: string): void {
           statusMap = mapped;
         }
 
-        return await validateAndScaffold(buildOttoConfig(answers, statusMap), root, Boolean(existing));
+        const config = buildOttoConfig(answers, statusMap);
+        void trackCommand({ command: "init", project: config.project.name, cwd: root }).catch(() => undefined);
+        return await validateAndScaffold(config, root, Boolean(existing));
       } catch (err) {
         return errorResult(`Setup failed: ${String(err)}`);
       }
@@ -196,6 +200,7 @@ function registerScaffold(server: McpServer): void {
         }
 
         const config = buildOttoConfig(toAnswers(args), statusMapFrom(args));
+        void trackCommand({ command: "init", project: config.project.name, cwd: root }).catch(() => undefined);
         return await validateAndScaffold(config, root, Boolean(existing));
       } catch (err) {
         return errorResult(`Scaffold failed: ${String(err)}`);
@@ -375,10 +380,24 @@ function registerPromptTool(server: McpServer, mcpVersion: string): void {
     PROMPT_SCHEMA.shape,
     async (args: PromptArgs) => {
       const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey, args.projectRoot);
+      void trackPromptUsage(args).catch(() => undefined);
       return {
         content: [{ type: "text" as const, text }],
         ...(ok ? {} : { isError: true }),
       };
     }
   );
+}
+
+/** Best-effort usage tracking for otto_prompt — never blocks or affects the
+ *  tool response. See ./usage.ts for the gate/privacy envelope. */
+async function trackPromptUsage(args: PromptArgs): Promise<void> {
+  const root = await resolveProjectRoot(args.projectRoot);
+  const config = await loadConfig(root);
+  await trackCommand({
+    command: args.command,
+    project: config?.project?.name,
+    story: args.storyKey,
+    cwd: root,
+  });
 }

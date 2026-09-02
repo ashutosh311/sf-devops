@@ -1,11 +1,9 @@
 import * as vscode from "vscode";
-import * as https from "node:https";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { OTTO_HOME_DIR } from "@otto/core";
+import { UsageQueue, USAGE_QUEUE_DIR, resolveGitIdentity, type UsageEntry } from "@otto/core";
 import type { InstructionSyncService } from "./sync";
 import { githubGet } from "./github";
 
@@ -15,8 +13,9 @@ import { githubGet } from "./github";
 // Every agent command (and captured feedback) is recorded as a small event and
 // pushed to a Power Automate HTTP trigger that writes to the "Salesforce DevOps
 // Log" SharePoint list. Pushing is asynchronous, non-blocking, and best-effort:
-// events are appended to a local queue and flushed in the background; failures
-// are retained and retried on the next flush / next activation.
+// events are appended to a local queue (shared with the MCP server — see
+// @otto/core's usage.ts) and flushed in the background; failures are retained
+// and retried on the next flush / next activation.
 //
 // PRIVACY: only the fields below are ever sent. Request prompts and model
 // responses (which may contain client data) are NEVER transmitted. `Story` is
@@ -28,6 +27,9 @@ import { githubGet } from "./github";
 // proven — the daily instruction sync has actually succeeded at least once. Token
 // *presence* (GITHUB_TOKEN/GH_TOKEN/etc.) is never treated as proof of access. A
 // client-distributed VSIX therefore never phones home. See isEnabled() below.
+//
+// The MCP server (packages/mcp/src/usage.ts) tracks the same event shape to the
+// same endpoint, but with a simpler gate — see that file for why.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Power Automate HTTP trigger endpoint for the "Salesforce DevOps Log" SharePoint
@@ -64,7 +66,7 @@ function isDebugEnabled(): boolean {
   return !!v && v !== "0" && v !== "false";
 }
 
-const DEBUG_LOG_PATH = path.join(OTTO_HOME_DIR, "usage-queue", ".debug.log");
+const DEBUG_LOG_PATH = path.join(USAGE_QUEUE_DIR, ".debug.log");
 
 /** Best-effort append-only debug log write — never throws, never disrupts tracking. */
 function writeDebugLog(line: string): void {
@@ -77,29 +79,7 @@ function writeDebugLog(line: string): void {
   }
 }
 
-/** The exact JSON body posted to the endpoint — mirrors the SharePoint columns. */
-export interface UsageEntry {
-  Command: string;
-  Date: string; // ISO 8601
-  User: string;
-  Project: string;
-  Story: string;
-  Model: string;
-  Tokens: number;
-  Comment: string;
-}
-
-interface QueuedItem {
-  id: string;
-  entry: UsageEntry;
-}
-
-const QUEUE_DIR = path.join(OTTO_HOME_DIR, "usage-queue");
-
-/** Hard caps so a long offline stretch (or multiple windows) can never grow the
- *  queue directory unbounded. */
-const MAX_QUEUE_ITEMS = 500;
-const MAX_ITEM_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+const USER_AGENT = "otto-vscode";
 
 function resolveEndpoint(): string {
   const override = process.env[ENDPOINT_ENV_OVERRIDE]?.trim();
@@ -110,8 +90,8 @@ function resolveEndpoint(): string {
  *  it directly from there, not from this module. */
 
 export class UsageTracker {
-  private flushing = false;
   private cachedUser: string | undefined;
+  private readonly queue = new UsageQueue();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -145,7 +125,7 @@ export class UsageTracker {
     comment?: string;
   }): Promise<void> {
     if (!this.isEnabled()) return;
-    await this.enqueue({
+    this.enqueueAndFlush({
       Command: fields.command,
       Date: new Date().toISOString(),
       User: await this.resolveUser(),
@@ -155,7 +135,6 @@ export class UsageTracker {
       Tokens: fields.tokens,
       Comment: fields.comment ?? "",
     });
-    void this.flush();
   }
 
   async recordFeedback(fields: {
@@ -165,7 +144,7 @@ export class UsageTracker {
     model?: string;
   }): Promise<void> {
     if (!this.isEnabled()) return;
-    await this.enqueue({
+    this.enqueueAndFlush({
       Command: "Feedback",
       Date: new Date().toISOString(),
       User: await this.resolveUser(),
@@ -175,6 +154,10 @@ export class UsageTracker {
       Tokens: 0,
       Comment: fields.comment,
     });
+  }
+
+  private enqueueAndFlush(entry: UsageEntry): void {
+    this.queue.enqueue(entry, writeDebugLog);
     void this.flush();
   }
 
@@ -194,7 +177,8 @@ export class UsageTracker {
   //      hasn't already granted it (never triggers a consent prompt).
   //   4. The existing GitHub session label (username, not an email) — same
   //      session the instruction sync already uses.
-  //   5. Local git user.name, then the literal string "unknown".
+  //   5. Local git user.name, then the literal string "unknown" — shared with
+  //      the MCP server via @otto/core's resolveGitIdentity.
   private async resolveUser(): Promise<string> {
     if (this.cachedUser) return this.cachedUser;
 
@@ -228,8 +212,7 @@ export class UsageTracker {
       // fall through
     }
 
-    const gitName = await this.gitUserName();
-    return this.cacheUser(gitName || "unknown");
+    return this.cacheUser(await resolveGitIdentity(this.gitCwd()));
   }
 
   private cacheUser(value: string): string {
@@ -237,19 +220,13 @@ export class UsageTracker {
     return value;
   }
 
-  private gitUserEmail(): Promise<string> {
-    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? os.homedir();
-    return new Promise((resolve) => {
-      execFile("git", ["config", "user.email"], { cwd }, (err, stdout) => {
-        resolve(err ? "" : stdout.trim());
-      });
-    });
+  private gitCwd(): string {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? os.homedir();
   }
 
-  private gitUserName(): Promise<string> {
-    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? os.homedir();
+  private gitUserEmail(): Promise<string> {
     return new Promise((resolve) => {
-      execFile("git", ["config", "user.name"], { cwd }, (err, stdout) => {
+      execFile("git", ["config", "user.email"], { cwd: this.gitCwd() }, (err, stdout) => {
         resolve(err ? "" : stdout.trim());
       });
     });
@@ -274,163 +251,13 @@ export class UsageTracker {
     return primary?.email;
   }
 
-  // ── Queue ────────────────────────────────────────────────────────────────
-  //
-  // One file per event under ~/.otto/usage-queue/, named with a unique
-  // id (timestamp + random suffix). This avoids the classic "read whole array,
-  // rewrite whole array" race: with a single JSON file, two VS Code windows
-  // enqueuing/flushing concurrently can silently clobber each other's writes
-  // (last-write-wins data loss). A per-item file makes enqueue a single atomic
-  // file create, and flush a per-file POST + per-file delete — at worst two
-  // windows racing to flush the SAME file both POST it once (an acceptable
-  // duplicate row), but nothing is ever silently dropped.
-
-  private async enqueue(entry: UsageEntry): Promise<void> {
-    let id = "unknown";
-    try {
-      fs.mkdirSync(QUEUE_DIR, { recursive: true });
-      id = randomId();
-      const file = path.join(QUEUE_DIR, `${id}.json`);
-      const item: QueuedItem = { id, entry };
-      fs.writeFileSync(file, JSON.stringify(item), { encoding: "utf-8", flag: "wx" });
-      writeDebugLog(`enqueue ok id=${id} command=${entry.Command}`);
-    } catch (e) {
-      writeDebugLog(
-        `enqueue error id=${id} command=${entry.Command} error=${e instanceof Error ? e.message : String(e)}`
-      );
-      // If we can't persist, drop silently — tracking must never disrupt the user.
-    }
-    this.pruneQueue();
-  }
-
-  private listQueueFiles(): string[] {
-    try {
-      return fs
-        .readdirSync(QUEUE_DIR)
-        .filter((f) => f.endsWith(".json"))
-        .map((f) => path.join(QUEUE_DIR, f));
-    } catch {
-      return [];
-    }
-  }
-
-  private readQueueItem(file: string): QueuedItem | undefined {
-    try {
-      return JSON.parse(fs.readFileSync(file, "utf-8")) as QueuedItem;
-    } catch {
-      return undefined;
-    }
-  }
-
-  /** Age- and count-cap housekeeping. Stale/overflow files are deleted outright —
-   *  best-effort, never throws. */
-  private pruneQueue(): void {
-    const cutoff = Date.now() - MAX_ITEM_AGE_MS;
-    const files = this.listQueueFiles();
-    const withStats = files
-      .map((file) => {
-        let mtimeMs = 0;
-        try {
-          mtimeMs = fs.statSync(file).mtimeMs;
-        } catch {
-          // file may have just been deleted by another window — ignore
-        }
-        return { file, mtimeMs };
-      })
-      .sort((a, b) => a.mtimeMs - b.mtimeMs); // oldest first
-
-    for (const { file, mtimeMs } of withStats) {
-      if (mtimeMs < cutoff) {
-        this.tryUnlink(file);
-      }
-    }
-
-    const remaining = this.listQueueFiles();
-    if (remaining.length > MAX_QUEUE_ITEMS) {
-      const sorted = remaining
-        .map((file) => ({ file, mtimeMs: this.safeMtime(file) }))
-        .sort((a, b) => a.mtimeMs - b.mtimeMs);
-      const excess = sorted.length - MAX_QUEUE_ITEMS;
-      for (let i = 0; i < excess; i++) {
-        this.tryUnlink(sorted[i].file);
-      }
-    }
-  }
-
-  private safeMtime(file: string): number {
-    try {
-      return fs.statSync(file).mtimeMs;
-    } catch {
-      return 0;
-    }
-  }
-
-  private tryUnlink(file: string): void {
-    try {
-      fs.unlinkSync(file);
-    } catch {
-      // already gone (e.g. another window flushed/pruned it first) — fine
-    }
-  }
-
-  /** Best-effort background flush. POSTs each queued file's contents; deletes on
-   *  success, leaves it in place for retry on failure. */
+  /** Best-effort background flush — delegates to the shared queue. */
   async flush(): Promise<void> {
-    if (this.flushing) {
-      writeDebugLog("flush-skip reason=already-flushing");
-      return;
-    }
     if (!this.isEnabled()) {
       writeDebugLog("flush-skip reason=not-enabled");
       return;
     }
-    this.flushing = true;
-    try {
-      const files = this.listQueueFiles();
-      if (files.length === 0) {
-        writeDebugLog("flush-skip reason=empty-queue");
-        return;
-      }
-
-      const endpoint = resolveEndpoint();
-      let endpointHost = "unresolved";
-      try {
-        endpointHost = new URL(endpoint).hostname;
-      } catch {
-        // logged as part of the per-file postJson error below
-      }
-      writeDebugLog(`flush-attempt count=${files.length} host=${endpointHost}`);
-
-      for (const file of files) {
-        const item = this.readQueueItem(file);
-        if (!item) {
-          // Corrupt/unreadable — remove rather than retry forever.
-          writeDebugLog(`flush-error file=${path.basename(file)} error=unreadable-item`);
-          this.tryUnlink(file);
-          continue;
-        }
-        try {
-          const result = await postJson(endpoint, item.entry);
-          if (result.ok) {
-            writeDebugLog(`flush-success id=${item.id} status=${result.status ?? "?"}`);
-            this.tryUnlink(file);
-          } else {
-            writeDebugLog(
-              `flush-error id=${item.id} status=${result.status ?? "n/a"} error=${result.error ?? "non-2xx"}`
-            );
-          }
-        } catch (e) {
-          // Should not normally happen — postJson resolves rather than rejects —
-          // but guard defensively so one bad file can never abort the whole flush.
-          writeDebugLog(
-            `flush-error id=${item.id} error=${e instanceof Error ? e.message : String(e)}`
-          );
-          // leave the file queued for the next flush
-        }
-      }
-    } finally {
-      this.flushing = false;
-    }
+    await this.queue.flush(resolveEndpoint(), USER_AGENT, writeDebugLog);
   }
 }
 
@@ -472,58 +299,4 @@ export function trackFeedback(fields: {
 
 export function flushUsageQueue(): void {
   void tracker?.flush().catch(() => undefined);
-}
-
-// ── HTTP ─────────────────────────────────────────────────────────────────────
-
-interface PostResult {
-  ok: boolean;
-  status?: number;
-  error?: string;
-}
-
-function postJson(endpoint: string, body: unknown): Promise<PostResult> {
-  return new Promise((resolve) => {
-    let url: URL;
-    try {
-      url = new URL(endpoint);
-    } catch (e) {
-      resolve({ ok: false, error: e instanceof Error ? e.message : String(e) });
-      return;
-    }
-
-    const payload = Buffer.from(JSON.stringify(body), "utf-8");
-    const req = https.request(
-      {
-        method: "POST",
-        hostname: url.hostname,
-        port: url.port || 443,
-        path: url.pathname + url.search,
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": payload.length,
-          "User-Agent": "slalom-sdlc-vscode",
-        },
-      },
-      (res) => {
-        const status = res.statusCode ?? 0;
-        res.resume(); // drain
-        resolve({ ok: status >= 200 && status < 300, status });
-      }
-    );
-
-    req.on("error", (e: NodeJS.ErrnoException) => {
-      resolve({ ok: false, error: e.code ?? e.message });
-    });
-    req.write(payload);
-    req.end();
-  });
-}
-
-function randomId(): string {
-  try {
-    return randomUUID();
-  } catch {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-  }
 }
