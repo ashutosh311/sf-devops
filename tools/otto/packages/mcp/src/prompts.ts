@@ -7,17 +7,25 @@ const STORY_KEY_SCHEMA = z.object({
 });
 type StoryKeyArgs = z.infer<typeof STORY_KEY_SCHEMA>;
 
+const TEST_ARGS_SCHEMA = z.object({
+  storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42"),
+  skill:    z.string().optional().describe(
+    "Sub-skill: execute | write-cases | apex-unit | apex-perf | pw-setup | pw-write. Omit to show the menu (or, with a storyKey but no skill, run execute)."
+  ),
+});
+type TestArgs = z.infer<typeof TEST_ARGS_SCHEMA>;
+
 const PHASE_DESCRIPTIONS: Record<string, string> = {
   discover: "Discovery agent — maps requirements, identifies unknowns, drafts epics and stories",
   refine:   "Refinement agent — acceptance criteria, open questions, effort estimate for a JIRA story, epic, or sprint (epic/sprint ⇒ refines all unrefined child stories)",
   design:   "Technical design agent — solution approach, data model, component breakdown, sub-tasks for a JIRA story, epic, or sprint (epic/sprint ⇒ designs every eligible child story + publishes an epic synthesis design)",
   build:    "Build agent — scaffolds Apex, LWC, config metadata; reviews with you; deploys to sandbox",
-  test:     "Test agent — generates Apex test classes and JEST tests, validates coverage",
+  test:     "Test agent — menu-driven: execute AC in the sandbox, author test cases in Xray/Zephyr/ADO Test Plans, extend Apex unit + performance tests, or set up and write Playwright E2E tests",
   release:  "Release agent — deployment notes, checklist, JIRA transitions",
 };
 
-// Phases that take an optional storyKey argument
-const PHASES_WITH_KEY = ["refine", "design", "build", "test"] as const;
+// Phases that take an optional storyKey argument (test moves out — it also takes a skill)
+const PHASES_WITH_KEY = ["refine", "design", "build"] as const;
 
 // Phases with no arguments
 const PHASES_STORYLESS = ["discover", "release"] as const;
@@ -32,6 +40,7 @@ export function registerPrompts(server: McpServer, mcpVersion: string): void {
   for (const phase of PHASES_WITH_KEY) {
     registerWithStoryKey(server, phase, mcpVersion);
   }
+  registerTest(server, mcpVersion);
 }
 
 function registerStatic(server: McpServer, command: string, description: string, mcpVersion: string): void {
@@ -55,6 +64,18 @@ function registerWithStoryKey(server: McpServer, phase: string, mcpVersion: stri
     STORY_KEY_SCHEMA.shape,
     async ({ storyKey }: StoryKeyArgs) => {
       const { text } = await renderCommand(phase, mcpVersion, storyKey);
+      return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
+    }
+  );
+}
+
+function registerTest(server: McpServer, mcpVersion: string): void {
+  server.prompt(
+    "test",
+    PHASE_DESCRIPTIONS.test,
+    TEST_ARGS_SCHEMA.shape,
+    async ({ storyKey, skill }: TestArgs) => {
+      const { text } = await renderCommand("test", mcpVersion, storyKey, undefined, skill);
       return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
     }
   );

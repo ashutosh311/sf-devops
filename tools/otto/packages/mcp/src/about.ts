@@ -65,8 +65,21 @@ ${hostName()} will walk you through a short setup and scaffold the project with:
 | \`${cmd("refine", "PROJ-42")}\` | Refines a JIRA story — AC, open questions, effort |
 | \`${cmd("design", "PROJ-42")}\` | Technical design — solution approach, data model, sub-tasks |
 | \`${cmd("build", "PROJ-42")}\` | Build agent — scaffolds Apex/LWC/config, deploys to sandbox |
-| \`${cmd("test", "PROJ-42")}\` | Test agent — Apex test classes, JEST tests, coverage validation |
+| \`${cmd("test", "PROJ-42")}\` | Test agent — menu-driven (see Test skills below) |
 | \`${cmd("release")}\` | Release agent — deployment notes, checklist, JIRA transitions |
+
+### Test skills
+
+\`${cmd("test", "PROJ-42")}\` alone (or with no arguments, for the full menu) runs **execute**. Ask for a specific skill by name to run one directly:
+
+| Skill | What it does |
+|---|---|
+| \`execute\` | Run AC in the sandbox, raise defects, close the story *(the only skill that transitions it)* |
+| \`write-cases\` | Push AC to Xray / Zephyr Scale / ADO Test Plans |
+| \`apex-unit\` | Review and extend Build's baseline Apex test classes |
+| \`apex-perf\` | Bulk / volume / governor-limit stress tests |
+| \`pw-setup\` | Scaffold the Playwright E2E framework (once per project) |
+| \`pw-write\` | Write, debug, or refactor Playwright specs |
 
 ---
 

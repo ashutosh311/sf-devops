@@ -61,6 +61,10 @@ export function activate(context: vscode.ExtensionContext): void {
       stream: vscode.ChatResponseStream,
       token: vscode.CancellationToken
     ) => {
+      // Set only by handleTest, when it resolves a sub-skill — lets
+      // recordCommandUsage report "test:apex-unit"-style granularity instead
+      // of every Test skill collapsing into a single "test" row.
+      let usageCommandOverride: string | undefined;
       try {
         if (request.command === "init") {
           await handleInit(request, chatContext, stream);
@@ -77,7 +81,7 @@ export function activate(context: vscode.ExtensionContext): void {
         } else if (request.command === "build") {
           await handleBuild(request, chatContext, stream, token);
         } else if (request.command === "test") {
-          await handleTest(request, chatContext, stream, token);
+          usageCommandOverride = await handleTest(request, chatContext, stream, token);
         } else {
           await handleAgent(request, chatContext, stream, token);
         }
@@ -89,7 +93,7 @@ export function activate(context: vscode.ExtensionContext): void {
         // (or the thumbs-feedback listener below), so it is excluded here to
         // avoid a duplicate entry.
         if (request.command && request.command !== "feedback") {
-          void recordCommandUsage(request, token);
+          void recordCommandUsage(request, token, usageCommandOverride);
         }
       }
     }
@@ -121,7 +125,8 @@ export function activate(context: vscode.ExtensionContext): void {
 /** Build and enqueue a usage event for a completed command. Never throws. */
 async function recordCommandUsage(
   request: vscode.ChatRequest,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  commandOverride?: string
 ): Promise<void> {
   try {
     const root = getWorkspaceRoot();
@@ -157,7 +162,7 @@ async function recordCommandUsage(
     }
 
     trackCommand({
-      command: request.command ?? "chat",
+      command: commandOverride ?? request.command ?? "chat",
       project,
       story,
       model,

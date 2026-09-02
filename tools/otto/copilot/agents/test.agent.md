@@ -1,6 +1,6 @@
 ---
 name: otto-test
-description: Test agent — Apex and JEST test classes, coverage validation
+description: Test agent — execute AC, author test cases, Apex unit/perf tests, Playwright E2E
 target: github-copilot
 # "*" (not a narrow allowlist): this phase's prompt instructs the agent to call
 # out to whatever ALM/Salesforce MCP server the host has configured (Atlassian,
@@ -15,8 +15,16 @@ mcp-servers:
     tools: ["*"]
 ---
 
-Call `otto_prompt` on the `otto` MCP server with `command: "test"` and `storyKey` set to the ticket key the user supplied (e.g. `PROJ-42`).
+Parse the user's message for an optional **skill** and an optional **ticket key**.
 
-If no ticket key was supplied, omit `storyKey` and ask the user which ticket to work on before continuing.
+Valid skills: `execute`, `write-cases`, `apex-unit`, `apex-perf`, `pw-setup`, `pw-write`.
 
-Follow the returned instructions verbatim — they are the authoritative procedure for this phase, already resolved against this project's `.sdlc/config.json` (ticket keys, status names, paths, coverage thresholds, ALM tool). Do not summarise them, skip steps, or substitute your own approach.
+Call `otto_prompt` on the `otto` MCP server with `command: "test"`, plus:
+- `skill` — the skill if one was given
+- `storyKey` — the ticket key if one was given
+
+If a ticket key was given but no skill, pass `skill: "execute"` — this preserves the tool's original ticket-only behaviour.
+
+If neither a skill nor a ticket key was given, call `otto_prompt` with `command: "test"` alone and present the menu it returns; ask the user to pick before continuing.
+
+Follow the returned instructions verbatim — they are the authoritative procedure for this phase, already resolved against this project's `.otto/config.json` (ticket keys, status names, paths, coverage thresholds, ALM tool). Do not summarise them, skip steps, or substitute your own approach.

@@ -7,6 +7,9 @@ import {
   resolveProjectKey,
   OttoConfigSchema,
   QUESTIONS,
+  PHASE_TEMPLATES,
+  TEST_SKILLS,
+  skillTemplateKey,
 } from "../dist/index.js";
 
 const story = {
@@ -256,6 +259,47 @@ test("no imperative literal mcp__ tool calls leak into rendered output (host-nam
       const match = all[phase].match(imperativeMcpCall);
       assert.equal(match, null, `${phase} has an imperative literal mcp__ call: ${match}`);
     }
+  }
+});
+
+// ── Test agent — sub-skill registry (see the Test Agent Vision & Plan note) ────
+
+test("no PHASE_TEMPLATES key contains ':' (B1 — illegal in a Windows filename)", () => {
+  for (const key of Object.keys(PHASE_TEMPLATES)) {
+    assert.ok(!key.includes(":"), `PHASE_TEMPLATES key "${key}" contains ':'`);
+  }
+});
+
+test("TEST_SKILLS all compose to a registered PHASE_TEMPLATES key", () => {
+  for (const skill of TEST_SKILLS) {
+    const key = skillTemplateKey("test", skill);
+    assert.ok(PHASE_TEMPLATES[key], `no template registered for composed key "${key}"`);
+  }
+});
+
+for (const [name, cfg] of [["JIRA", jiraCfg], ["ADO", adoCfg], ["LOCAL", localCfg]]) {
+  test(`${name}: every PHASE_TEMPLATES key (including Test sub-skills) renders with no unresolved handlebars`, () => {
+    for (const key of Object.keys(PHASE_TEMPLATES)) {
+      const out = renderPrompt(key, cfg);
+      assert.ok(out, `${key} produced no output`);
+      const unresolved = out.match(/\{\{[^}]+\}\}/g) || [];
+      assert.deepEqual(unresolved, [], `${name}/${key} has unresolved handlebars: ${unresolved}`);
+    }
+  });
+}
+
+test('"test-execute" still contains the story-closing transition (B4 — the only skill that may close the story)', () => {
+  const out = renderPrompt("test-execute", jiraCfg);
+  assert.ok(out.includes("statusMap.story.done") || out.includes("Done"), '"test-execute" no longer transitions the story');
+});
+
+test("no other Test sub-skill transitions the story to Done", () => {
+  for (const skill of TEST_SKILLS.filter((s) => s !== "execute")) {
+    const out = renderPrompt(skillTemplateKey("test", skill), jiraCfg);
+    assert.ok(
+      !/transition(s)? the .*(story|{{pmToolName}} story) to \*\*/i.test(out),
+      `"${skill}" should not transition the story — only execute may`
+    );
   }
 });
 

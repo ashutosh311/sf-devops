@@ -5,6 +5,7 @@ import {
   OttoConfigSchema,
   buildOttoConfig,
   defaultStatusMapFor,
+  skillTemplateKey,
   type OttoConfig,
   type StatusMapTriple,
   type InterviewAnswers,
@@ -92,6 +93,9 @@ const PROMPT_SCHEMA = z.object({
   command:     z.enum(COMMANDS).describe("SDLC command to activate"),
   storyKey:    z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine and design, may also be an epic key or sprint to process every eligible child story."),
   projectRoot: PROJECT_ROOT_FIELD,
+  skill:       z.string().optional().describe(
+    "Optional sub-skill. For `test`: execute | write-cases | apex-unit | apex-perf | pw-setup | pw-write. Omit to show the menu (or, with a storyKey but no skill, run `execute`)."
+  ),
 });
 
 type PromptArgs = z.infer<typeof PROMPT_SCHEMA>;
@@ -387,7 +391,7 @@ function registerPromptTool(server: McpServer, mcpVersion: string): void {
     "Return the full, project-specific instruction set for an SDLC command, rendered against the project's Otto config. Follow the returned instructions verbatim. Pass `projectRoot` (see its description) if you know the project's absolute path.",
     PROMPT_SCHEMA.shape,
     async (args: PromptArgs) => {
-      const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey, args.projectRoot);
+      const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey, args.projectRoot, args.skill);
       void trackPromptUsage(args).catch(() => undefined);
       return {
         content: [{ type: "text" as const, text }],
@@ -403,7 +407,11 @@ async function trackPromptUsage(args: PromptArgs): Promise<void> {
   const root = await resolveProjectRoot(args.projectRoot);
   const config = await loadConfig(root);
   await trackCommand({
-    command: args.command,
+    // Record the composed sub-skill key (e.g. "test-apex-unit") when one was
+    // given, not the bare phase — otherwise every Test skill collapses to a
+    // single "test" row and the dashboard can't tell them apart, the same
+    // per-surface granularity gap WP4 already closes for VS Code.
+    command: args.skill ? skillTemplateKey(args.command, args.skill) : args.command,
     project: config?.project?.name,
     story: args.storyKey,
     cwd: root,

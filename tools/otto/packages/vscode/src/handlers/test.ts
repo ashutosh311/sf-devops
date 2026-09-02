@@ -1,25 +1,43 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import { resolveAlmTool, resolveProjectKey, type OttoConfig } from "@otto/core";
+import { resolveAlmTool, resolveProjectKey, skillTemplateKey, TEST_SKILLS, type OttoConfig, type TestSkill } from "@otto/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { scanEligibleStories, pickStoryScope, storyFolderPath } from "./backlog-scope";
 import { runPhaseAgent } from "./run-phase-agent";
+import { mcpDisplayName } from "./agent-defer";
 
 /**
- * Test agent — menu-first, mirroring Build/Design/Refine: an explicit mode gate
- * up front instead of the agent asking in-flow which mode to run in. Test has no
- * Data Dictionary option (that stays with Discover/Refine/Design/Build, which own
- * the dictionary's conceptual/inferred/logical/physical fidelity tiers).
+ * Test agent — skill-first, mirroring Discover's menu shape: an explicit skill
+ * picker up front rather than the agent asking in-flow which capability to run.
+ * `execute` is the only skill that transitions the story, and is the only one
+ * that keeps its own Local/ALM mode sub-picker (the richer, story-scoping flow
+ * below) — the other five skills are fully offline or read-only against the PM
+ * tool and skip straight to a deferred agent-mode run.
  */
 
 const INLINE_KEY_RE = /[A-Za-z][A-Za-z0-9]+-\d+/;
+
+interface SkillMenuItem extends vscode.QuickPickItem {
+  skill: TestSkill;
+}
+
+const MENU: SkillMenuItem[] = [
+  { skill: "execute",     label: "$(play) Execute test cases",          description: "run AC in the sandbox, raise defects, close the story" },
+  { skill: "write-cases", label: "$(checklist) Write test cases",       description: "push AC to Xray / Zephyr / ADO Test Plans" },
+  { skill: "apex-unit",   label: "$(beaker) Apex unit tests",           description: "extend Build's baseline test classes" },
+  { skill: "apex-perf",   label: "$(dashboard) Apex performance tests", description: "bulk / volume / governor-limit stress tests" },
+  { skill: "pw-setup",    label: "$(tools) Set up Playwright",          description: "scaffold the E2E framework (once per project)" },
+  { skill: "pw-write",    label: "$(edit) Write Playwright tests",      description: "specs for delivered functionality" },
+];
+
+const SKILL_IDS = new Set<string>(TEST_SKILLS);
 
 export async function handleTest(
   request: vscode.ChatRequest,
   _context: vscode.ChatContext,
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken
-): Promise<void> {
+): Promise<string | undefined> {
   const root = getWorkspaceRoot();
   if (!root) {
     stream.markdown("⛔ No workspace folder open. Open your project folder in VS Code first.");
@@ -32,28 +50,114 @@ export async function handleTest(
     return;
   }
 
-  // Inline PM key → skip the menu, direct ALM invocation.
-  if (INLINE_KEY_RE.test(request.prompt)) {
-    return runPhaseAgent("test", config, request, stream, token, request.prompt.trim());
+  const trimmed = request.prompt.trim();
+  const [firstToken, ...rest] = trimmed.split(/\s+/);
+
+  // Leading skill token (e.g. "/test apex-unit PROJ-42") → use it, strip it from the message.
+  if (firstToken && SKILL_IDS.has(firstToken)) {
+    return dispatch(firstToken as TestSkill, root, config, request, stream, token, rest.join(" ").trim());
   }
 
-  // ── Mode picker ─────────────────────────────────────────────────────────────
+  // Inline ticket key only, no skill → preserve today's behaviour, run execute.
+  if (trimmed && INLINE_KEY_RE.test(trimmed)) {
+    return dispatch("execute", root, config, request, stream, token, trimmed);
+  }
+
+  // Neither → show the skill picker.
+  const pick = await vscode.window.showQuickPick(MENU, {
+    title: "Test Agent",
+    placeHolder: "What would you like to do?",
+    ignoreFocusOut: true,
+  });
+  if (!pick) { stream.markdown("Test cancelled."); return; }
+
+  return dispatch(pick.skill, root, config, request, stream, token, "");
+}
+
+/** Routes to the right skill flow and returns the composed usage-tracking key. */
+async function dispatch(
+  skill: TestSkill,
+  root: string,
+  config: OttoConfig,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken,
+  remainder: string
+): Promise<string> {
+  const templateKey = skillTemplateKey("test", skill);
+
+  if (skill === "execute") {
+    // An inline ticket key bypasses the mode sub-picker entirely — the
+    // execute template's own 🔌 local-mode callout handles ALM vs local at
+    // agent runtime, exactly as it did before this skill menu existed.
+    if (remainder) {
+      await runDeferred(root, config, request, stream, token, remainder, templateKey);
+      return templateKey;
+    }
+    await runExecuteModePicker(root, config, request, stream, token);
+    return templateKey;
+  }
+
+  const userMessage = remainder || describeSkill(skill);
+  await runDeferred(root, config, request, stream, token, userMessage, templateKey);
+  return templateKey;
+}
+
+function describeSkill(skill: TestSkill): string {
+  switch (skill) {
+    case "write-cases": return "Write test cases for the story I specify.";
+    case "apex-unit":   return "Review and extend Apex unit test coverage for the class(es) or story I specify.";
+    case "apex-perf":   return "Add Apex performance/volume test coverage for the class(es) I specify.";
+    case "pw-setup":    return "Set up the Playwright E2E framework for this project.";
+    case "pw-write":    return "Write or update a Playwright spec for the feature I specify.";
+    default:            return "Run this Test skill.";
+  }
+}
+
+/**
+ * Every Test skill writes files and/or calls MCPs — a bare `model.sendRequest`
+ * (no `defer`) has no tool access and can only narrate the work, not do it.
+ * This was a latent bug even for `execute` before this skill menu existed.
+ */
+async function runDeferred(
+  root: string,
+  config: OttoConfig,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken,
+  userMessage: string,
+  templateKey: string
+): Promise<void> {
+  const almTool = resolveAlmTool(config);
+  return runPhaseAgent("test", config, request, stream, token, userMessage, {
+    defer: { root, phaseLabel: "Test", mcpName: mcpDisplayName(almTool) },
+    templateKey,
+  });
+}
+
+// ── Execute skill — Local / ALM mode sub-picker (preserved) ───────────────────
+
+async function runExecuteModePicker(
+  root: string,
+  config: OttoConfig,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken
+): Promise<void> {
   const modePick = await vscode.window.showQuickPick(
     [
       { label: "$(folder) Local mode", description: "work from implementation-record.md — no PM tool required", value: "local" as const },
       { label: "$(cloud) ALM mode", description: "fetch story status, raise defects, transition in JIRA/ADO", value: "alm" as const },
     ],
-    { title: "Test Agent", placeHolder: "How would you like to run testing?", ignoreFocusOut: true }
+    { title: "Test Agent — Execute", placeHolder: "How would you like to run testing?", ignoreFocusOut: true }
   );
   if (!modePick) { stream.markdown("Test cancelled."); return; }
 
   if (modePick.value === "local") {
     return runLocalMode(root, config, request, stream, token);
   }
-  return runAlmMode(config, request, stream, token);
+  return runAlmMode(root, config, request, stream, token);
 }
-
-// ── Local mode ────────────────────────────────────────────────────────────────
 
 async function runLocalMode(
   root: string,
@@ -103,12 +207,11 @@ async function runLocalMode(
     `For each story: load its acceptance criteria, execute the test cases in the sandbox org, ` +
     `and write \`test-execution-record.md\` in the same folder (no JIRA/ADO transitions or defect raising).`;
 
-  return runPhaseAgent("test", config, request, stream, token, userMessage);
+  return runDeferred(root, config, request, stream, token, userMessage, skillTemplateKey("test", "execute"));
 }
 
-// ── ALM mode ──────────────────────────────────────────────────────────────────
-
 async function runAlmMode(
+  root: string,
   config: OttoConfig,
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
@@ -140,5 +243,5 @@ async function runAlmMode(
     userMessage = `Test all stories currently in Ready for Test status in project ${projectKey}.`;
   }
 
-  return runPhaseAgent("test", config, request, stream, token, userMessage);
+  return runDeferred(root, config, request, stream, token, userMessage, skillTemplateKey("test", "execute"));
 }

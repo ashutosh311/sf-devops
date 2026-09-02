@@ -1,4 +1,4 @@
-import { renderPrompt, CACHE_CURRENT_DIR } from "@otto/core";
+import { renderPrompt, CACHE_CURRENT_DIR, TEST_SKILLS, skillTemplateKey } from "@otto/core";
 import { requireConfig } from "./config.js";
 import { buildAboutText, INIT_DISPATCH } from "./about.js";
 
@@ -8,6 +8,11 @@ export type Phase = (typeof PHASES)[number];
 /** Every invocable command — the six phases plus the two static ones. */
 export const COMMANDS = ["about", "init", ...PHASES] as const;
 export type Command = (typeof COMMANDS)[number];
+
+/** Sub-skills valid per command. Extend here when another phase gains a menu. */
+export const COMMAND_SKILLS: Record<string, readonly string[]> = {
+  test: TEST_SKILLS,
+};
 
 export interface RenderResult {
   ok: boolean;
@@ -27,7 +32,8 @@ export async function renderCommand(
   command: string,
   mcpVersion: string,
   storyKey?: string,
-  projectRoot?: string
+  projectRoot?: string,
+  skill?: string
 ): Promise<RenderResult> {
   if (command === "about") return { ok: true, text: buildAboutText(mcpVersion) };
   if (command === "init")  return { ok: true, text: INIT_DISPATCH };
@@ -35,6 +41,9 @@ export async function renderCommand(
   try {
     const { config } = await requireConfig(projectRoot);
 
+    // Gate on the BASE phase — a sub-skill key (e.g. "test-apex-unit") is
+    // never itself in config.phases, so gating on `command` here (rather than
+    // on a composed templateKey) is what lets sub-skills render at all.
     if (!config.phases.includes(command as Phase)) {
       return {
         ok: false,
@@ -42,7 +51,19 @@ export async function renderCommand(
       };
     }
 
-    let text = renderPrompt(command, config, { cacheDir: CACHE_CURRENT_DIR });
+    let templateKey: string = command;
+    if (skill) {
+      const allowed = COMMAND_SKILLS[command] ?? [];
+      if (!allowed.includes(skill)) {
+        return {
+          ok: false,
+          text: `Unknown skill "${skill}" for ${command}. Valid skills: ${allowed.join(", ") || "none"}.`,
+        };
+      }
+      templateKey = skillTemplateKey(command, skill);
+    }
+
+    let text = renderPrompt(templateKey, config, { cacheDir: CACHE_CURRENT_DIR });
 
     if (storyKey) {
       const key = storyKey.toUpperCase();

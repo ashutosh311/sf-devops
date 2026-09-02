@@ -10,6 +10,7 @@ import gitStandard             from "../../../../../devops/standards/git.md";
 import omniscriptStandard      from "../../../../../devops/standards/omniscript.md";
 import uxAccessibilityStandard from "../../../../../devops/standards/ux-accessibility.md";
 import armStandard             from "../../../../../devops/standards/arm.md";
+import playwrightStandard      from "../../../../../devops/standards/playwright.md";
 
 const STANDARDS: Record<string, string> = {
   "README.md": readmeStandard,
@@ -20,6 +21,7 @@ const STANDARDS: Record<string, string> = {
   "git.md": gitStandard,
   "omniscript.md": omniscriptStandard,
   "ux-accessibility.md": uxAccessibilityStandard,
+  "playwright.md": playwrightStandard,
 };
 
 // Revenue Cloud Advanced (RCA) standards are scaffolded only when the project

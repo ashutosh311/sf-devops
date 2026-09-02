@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "otto",
-      "description": "Slalom Otto — AI delivery agents for Salesforce: discovery, refinement, design, build (test and release coming soon), driven by your project's JIRA/ADO/Local board, org, and coding standards.",
+      "description": "Slalom Otto — AI delivery agents for Salesforce: discovery, refinement, design, build, test (execute, write cases, Apex unit/perf, Playwright E2E), and release, driven by your project's JIRA/ADO/Local board, org, and coding standards.",
       "author": {
         "name": "Slalom UK&I"
       },

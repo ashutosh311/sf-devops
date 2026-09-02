@@ -29,7 +29,7 @@ cd packages/cli && pnpm package         # → native binaries (macOS/Windows/Lin
 node scripts/package-instructions.mjs --version x.x.x   # build instructions.zip + manifest.json for a GitHub Release
 ```
 
-There is no automated test suite in `tools/otto` (no jest/vitest configured) — typecheck is the correctness gate. Always run `pnpm typecheck` after editing `packages/core` since `mcp`, `vscode`, and `cli` all depend on it via `workspace:*`.
+There is no jest/vitest suite in `tools/otto`, but `packages/core` has a real render-verification suite at `packages/core/test/render.test.mjs` (Node's built-in `node --test`, run via `cd packages/core && npm test`) — it renders every `PHASE_TEMPLATES` key against JIRA/ADO/LOCAL configs and asserts no unresolved Handlebars, no blank status cells, and phase-specific invariants (e.g. only Test's `execute` sub-skill may transition a story to Done). Typecheck remains the primary gate for `mcp`/`vscode`/`cli`, which have no test suite of their own — always run `pnpm typecheck` after editing `packages/core` since they all depend on it via `workspace:*`, and run `cd packages/core && npm test` after touching anything in `packages/core/src/templates/`, `engine.ts`, or `schema.ts`.
 
 To run the MCP server locally against a Claude Code session: `cd tools/otto/packages/mcp && ./setup.sh`.
 

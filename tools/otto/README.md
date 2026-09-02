@@ -109,11 +109,34 @@ The `@otto` (VS Code / GitHub Copilot) column is the primary invocation. The Cla
 | `@otto /refine PROJ-42` | `/otto:refine PROJ-42` | `/agent otto-refine` | Refine a story — AC, open questions, effort estimate |
 | `@otto /design PROJ-42` | `/otto:design PROJ-42` | `/agent otto-design` | Technical design — solution, data model, sub-tasks |
 | `@otto /build PROJ-42` | `/otto:build PROJ-42` | `/agent otto-build` | Scaffold Apex/LWC/config, deploy to sandbox |
-| `@otto /test PROJ-42` | `/otto:test PROJ-42` | `/agent otto-test` | Generate test classes, validate coverage |
+| `@otto /test [skill] [PROJ-42]` | `/otto:test [skill] [PROJ-42]` | `/agent otto-test` | Menu-driven test agent (see Test skills below) |
 | `@otto /release` | `/otto:release` | `/agent otto-release` | Deployment notes, checklist, PM-tool transitions |
 | `@otto /feedback <comment>` | — | — | Send feedback about the tooling (VS Code only) — logged to the usage list |
 
 Registering the MCP server directly instead of installing the plugin or pack (see [Development](#development)) gives the same commands as `/mcp__otto__<name>`. The server detects which surface it's running under and every message it prints uses the matching form.
+
+### Test skills
+
+`/test` alone shows a menu; `/test PROJ-42` (a ticket key with no skill) runs **execute**, preserving the original ticket-only shortcut. Name a skill directly (e.g. `/test apex-unit PROJ-42`) to skip the menu.
+
+| Skill | What it does | Transitions the story? |
+|---|---|---|
+| `execute` | Run AC in the sandbox, raise defects, close the story | ✅ Yes — the only one |
+| `write-cases` | Push AC to Xray / Zephyr Scale / ADO Test Plans | No |
+| `apex-unit` | Review and extend Build's baseline Apex test classes | No |
+| `apex-perf` | Bulk / volume / governor-limit stress tests | No |
+| `pw-setup` | Scaffold the Playwright E2E framework (once per project, idempotent) | No |
+| `pw-write` | Write, debug, or refactor Playwright specs | No |
+
+`write-cases` needs the test-management provider's credentials as **environment variables** — never stored in `.otto/config.json` and never prompted for:
+
+| Provider | Required environment variable(s) |
+|---|---|
+| Xray | `OTTO_XRAY_CLIENT_ID`, `OTTO_XRAY_CLIENT_SECRET` |
+| Zephyr Scale | `OTTO_ZEPHYR_TOKEN` |
+| ADO Test Plans | `OTTO_ADO_PAT` |
+
+With no `testing.testManagement` configured, `write-cases` writes `test-cases.md` locally only — a fully supported mode, not just a fallback.
 
 ### Interactive prompts in Claude Code
 
@@ -130,7 +153,7 @@ The phase commands still use plain numbered menus rendered by the agent — elic
 /refine PROJ-42    ← refine each story: AC, estimates, open questions
 /design PROJ-42    ← technical design → solution-design.md
 /build PROJ-42     ← scaffold, test, deploy, raise PR
-/test PROJ-42      ← test coverage and validation
+/test PROJ-42      ← execute AC in the sandbox, close the story (or run a specific test skill)
 /release           ← release notes and deployment checklist
 ```
 
@@ -295,7 +318,7 @@ Each event is a single row with these fields only:
 
 | Field | Example | Notes |
 |---|---|---|
-| `Command` | `build`, `refine`, `init`, `Feedback` | The agent command, or `Feedback` for VS Code feedback entries |
+| `Command` | `build`, `refine`, `init`, `test-apex-unit`, `Feedback` | The agent command — a Test skill records its composed key (e.g. `test-apex-unit`), not the bare `test` phase — or `Feedback` for VS Code feedback entries |
 | `Date` | `2026-07-15T12:34:00Z` | ISO 8601 timestamp |
 | `User` | `jane.doe@slalom.com` | Git identity, layered with richer session lookups on VS Code — see `src/usage.ts` on each front end |
 | `Project` | `protas-sc` | From `.otto/config.json` |

@@ -67,7 +67,7 @@
           },
           {
             "name": "test",
-            "description": "Test a JIRA story  —  usage: /test PROJ-42"
+            "description": "Test agent — execute, write cases, Apex unit/perf, Playwright  —  usage: /test [skill] [PROJ-42]"
           },
           {
             "name": "release",

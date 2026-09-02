@@ -139,6 +139,7 @@ Always read the applicable standard from `devops/standards/` before generating c
 | Custom objects or fields | `devops/standards/data-model.md` |
 | Data dictionary (object-reference docs) | `devops/standards/data-dictionary.md` |
 | Advanced Approvals (ARM, matrix-driven three-tier approvals) | `devops/standards/arm.md` |
+| Playwright E2E tests | `devops/standards/playwright.md` |
 | Branching, commits, PRs | `devops/standards/git.md` |
 
 ### 2. Run the Apex framework checklist

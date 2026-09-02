@@ -15,6 +15,8 @@ export const EstimationApproachSchema = z.enum([
   "both",
 ]);
 
+export const TestManagementProviderSchema = z.enum(["xray", "zephyr", "ado-test-plans", "none"]);
+
 export const StoryStatusMapSchema = z.object({
   backlog: z.string(),
   refineInProgress: z.string(),
@@ -230,6 +232,36 @@ export const OttoConfigSchema = z.object({
     standards: z.string(),
     forceApp: z.string(),
   }),
+
+  /**
+   * Test-agent config. Config-file-only, no `/init` interview question (follows
+   * the `revenueCloud` / `design.deliverable` precedent) — written on first use
+   * by the `write-cases` / `pw-setup` skills. Both blocks optional so every
+   * existing config still validates.
+   */
+  testing: z.object({
+    /** Remote test-case management. Secrets are NEVER stored here — they come
+     *  from environment variables (OTTO_XRAY_*, OTTO_ZEPHYR_TOKEN, OTTO_ADO_PAT). */
+    testManagement: z.object({
+      provider: TestManagementProviderSchema,
+      /** Xray/Zephyr: Jira project key. ADO: test plan id. */
+      projectKey: z.string().optional(),
+      /** Optional parent test plan / test suite the cases are created under. */
+      planId: z.string().optional(),
+      /** Provider base URL when self-hosted / non-default. */
+      baseUrl: z.string().url().optional(),
+    }).optional(),
+
+    playwright: z.object({
+      enabled: z.boolean(),
+      /** Test root, relative to the project root. Default: "tests/e2e". */
+      testDir: z.string().optional(),
+      /** True once pw-setup has scaffolded — makes re-runs idempotent. */
+      scaffolded: z.boolean().optional(),
+      /** Alias of the org E2E runs target. Defaults to salesforce.orgs.sandbox. */
+      targetOrg: z.string().optional(),
+    }).optional(),
+  }).optional(),
 });
 
 export type OttoConfig = z.infer<typeof OttoConfigSchema>;

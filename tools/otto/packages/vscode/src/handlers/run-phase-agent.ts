@@ -20,11 +20,16 @@ export async function runPhaseAgent(
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken,
   userMessage: string,
-  opts?: { defer?: { root: string; phaseLabel: string; mcpName: string } }
+  opts?: {
+    defer?: { root: string; phaseLabel: string; mcpName: string };
+    /** Render a composed sub-skill key (e.g. "test-apex-unit") instead of the
+     *  bare phase, while still reporting/labelling the run as `phase`. */
+    templateKey?: string;
+  }
 ): Promise<void> {
   let systemPrompt: string;
   try {
-    systemPrompt = renderPrompt(phase, config, { cacheDir: CACHE_CURRENT_DIR });
+    systemPrompt = renderPrompt(opts?.templateKey ?? phase, config, { cacheDir: CACHE_CURRENT_DIR });
   } catch (err) {
     stream.markdown(`⛔ Could not render ${phase} prompt: ${String(err)}`);
     return;

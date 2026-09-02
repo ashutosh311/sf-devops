@@ -8,6 +8,12 @@ import { buildTemplate } from "./templates/build.js";
 import { testTemplate } from "./templates/test.js";
 import { releaseTemplate } from "./templates/release.js";
 import { dataDictionaryTemplate } from "./templates/data-dictionary.js";
+import { testExecuteTemplate } from "./templates/test-execute.js";
+import { testWriteCasesTemplate } from "./templates/test-write-cases.js";
+import { testApexUnitTemplate } from "./templates/test-apex-unit.js";
+import { testApexPerfTemplate } from "./templates/test-apex-perf.js";
+import { testPwSetupTemplate } from "./templates/test-pw-setup.js";
+import { testPwWriteTemplate } from "./templates/test-pw-write.js";
 import deploymentInstruction          from "../../../../../devops/instructions/deployment.md";
 import orgImpactAssessmentInstruction from "../../../../../devops/instructions/org-impact-assessment.md";
 import prerequisiteCheckInstruction   from "../../../../../devops/instructions/prerequisite-check.md";
@@ -19,6 +25,11 @@ Handlebars.registerHelper("eq", function (this: unknown, a: unknown, b: unknown,
   return a === b ? options.fn(this) : options.inverse(this);
 });
 
+// The six SDLC phases — the ONLY keys that may appear in config.phases.
+// Kept separate from PHASE_TEMPLATES so sub-skill keys (below) never leak
+// into phaseFlags and render as bogus always-false {{phases.*}} flags.
+export const SDLC_PHASES = ["discover", "refine", "design", "build", "test", "release"] as const;
+
 export const PHASE_TEMPLATES: Record<string, string> = {
   discover: discoverTemplate,
   refine: refineTemplate,
@@ -29,7 +40,28 @@ export const PHASE_TEMPLATES: Record<string, string> = {
   // Cross-cutting sub-command (not an SDLC phase gated by config.phases) —
   // registered here so it renders through the same Handlebars/cache pipeline.
   "data-dictionary": dataDictionaryTemplate,
+  // Test sub-skills. Hyphenated (never `:`) — these keys become filenames in
+  // instructions.zip via scripts/package-instructions.mjs, and `:` is illegal
+  // on Windows. Composed with skillTemplateKey() below; never write one of
+  // these keys by hand elsewhere.
+  "test-execute": testExecuteTemplate,
+  "test-write-cases": testWriteCasesTemplate,
+  "test-apex-unit": testApexUnitTemplate,
+  "test-apex-perf": testApexPerfTemplate,
+  "test-pw-setup": testPwSetupTemplate,
+  "test-pw-write": testPwWriteTemplate,
 };
+
+/** Sub-skills the `test` phase exposes as a menu. Exported so every front end
+ *  (MCP, VS Code, CLI) validates against the same list. */
+export const TEST_SKILLS = ["execute", "write-cases", "apex-unit", "apex-perf", "pw-setup", "pw-write"] as const;
+export type TestSkill = (typeof TEST_SKILLS)[number];
+
+/** Composes a sub-skill registry key. Hyphen separator is required — see the
+ *  Windows-filename note on PHASE_TEMPLATES above. */
+export function skillTemplateKey(phase: string, skill: string): string {
+  return `${phase}-${skill}`;
+}
 
 export interface RenderOptions {
   cacheDir?: string;
@@ -40,9 +72,13 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
   const raw = (opts?.cacheDir ? readCachedTemplate(phase, opts.cacheDir) : null) ?? PHASE_TEMPLATES[phase];
   if (!raw) throw new Error(`No template found for phase: ${phase}`);
 
-  // Expose phases as a boolean map so templates can use {{#if phases.release}}
+  // Expose phases as a boolean map so templates can use {{#if phases.release}}.
+  // Iterate the real phase list, not PHASE_TEMPLATES — that registry also holds
+  // cross-cutting sub-commands (data-dictionary, test-*) which are never in
+  // config.phases and would otherwise pollute this map with bogus always-false
+  // flags (and hyphenated keys aren't valid Handlebars paths besides).
   const phaseFlags = Object.fromEntries(
-    Object.keys(PHASE_TEMPLATES).map((p) => [p, config.phases.includes(p as OttoConfig["phases"][number])])
+    SDLC_PHASES.map((p) => [p, config.phases.includes(p)])
   );
 
   // Prefer cached instruction files; fall back to bundled imports

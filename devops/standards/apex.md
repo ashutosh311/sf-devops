@@ -868,6 +868,20 @@ Use the `Limits` class in bulk tests to assert the code stays within governor co
 | Assert style         | `Assert.areEqual`, `Assert.isTrue` — NEVER `System.assertEquals` |
 | Test method naming   | `methodName_scenarioDescription_expectedOutcome`                 |
 
+### Performance and Volume Testing
+
+The bulk test required in *Coverage and Quality Requirements* (200 records, run inside the class's own `*Test.cls`) proves correctness at the standard trigger-batch ceiling. Logic that is genuinely sensitive to volume — trigger handlers, batch/queueable Apex, services called from bulk data-load or integration contexts — additionally warrants **dedicated performance test classes** that go beyond that ceiling and assert against governor limits explicitly, not just "did it not throw."
+
+- Performance tests live in a **separate class**, named `{Class}PerfTest`, never merged into the correctness `{Class}Test`.
+- Not every class needs one — only logic that processes bulk volumes or runs in async/batch contexts. Do not manufacture a perf class for logic that doesn't warrant it.
+- Minimum scenario coverage for a `{Class}PerfTest`:
+  - **Max-batch bulk** — 200 records through a single trigger context, proving no per-record SOQL/DML.
+  - **Multi-batch volume** — 2,000+ records via `Database.executeBatch` or repeated `Test.startTest()`/`stopTest()` cycles, proving the logic scales past one trigger context.
+  - **Governor-limit boundary** — explicit `Limits.getQueries()`, `Limits.getDmlStatements()`, `Limits.getCpuTime()` assertions against the platform ceiling for the scenario, not merely an absence of exceptions.
+  - **Mixed valid/invalid records in one bulk operation** — proves partial-failure handling doesn't silently drop or double-process rows.
+- `@TestSetup` builds the bulk dataset once per class, not per method — building a 2,000-record dataset per test method makes the suite unusably slow.
+- Record actual limit consumption (queries, DML, CPU time) against the platform ceiling for each scenario in the story's `apex-perf-plan.md`; flag any result above 80% of a governor ceiling explicitly, even when the test still passes.
+
 ### Testing Rules
 
 - Test class names MUST end in `Test`.
