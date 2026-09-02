@@ -259,11 +259,17 @@ export class UsageQueue {
  * user.name, then "unknown". Silent and best-effort — never prompts, never
  * throws. Front ends with a richer identity source (e.g. VS Code's
  * Microsoft/GitHub session lookups) should try those first and only fall
- * back to this.
+ * back to this. Pass `skipEmail` when the caller already ran `git config
+ * user.email` itself and got nothing, to avoid shelling out twice.
  */
-export async function resolveGitIdentity(cwd: string): Promise<string> {
-  const email = await gitConfig(cwd, "user.email");
-  if (email) return email;
+export async function resolveGitIdentity(
+  cwd: string,
+  options?: { skipEmail?: boolean },
+): Promise<string> {
+  if (!options?.skipEmail) {
+    const email = await gitConfig(cwd, "user.email");
+    if (email) return email;
+  }
   const name = await gitConfig(cwd, "user.name");
   return name || "unknown";
 }

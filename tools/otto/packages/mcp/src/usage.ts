@@ -78,6 +78,9 @@ function isEnabled(): boolean {
 }
 
 const queue = new UsageQueue();
+// Module-level, not per-call: the MCP server process is one machine user, so
+// the first cwd's git identity is cached for the process lifetime even if
+// later calls come from a different project.
 let cachedUser: string | undefined;
 
 async function resolveUser(cwd: string): Promise<string> {

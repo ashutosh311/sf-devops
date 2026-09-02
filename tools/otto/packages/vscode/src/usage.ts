@@ -212,7 +212,7 @@ export class UsageTracker {
       // fall through
     }
 
-    return this.cacheUser(await resolveGitIdentity(this.gitCwd()));
+    return this.cacheUser(await resolveGitIdentity(this.gitCwd(), { skipEmail: true }));
   }
 
   private cacheUser(value: string): string {
