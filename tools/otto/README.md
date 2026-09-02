@@ -140,7 +140,7 @@ The phase commands still use plain numbered menus rendered by the agent — elic
 
 The extension is a thin orchestration layer. It does not contain agent logic — instead it:
 
-1. Reads `.sdlc/config.json` from the project root (written by `/init`)
+1. Reads `.otto/config.json` from the project root (written by `/init`)
 2. Loads the instruction set for the requested SDLC phase
 3. Renders a fully-resolved prompt by merging project config (PM tool + key/org, status names, org alias, paths, standards) into the instruction template
 4. Sends that prompt to the underlying LLM (GitHub Copilot or Claude) along with the user's message
@@ -440,7 +440,7 @@ Any tag matching `vX.Y.Z-<suffix>` (e.g. `-rc.1`, `-beta.2`) skips the "must be 
 
 ### What to bump — MAJOR.MINOR.PATCH conventions
 
-The version is a promise about the tool's **public surface**: `.sdlc/config.json` schema, the scaffolded `artifacts/` layout, phase commands and their menus, CLI flags, and MCP tool signatures. Judge every release against that surface, not against lines-of-code changed.
+The version is a promise about the tool's **public surface**: `.otto/config.json` schema, the scaffolded `artifacts/` layout, phase commands and their menus, CLI flags, and MCP tool signatures. Judge every release against that surface, not against lines-of-code changed.
 
 | Tier | Bump when… | Examples |
 |------|------------|----------|
@@ -453,7 +453,7 @@ The version is a promise about the tool's **public surface**: `.sdlc/config.json
 - **MINOR (`0.y.0`)** — "may include a breaking change" (per the MAJOR criteria above), called out explicitly in the release notes.
 - **PATCH (`0.y.z`)** — "safe, no breaking change."
 
-Don't cut `v1.0.0` by accident. Do it deliberately, once `.sdlc/config.json`'s schema and the set of phase commands are stable enough to promise "no breaking change without a major bump" going forward.
+Don't cut `v1.0.0` by accident. Do it deliberately, once `.otto/config.json`'s schema and the set of phase commands are stable enough to promise "no breaking change without a major bump" going forward.
 
 **Keep two things separate from the product version:**
 - `manifest.json`'s `schemaVersion` field (currently `"1"`) versions the **instructions-sync protocol** between the extension and the instruction bundle — bump it only if the bundle's *format or validation* changes, never for content changes. Conflating it with the product version risks breaking older extensions' auto-sync.

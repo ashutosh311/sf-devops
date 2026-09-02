@@ -144,8 +144,9 @@ function registerInit(server: McpServer, mcpVersion: string): void {
 
         // No elicitation support (older client, or the CLI): hand the model the
         // interview to conduct in conversation, finishing with otto_scaffold.
+        // Nothing has happened yet at this point — not tracked here; see
+        // validateAndScaffold for where a completed init is actually recorded.
         if (!supportsElicitation(inner)) {
-          void trackCommand({ command: "init", cwd: root }).catch(() => undefined);
           return { content: [{ type: "text" as const, text: INIT_PROMPT }] };
         }
 
@@ -163,9 +164,7 @@ function registerInit(server: McpServer, mcpVersion: string): void {
           statusMap = mapped;
         }
 
-        const config = buildOttoConfig(answers, statusMap);
-        void trackCommand({ command: "init", project: config.project.name, cwd: root }).catch(() => undefined);
-        return await validateAndScaffold(config, root, Boolean(existing));
+        return await validateAndScaffold(buildOttoConfig(answers, statusMap), root, Boolean(existing));
       } catch (err) {
         return errorResult(`Setup failed: ${String(err)}`);
       }
@@ -200,7 +199,6 @@ function registerScaffold(server: McpServer): void {
         }
 
         const config = buildOttoConfig(toAnswers(args), statusMapFrom(args));
-        void trackCommand({ command: "init", project: config.project.name, cwd: root }).catch(() => undefined);
         return await validateAndScaffold(config, root, Boolean(existing));
       } catch (err) {
         return errorResult(`Scaffold failed: ${String(err)}`);
@@ -271,6 +269,15 @@ function statusMapFrom(args: ScaffoldArgs): StatusMapTriple {
 
 // ── Shared scaffold path ──────────────────────────────────────────────────────
 
+/**
+ * Reached from two entry points — otto_init's own elicited-interview success
+ * path, and a direct otto_scaffold call after a model-conducted conversational
+ * interview — that represent the same logical "completed init" action. Usage
+ * tracking lives here, once, rather than in each caller: tracking at the
+ * dispatch point too (e.g. when otto_init hands the model INIT_PROMPT to
+ * conduct the interview) would double-count a single init as two events once
+ * the model's own otto_scaffold call landed here a turn later.
+ */
 async function validateAndScaffold(config: OttoConfig, root: string, isReconfigure: boolean) {
   const validated = OttoConfigSchema.safeParse(config);
   if (!validated.success) {
@@ -278,6 +285,7 @@ async function validateAndScaffold(config: OttoConfig, root: string, isReconfigu
   }
 
   const result = await scaffoldRepo(validated.data, root);
+  void trackCommand({ command: "init", project: validated.data.project.name, cwd: root }).catch(() => undefined);
   return { content: [{ type: "text" as const, text: summarise(validated.data, result, isReconfigure, root) }] };
 }
 

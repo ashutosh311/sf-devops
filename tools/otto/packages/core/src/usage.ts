@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as http from "node:http";
 import * as https from "node:https";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -48,7 +49,16 @@ interface PostResult {
 }
 
 /** Raw POST of one usage entry. Never rejects — resolves with `ok: false` on
- *  any failure so callers can treat it uniformly. */
+ *  any failure so callers can treat it uniformly.
+ *
+ *  The real endpoint is always `https://` — a Power Automate URL. But the
+ *  `OTTO_USAGE_URL` local-testing override (see each front end's usage.ts) is
+ *  a deliberate escape hatch for pointing at a throwaway local test server,
+ *  which is commonly `http://localhost:...`. Picking the request module from
+ *  the URL's actual protocol means that case gets a real connection instead
+ *  of `https.request` silently attempting (and failing) a TLS handshake
+ *  against a plain HTTP port. Anything other than http/https is rejected
+ *  up front with a clear error rather than an opaque request failure. */
 export function postUsageEntry(endpoint: string, entry: UsageEntry, userAgent: string): Promise<PostResult> {
   return new Promise((resolve) => {
     let url: URL;
@@ -59,12 +69,19 @@ export function postUsageEntry(endpoint: string, entry: UsageEntry, userAgent: s
       return;
     }
 
+    const transport = url.protocol === "http:" ? http : url.protocol === "https:" ? https : null;
+    if (!transport) {
+      resolve({ ok: false, error: `unsupported protocol "${url.protocol}" (expected http: or https:)` });
+      return;
+    }
+    const defaultPort = transport === https ? 443 : 80;
+
     const payload = Buffer.from(JSON.stringify(entry), "utf-8");
-    const req = https.request(
+    const req = transport.request(
       {
         method: "POST",
         hostname: url.hostname,
-        port: url.port || 443,
+        port: url.port || defaultPort,
         path: url.pathname + url.search,
         headers: {
           "Content-Type": "application/json",
