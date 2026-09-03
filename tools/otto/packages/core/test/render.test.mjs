@@ -357,3 +357,39 @@ test("/init offers JIRA, ADO and LOCAL, and gates credential questions correctly
   assert.equal(shows("localKeyPrefix", "LOCAL"), true, "localKeyPrefix should show for LOCAL");
   assert.equal(shows("localKeyPrefix", "JIRA"), false, "localKeyPrefix should be hidden for JIRA");
 });
+
+// ── Test agent — apex-unit / apex-perf must gate their deploy on user confirmation ──
+//
+// Both skills write new/extended Apex and then call run_apex_test, which only
+// executes code already present in the org — so a deploy_metadata call is
+// required before the test run, and (per the Sandbox Access and Deployment
+// Standards every other deploying agent follows) that deploy must be reviewed
+// and explicitly confirmed by the user, never silent.
+
+for (const skill of ["apex-unit", "apex-perf"]) {
+  test(`"test-${skill}" asks the user to confirm before deploying to an org`, () => {
+    const out = renderPrompt(skillTemplateKey("test", skill), jiraCfg);
+    assert.match(out, /deploy_metadata/, `"${skill}" must call deploy_metadata before running tests`);
+    assert.match(
+      out,
+      /type\s+\*\*yes\*\*\s+to proceed/i,
+      `"${skill}" must ask the user to explicitly confirm (type "yes") before deploying`
+    );
+    assert.match(
+      out,
+      /do not deploy until the user explicitly confirms/i,
+      `"${skill}" must state the deploy is blocked on that confirmation`
+    );
+  });
+
+  test(`"test-${skill}" deploys before running tests, not after`, () => {
+    const out = renderPrompt(skillTemplateKey("test", skill), jiraCfg);
+    // Match the actual invocation sentences, not any mention of the tool names
+    // (the Step 3 heading explains *why* a deploy is needed by referencing
+    // run_apex_test in prose, which would trip a bare-substring-index check).
+    const deployIdx = out.search(/Deploy via the \*\*Salesforce DX MCP\*\*'s `deploy_metadata`/);
+    const runIdx = out.search(/Run `mcp__Salesforce_DX__run_apex_test`/);
+    assert.ok(deployIdx > -1 && runIdx > -1, `"${skill}" must invoke both deploy_metadata and run_apex_test`);
+    assert.ok(deployIdx < runIdx, `"${skill}" must deploy before running tests`);
+  });
+}

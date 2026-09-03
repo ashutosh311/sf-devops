@@ -2,8 +2,8 @@ export const testApexUnitTemplate = `# Test / Apex Unit — Review & Extend Base
 
 **Persona**: Developer / SDET
 **Phase**: Sprint (test week)
-**Input**: {{pmToolName}} story key (optional — you can also point this at a class name directly)
-**Output**: Extended \`*Test.cls\` under \`force-app/\`, an \`apex-test-plan.md\` describing the added coverage
+**Input**: {{pmToolName}} story key (optional — you can also point this at a class name directly); a target sandbox org alias/username, confirmed with the user before any deployment
+**Output**: Extended \`*Test.cls\` under \`force-app/\`, deployed to the confirmed sandbox, an \`apex-test-plan.md\` describing the added coverage
 
 ---
 
@@ -56,17 +56,40 @@ Do not touch production (non-test) classes in this skill — if you find a genui
 
 ---
 
-## Step 3 — Run and confirm coverage
+## Step 3 — Deploy to the sandbox
 
-Run \`mcp__Salesforce_DX__run_apex_test\` against the extended class(es) in {{salesforce.orgs.sandbox}}. Confirm:
-- All tests pass
-- Coverage on the touched class(es) meets or exceeds {{standards.apexCoverageThreshold}}%
+This skill writes new/extended Apex — \`mcp__Salesforce_DX__run_apex_test\` can only execute what already exists in the org, so the extended class must be deployed before Step 4 can run it.
 
-If a test fails, fix the test (or flag a real defect — see Step 2) and re-run before proceeding.
+Ask the user which org to deploy and test against, if not already provided. Suggest \`{{salesforce.orgs.sandbox}}\` (this project's configured sandbox) as the default, but require the user to confirm it or give a different alias/username — this skill does **not** auto-detect a default org or drive an authentication flow the way \`#otto/build\` does; it needs an explicit, confirmed target before touching any org.
+
+Show the file(s) about to be deployed:
+
+\`\`\`
+Files to deploy:
+  force-app/main/default/classes/{Class}Test.cls
+\`\`\`
+
+Then ask:
+
+> "The above test class has been extended locally. Please review it before I deploy to **{org}**. Type **yes** to proceed or let me know what needs to change."
+
+Do not deploy until the user explicitly confirms.
+
+Deploy via the **Salesforce DX MCP**'s \`deploy_metadata\` tool, with \`sourceDir\` scoped to the specific class file (not the whole \`force-app/\` tree) and \`usernameOrAlias\` set to the confirmed \`{org}\`. If the deployment fails, show the error verbatim, fix the issue, re-show the file review, and get the user's confirmation again before retrying — never re-deploy silently.
 
 ---
 
-## Step 4 — Write the test plan
+## Step 4 — Run and confirm coverage
+
+Run \`mcp__Salesforce_DX__run_apex_test\` against the extended class(es) in \`{org}\` (the org confirmed in Step 3). Confirm:
+- All tests pass
+- Coverage on the touched class(es) meets or exceeds {{standards.apexCoverageThreshold}}%
+
+If a test fails, fix the test (or flag a real defect — see Step 2), redeploy per Step 3, and re-run before proceeding.
+
+---
+
+## Step 5 — Write the test plan
 
 Write \`{{paths.artifacts}}/{STORY-KEY}/apex-test-plan.md\` (or, with no story key, alongside the class under a project-level \`apex-test-plan.md\` log) summarising the Step 1 gap table, what was added, and the final coverage percentage.
 

@@ -2,8 +2,8 @@ export const testApexPerfTemplate = `# Test / Apex Performance — Bulk, Volume 
 
 **Persona**: Developer / SDET
 **Phase**: Sprint (test week)
-**Input**: {{pmToolName}} story key (optional — you can also point this at a class name directly)
-**Output**: Dedicated \`*PerfTest.cls\` under \`force-app/\`, an \`apex-perf-plan.md\` describing scenarios and results
+**Input**: {{pmToolName}} story key (optional — you can also point this at a class name directly); a target sandbox org alias/username, confirmed with the user before any deployment
+**Output**: Dedicated \`*PerfTest.cls\` under \`force-app/\`, deployed to the confirmed sandbox, an \`apex-perf-plan.md\` describing scenarios and results
 
 ---
 
@@ -51,13 +51,38 @@ Create \`{Class}PerfTest.cls\` (new file, never merged into the correctness \`{C
 
 ---
 
-## Step 3 — Run and record results
+## Step 3 — Deploy to the sandbox
 
-Run \`mcp__Salesforce_DX__run_apex_test\` against the new class in {{salesforce.orgs.sandbox}}. Record actual limit consumption (queries, DML, CPU time) against the platform ceiling for each scenario — this is the evidence the perf plan captures, not just pass/fail.
+This skill writes a new Apex class — \`mcp__Salesforce_DX__run_apex_test\` can only execute what already exists in the org, so \`{Class}PerfTest.cls\` must be deployed before Step 4 can run it.
+
+Ask the user which org to deploy and test against, if not already provided. Suggest \`{{salesforce.orgs.sandbox}}\` (this project's configured sandbox) as the default, but require the user to confirm it or give a different alias/username — this skill does **not** auto-detect a default org or drive an authentication flow the way \`#otto/build\` does; it needs an explicit, confirmed target before touching any org.
+
+Show the file(s) about to be deployed:
+
+\`\`\`
+Files to deploy:
+  force-app/main/default/classes/{Class}PerfTest.cls
+\`\`\`
+
+Then ask:
+
+> "The above performance test class has been created locally. Please review it before I deploy to **{org}**. Type **yes** to proceed or let me know what needs to change."
+
+Do not deploy until the user explicitly confirms.
+
+Deploy via the **Salesforce DX MCP**'s \`deploy_metadata\` tool, with \`sourceDir\` scoped to the specific class file (not the whole \`force-app/\` tree) and \`usernameOrAlias\` set to the confirmed \`{org}\`. If the deployment fails, show the error verbatim, fix the issue, re-show the file review, and get the user's confirmation again before retrying — never re-deploy silently.
 
 ---
 
-## Step 4 — Write the performance plan
+## Step 4 — Run and record results
+
+Run \`mcp__Salesforce_DX__run_apex_test\` against the new class in \`{org}\` (the org confirmed in Step 3). Record actual limit consumption (queries, DML, CPU time) against the platform ceiling for each scenario — this is the evidence the perf plan captures, not just pass/fail.
+
+If a scenario fails, fix the test, redeploy per Step 3, and re-run before proceeding.
+
+---
+
+## Step 5 — Write the performance plan
 
 Write \`{{paths.artifacts}}/{STORY-KEY}/apex-perf-plan.md\` (or a project-level log with no story key):
 
