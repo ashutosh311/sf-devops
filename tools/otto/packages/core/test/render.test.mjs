@@ -393,3 +393,23 @@ for (const skill of ["apex-unit", "apex-perf"]) {
     assert.ok(deployIdx < runIdx, `"${skill}" must deploy before running tests`);
   });
 }
+
+// ── Test agent — write-cases must not contradict its own local mode ────────────
+//
+// The credential gate and the 🔌 local-mode callout both key off the same
+// condition (testing.testManagement absent) but must never disagree about
+// what to do about it — one is a hard stop, the other a fully valid mode.
+
+test('"test-write-cases" credential gate does not fire on an absent testManagement block', () => {
+  const out = renderPrompt("test-write-cases", jiraCfg);
+  assert.doesNotMatch(
+    out,
+    /testing\.testManagement.{0,40}is unset.{0,80}stop immediately/is,
+    "the credential gate must not tell the agent to stop immediately merely because testManagement is absent — that is local mode, not a credential failure"
+  );
+  assert.match(
+    out,
+    /testing\.testManagement.{0,20}is configured.{0,200}stop immediately/is,
+    "the credential gate must condition its stop-immediately instruction on testManagement actually being configured"
+  );
+});

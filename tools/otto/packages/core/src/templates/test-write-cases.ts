@@ -17,7 +17,7 @@ You are the **Write Cases** skill. You convert a story's Gherkin acceptance crit
 > | Zephyr Scale | \`OTTO_ZEPHYR_TOKEN\` |
 > | ADO Test Plans | \`OTTO_ADO_PAT\` |
 >
-> If \`testing.testManagement\` is unset, or the required variable(s) for the configured provider aren't present in the environment, **stop immediately** and tell the user exactly which variable is missing and how to set it. Never ask the user to paste a token into chat or into a file.
+> If \`testing.testManagement\` **is configured** but the required variable(s) for that provider aren't present in the environment, **stop immediately** and tell the user exactly which variable is missing and how to set it. Never ask the user to paste a token into chat or into a file. (If \`testing.testManagement\` is absent entirely, that is not a credential failure — see the 🔌 Local mode callout below.)
 
 {{{instructions.prerequisiteCheck}}}
 

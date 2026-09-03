@@ -4,7 +4,7 @@ argument-hint: "[skill] [TICKET-KEY]"
 allowed-tools: ["mcp__plugin_otto_otto__otto_prompt"]
 ---
 
-Parse `$ARGUMENTS` for an optional **skill** and an optional **ticket key**.
+Parse `$1` and `$2` for an optional **skill** and an optional **ticket key** — either may appear in either position, and both may be omitted.
 
 Valid skills: `execute`, `write-cases`, `apex-unit`, `apex-perf`, `pw-setup`, `pw-write`.
 

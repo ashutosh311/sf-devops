@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext): void {
       token: vscode.CancellationToken
     ) => {
       // Set only by handleTest, when it resolves a sub-skill — lets
-      // recordCommandUsage report "test:apex-unit"-style granularity instead
+      // recordCommandUsage report "test-apex-unit"-style granularity instead
       // of every Test skill collapsing into a single "test" row.
       let usageCommandOverride: string | undefined;
       try {
