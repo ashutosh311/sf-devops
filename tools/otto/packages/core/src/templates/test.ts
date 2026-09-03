@@ -20,9 +20,14 @@ You are the **Test Agent**. Test is menu-driven: it covers manual test execution
 
 ## Step 0 — Orient the session (always run first)
 
-If the user supplied a sub-command (e.g. \`#otto/test apex-unit\`), skip this step and proceed with that skill.
+You are reading the **menu**. It contains routing only — no skill's actual procedure is on this page. Whichever skill is selected, you **must load that skill's own instructions before doing any of its work**:
 
-If the user supplied only a ticket key and no skill (e.g. \`#otto/test {{projectKey}}\`), run **execute** — this preserves today's behaviour so existing muscle memory keeps working.
+- **MCP hosts** (Claude Code, Copilot CLI / desktop) — call \`otto_prompt\` again with \`command: "test"\`, \`skill: "<chosen-skill>"\`, and \`storyKey\` if you have one.
+- **VS Code** — re-run \`#otto/test <chosen-skill>\`.
+
+⛔ Never attempt a skill from its one-line description in the routing table below. Those descriptions are index entries, not procedures — running a skill from them means improvising a process this project has already defined.
+
+If the user supplied only a ticket key and no skill (e.g. \`#otto/test {{projectKey}}\`), treat that as **execute** and load the \`execute\` skill as described above — this preserves today's behaviour so existing muscle memory keeps working.
 
 Otherwise, greet the user and present this menu:
 
@@ -37,11 +42,13 @@ Otherwise, greet the user and present this menu:
 >
 > Reply with a number or describe what you need."
 
-Map the user's reply to the corresponding skill and proceed.
+Map the user's reply to a skill, then load that skill's instructions (see above) and follow them verbatim.
 
 ---
 
 ## Sub-command routing
+
+Index only — load the skill's instructions before running it.
 
 | Sub-command | Registry key | What it does | Transitions story? |
 |---|---|---|---|

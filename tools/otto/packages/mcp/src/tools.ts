@@ -12,7 +12,7 @@ import {
   type ScaffoldResult,
 } from "@otto/core";
 import { requireConfig, resolveProjectRoot, loadConfig } from "./config.js";
-import { COMMANDS, PHASES, renderCommand } from "./render.js";
+import { COMMANDS, PHASES, renderCommand, resolveSkill } from "./render.js";
 import { INIT_PROMPT } from "./about.js";
 import { cmd } from "./surface.js";
 import { registerRcaTools } from "./rca.js";
@@ -406,12 +406,15 @@ function registerPromptTool(server: McpServer, mcpVersion: string): void {
 async function trackPromptUsage(args: PromptArgs): Promise<void> {
   const root = await resolveProjectRoot(args.projectRoot);
   const config = await loadConfig(root);
+  // Record the composed sub-skill key (e.g. "test-apex-unit") when one applies,
+  // not the bare phase — otherwise every Test skill collapses to a single "test"
+  // row and the dashboard can't tell them apart, the same per-surface
+  // granularity gap WP4 already closes for VS Code. Resolved through the same
+  // helper renderCommand uses, so an implicit default (ticket-only ⇒ execute) is
+  // reported as the skill that actually ran.
+  const skill = resolveSkill(args.command, args.storyKey, args.skill);
   await trackCommand({
-    // Record the composed sub-skill key (e.g. "test-apex-unit") when one was
-    // given, not the bare phase — otherwise every Test skill collapses to a
-    // single "test" row and the dashboard can't tell them apart, the same
-    // per-surface granularity gap WP4 already closes for VS Code.
-    command: args.skill ? skillTemplateKey(args.command, args.skill) : args.command,
+    command: skill ? skillTemplateKey(args.command, skill) : args.command,
     project: config?.project?.name,
     story: args.storyKey,
     cwd: root,

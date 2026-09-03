@@ -46,7 +46,11 @@ export async function runPhaseAgent(
     const fullPrompt = `${systemPrompt}\n\n---\n\n${userMessage}`;
     return openPromptInAgentMode({
       root: opts.defer.root,
-      phase,
+      // Key the generated prompt file by the rendered template, not the bare
+      // phase — otherwise all six Test skills overwrite the same
+      // `prompts/test.md`, and a second skill silently swaps the instructions
+      // under a run still working from the first.
+      phase: opts.templateKey ?? phase,
       phaseLabel: opts.defer.phaseLabel,
       mcpName: opts.defer.mcpName,
       fullPrompt,

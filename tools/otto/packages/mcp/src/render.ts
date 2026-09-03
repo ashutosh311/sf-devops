@@ -14,6 +14,19 @@ export const COMMAND_SKILLS: Record<string, readonly string[]> = {
   test: TEST_SKILLS,
 };
 
+/**
+ * Applies a command's implicit skill default. A `test` call that names a story
+ * but no skill runs `execute` — this is the pre-menu behaviour of `/otto:test
+ * PROJ-42`, and without it a ticket-only invocation renders the menu instead of
+ * the execution procedure (the phase's exit gate). Exported so usage tracking
+ * records the same key that actually rendered.
+ */
+export function resolveSkill(command: string, storyKey?: string, skill?: string): string | undefined {
+  if (skill) return skill;
+  if (command === "test" && storyKey) return "execute";
+  return undefined;
+}
+
 export interface RenderResult {
   ok: boolean;
   text: string;
@@ -52,15 +65,16 @@ export async function renderCommand(
     }
 
     let templateKey: string = command;
-    if (skill) {
+    const effectiveSkill = resolveSkill(command, storyKey, skill);
+    if (effectiveSkill) {
       const allowed = COMMAND_SKILLS[command] ?? [];
-      if (!allowed.includes(skill)) {
+      if (!allowed.includes(effectiveSkill)) {
         return {
           ok: false,
-          text: `Unknown skill "${skill}" for ${command}. Valid skills: ${allowed.join(", ") || "none"}.`,
+          text: `Unknown skill "${effectiveSkill}" for ${command}. Valid skills: ${allowed.join(", ") || "none"}.`,
         };
       }
-      templateKey = skillTemplateKey(command, skill);
+      templateKey = skillTemplateKey(command, effectiveSkill);
     }
 
     let text = renderPrompt(templateKey, config, { cacheDir: CACHE_CURRENT_DIR });

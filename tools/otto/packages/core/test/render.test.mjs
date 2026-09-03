@@ -264,6 +264,15 @@ test("no imperative literal mcp__ tool calls leak into rendered output (host-nam
 
 // ── Test agent — sub-skill registry (see the Test Agent Vision & Plan note) ────
 
+// An imperative instruction to move the story into the configured done status.
+// Built from the resolved value (not the `{{...}}` source) because these guards
+// run against rendered output. `[^.\n]` keeps the match inside one sentence, so
+// a disclaimer like "this skill never transitions the story." cannot trip it.
+const transitionsToDone = new RegExp(
+  String.raw`transition[^.\n]{0,120}\*{0,2}${story.done}\*{0,2}`,
+  "i"
+);
+
 test("no PHASE_TEMPLATES key contains ':' (B1 — illegal in a Windows filename)", () => {
   for (const key of Object.keys(PHASE_TEMPLATES)) {
     assert.ok(!key.includes(":"), `PHASE_TEMPLATES key "${key}" contains ':'`);
@@ -290,16 +299,35 @@ for (const [name, cfg] of [["JIRA", jiraCfg], ["ADO", adoCfg], ["LOCAL", localCf
 
 test('"test-execute" still contains the story-closing transition (B4 — the only skill that may close the story)', () => {
   const out = renderPrompt("test-execute", jiraCfg);
-  assert.ok(out.includes("statusMap.story.done") || out.includes("Done"), '"test-execute" no longer transitions the story');
+  // Assert on the *resolved* status value — `statusMap.story.done` can never
+  // survive rendering, so matching that literal would make this guard vacuous.
+  assert.match(
+    out,
+    transitionsToDone,
+    '"test-execute" no longer instructs a transition to the configured done status'
+  );
 });
 
 test("no other Test sub-skill transitions the story to Done", () => {
   for (const skill of TEST_SKILLS.filter((s) => s !== "execute")) {
     const out = renderPrompt(skillTemplateKey("test", skill), jiraCfg);
-    assert.ok(
-      !/transition(s)? the .*(story|{{pmToolName}} story) to \*\*/i.test(out),
-      `"${skill}" should not transition the story — only execute may`
+    assert.doesNotMatch(
+      out,
+      transitionsToDone,
+      `"${skill}" instructs a transition to the done status — only execute may`
     );
+  }
+});
+
+test("the test menu routes to skill instructions rather than describing them inline", () => {
+  const out = renderPrompt("test", jiraCfg);
+  // The menu is an index: it must tell the agent to fetch the chosen skill's own
+  // instructions. Without this the agent improvises a procedure from the
+  // one-line routing table, defeating the "follow verbatim" contract.
+  assert.match(out, /otto_prompt/, "menu must name the tool that loads a skill's instructions");
+  assert.match(out, /skill: "<chosen-skill>"/, "menu must show how to request a specific skill");
+  for (const skill of TEST_SKILLS) {
+    assert.ok(out.includes(skill), `menu is missing the "${skill}" skill`);
   }
 });
 
