@@ -70,7 +70,7 @@ ${hostName()} will walk you through a short setup and scaffold the project with:
 
 ### Test skills
 
-\`${cmd("test", "PROJ-42")}\` alone (or with no arguments, for the full menu) runs **execute**. Ask for a specific skill by name to run one directly:
+\`${cmd("test", "PROJ-42")}\` alone runs **execute**. \`${cmd("test")}\` with no arguments shows the full menu instead. Ask for a specific skill by name (with or without a ticket key) to run one directly:
 
 | Skill | What it does |
 |---|---|

@@ -15,7 +15,12 @@ export const EstimationApproachSchema = z.enum([
   "both",
 ]);
 
-export const TestManagementProviderSchema = z.enum(["xray", "zephyr", "ado-test-plans", "none"]);
+// "none" is deliberately not a member here: "no test-management tool" is
+// expressed by omitting `testing.testManagement` entirely (see the `write-cases`
+// skill's local-mode check, `{{#unless testing.testManagement}}`) — a `"none"`
+// value would make the block look "configured" while every template's provider
+// switch has no branch for it.
+export const TestManagementProviderSchema = z.enum(["xray", "zephyr", "ado-test-plans"]);
 
 export const StoryStatusMapSchema = z.object({
   backlog: z.string(),
@@ -244,7 +249,8 @@ export const OttoConfigSchema = z.object({
      *  from environment variables (OTTO_XRAY_*, OTTO_ZEPHYR_TOKEN, OTTO_ADO_PAT). */
     testManagement: z.object({
       provider: TestManagementProviderSchema,
-      /** Xray/Zephyr: Jira project key. ADO: test plan id. */
+      /** Xray/Zephyr: Jira project key. Not used for ADO Test Plans — the
+       *  ADO skill reads `planId` for its test plan id (see `planId` below). */
       projectKey: z.string().optional(),
       /** Optional parent test plan / test suite the cases are created under. */
       planId: z.string().optional(),

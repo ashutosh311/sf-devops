@@ -17,6 +17,16 @@ import { mcpDisplayName } from "./agent-defer";
 
 const INLINE_KEY_RE = /[A-Za-z][A-Za-z0-9]+-\d+/;
 
+// A lowercase, kebab-case token that *looks like* an attempted skill id but
+// isn't one of the six real ones — e.g. a typo like `apex-unt`. Ordinary
+// prose and ticket keys never match this shape (tickets contain digits; most
+// everyday words aren't hyphenated), so this only ever catches a misspelled
+// skill token — it must be rejected explicitly rather than falling through to
+// the ticket-only shortcut below just because a real key appears later in the
+// message (which would silently run `execute` with the typo baked into the
+// message instead).
+const SKILL_SHAPED_RE = /^[a-z]+(-[a-z]+)+$/;
+
 interface SkillMenuItem extends vscode.QuickPickItem {
   skill: TestSkill;
 }
@@ -56,6 +66,14 @@ export async function handleTest(
   // Leading skill token (e.g. "/test apex-unit PROJ-42") → use it, strip it from the message.
   if (firstToken && SKILL_IDS.has(firstToken)) {
     return dispatch(firstToken as TestSkill, root, config, request, stream, token, rest.join(" ").trim());
+  }
+
+  // An unrecognized kebab-case leading token — reject explicitly rather than
+  // letting the ticket-only check below match a key elsewhere in the message
+  // and silently run execute with the typo along for the ride.
+  if (firstToken && SKILL_SHAPED_RE.test(firstToken)) {
+    stream.markdown(`⛔ Unknown skill "${firstToken}". Valid skills: ${TEST_SKILLS.join(", ")}.`);
+    return;
   }
 
   // Inline ticket key only, no skill → preserve today's behaviour, run execute.
