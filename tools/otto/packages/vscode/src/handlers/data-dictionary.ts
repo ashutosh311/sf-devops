@@ -101,7 +101,11 @@ export async function openDataDictionary(
   // carries the rendered prompt itself, which would expose Slalom's proprietary
   // SDLC prompt content in the visible, persisted chat transcript.
   const configDirName = path.basename(resolveConfigDir(root));
-  const relativePromptPath = path.join(configDirName, "prompts", "data-dictionary.md");
+  // posix.join, not join: this path is shown to the user and embedded in the
+  // "Read <path>" chat instruction — Windows's path.join would emit backslashes,
+  // which the agent may not resolve reliably. fs calls below still work: Node's
+  // path.join(root, posixRelPath) normalizes mixed separators to the native form.
+  const relativePromptPath = path.posix.join(configDirName, "prompts", "data-dictionary.md");
   const generatedPromptPath = path.join(root, relativePromptPath);
   try {
     fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });

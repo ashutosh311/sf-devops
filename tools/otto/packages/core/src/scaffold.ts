@@ -42,7 +42,10 @@ async function writeGitignore(root: string, result: ScaffoldResult): Promise<voi
 
   const existed = await fileExists(file);
   const current = existed ? await fs.readFile(file, "utf-8") : "";
-  const lines = current.split("\n");
+  // \r?\n so a CRLF checkout (common on Windows) doesn't leave a trailing \r on
+  // each line — otherwise the includes() check below never matches an
+  // already-written entry, and /init keeps appending duplicate ignore blocks.
+  const lines = current.split(/\r?\n/);
   const missing = entries.filter((entry) => !lines.includes(entry));
   if (missing.length === 0) {
     if (existed) result.preserved.push(".gitignore");

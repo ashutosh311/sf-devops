@@ -43,7 +43,11 @@ export async function openPromptInAgentMode(opts: {
   const { root, phase, phaseLabel, mode, mcpName, fullPrompt, userMessage, stream, extraToolsNote } = opts;
 
   const configDirName = path.basename(resolveConfigDir(root));
-  const relativePromptPath = path.join(configDirName, "prompts", `${phase}.md`);
+  // posix.join, not join: this path is shown to the user and embedded in the
+  // "Read <path>" chat instruction — Windows's path.join would emit backslashes,
+  // which the agent may not resolve reliably. fs calls below still work: Node's
+  // path.join(root, posixRelPath) normalizes mixed separators to the native form.
+  const relativePromptPath = path.posix.join(configDirName, "prompts", `${phase}.md`);
   const generatedPromptPath = path.join(root, relativePromptPath);
   try {
     fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
@@ -67,7 +71,7 @@ export async function openPromptInAgentMode(opts: {
 
   const toolsPurpose = mode === "local"
     ? (mcpName ? `read, write local artifact files, and use the ${mcpName} MCP` : "read and write local artifact files")
-    : `fetch/update ${mcpName} and read, write, and delete local artifact files`;
+    : `fetch/update ${mcpName ?? "the PM tool"} and read, write, and delete local artifact files`;
   const toolsCheck = !mcpName ? "" :
     mode === "local"
       ? `- Verify the **${mcpName} MCP** is listed in the tools section — without it the agent can't deploy, run tests, or query the org\n`
