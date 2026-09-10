@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { OttoConfig } from "./schema.js";
 import { getStandards } from "./standards.js";
-import { resolveConfigDir, LEGACY_CONFIG_DIR } from "./projectDir.js";
+import { resolveConfigDir, OTTO_CONFIG_DIR, LEGACY_CONFIG_DIR } from "./projectDir.js";
 
 export interface ScaffoldResult {
   created: string[];
@@ -22,8 +22,37 @@ export async function scaffoldRepo(
   await writeTriggerFrameworkPlaceholder(config, outputDir, result);
   await writeMcpConfig(config, outputDir, result);
   await writeClaudeCodeMcpConfig(config, outputDir, result);
+  await writeGitignore(outputDir, result);
 
   return result;
+}
+
+/**
+ * Agent-mode deferred flows (ALM-mode refine/design/build/data-dictionary/
+ * push-backlog/sync-pm) write the fully-rendered phase prompt to
+ * `<configDir>/prompts/*.md` so Copilot Agent mode can read it. Unlike
+ * `config.json`, that directory is never meant to be committed — it holds
+ * Slalom's proprietary SDLC prompt content, re-generated on every run. Ensure
+ * it's gitignored (idempotently, so re-running `/init` on an already-scaffolded
+ * project — still on `.sdlc` — picks this up too).
+ */
+async function writeGitignore(root: string, result: ScaffoldResult): Promise<void> {
+  const file = path.join(root, ".gitignore");
+  const entries = [OTTO_CONFIG_DIR, LEGACY_CONFIG_DIR].map((dir) => `${dir}/prompts/`);
+
+  const existed = await fileExists(file);
+  const current = existed ? await fs.readFile(file, "utf-8") : "";
+  const lines = current.split("\n");
+  const missing = entries.filter((entry) => !lines.includes(entry));
+  if (missing.length === 0) {
+    if (existed) result.preserved.push(".gitignore");
+    return;
+  }
+
+  const separator = current && !current.endsWith("\n") ? "\n\n" : current ? "\n" : "";
+  const block = `# Otto — generated agent-mode prompts (proprietary, never commit)\n${missing.join("\n")}\n`;
+  await fs.writeFile(file, current + separator + block, "utf-8");
+  (existed ? result.updated : result.created).push(".gitignore");
 }
 
 async function writeConfig(config: OttoConfig, root: string, result: ScaffoldResult): Promise<void> {

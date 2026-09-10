@@ -46,7 +46,7 @@ export async function handleDesign(
   // If the user already typed a PM key in the prompt → skip menu, PM mode
   const inlineKey = extractStoryKey(request.prompt, resolveProjectKey(config));
   if (inlineKey) {
-    return runAgent(ctx, request.prompt.trim(), { defer: true });
+    return runAgent(ctx, request.prompt.trim(), { defer: true, mode: "alm" });
   }
 
   // ── Top-level action menu ────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ async function runAlmMode(ctx: DesignCtx): Promise<void> {
     userMessage = `Design all stories currently eligible for design in project ${projectKey} — status "${readyForDesign}" (not yet started) or "${designInProgress}" (resume an interrupted design).`;
   }
 
-  return runAgent(ctx, userMessage, { defer: true });
+  return runAgent(ctx, userMessage, { defer: true, mode: "alm" });
 }
 
 // ── Local mode ────────────────────────────────────────────────────────────────
@@ -214,12 +214,15 @@ async function runLocalMode(ctx: DesignCtx): Promise<void> {
     `and \`sf-discovery.md\` in the same folder. Record implementation sub-tasks ` +
     `inside \`solution-design.md\` (no JIRA sub-task creation).`;
 
-  return runAgent(ctx, userMessage);
+  // Org discovery (sf-discovery.md) and file read/write need real tool access
+  // (Salesforce DX MCP + files) that a bare model.sendRequest doesn't have —
+  // defer to Agent mode, same as ALM mode.
+  return runAgent(ctx, userMessage, { defer: true, mode: "local" });
 }
 
 // ── Shared agent runner ───────────────────────────────────────────────────────
 
-async function runAgent(ctx: DesignCtx, userMessage: string, opts?: { defer?: boolean }): Promise<void> {
+async function runAgent(ctx: DesignCtx, userMessage: string, opts?: { defer?: boolean; mode?: "alm" | "local" }): Promise<void> {
   const { config, request, stream, token } = ctx;
 
   let systemPrompt: string;
@@ -235,15 +238,18 @@ async function runAgent(ctx: DesignCtx, userMessage: string, opts?: { defer?: bo
   // tool access. A bare model.sendRequest has no tools, so defer to a Copilot Chat
   // agent session.
   if (opts?.defer) {
+    const mode = opts.mode ?? "alm";
     const fullPrompt = `${systemPrompt}\n\n---\n\n${userMessage}`;
     return openPromptInAgentMode({
       root: ctx.root,
       phase: "design",
       phaseLabel: "Design",
-      mcpName: mcpDisplayName(resolveAlmTool(config)),
+      mode,
+      mcpName: mode === "local" ? "Salesforce DX" : mcpDisplayName(resolveAlmTool(config)),
       fullPrompt,
+      userMessage,
       stream,
-      extraToolsNote: designPublishNote(config),
+      extraToolsNote: mode === "alm" ? designPublishNote(config) : undefined,
     });
   }
 

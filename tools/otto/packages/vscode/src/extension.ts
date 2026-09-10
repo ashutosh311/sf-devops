@@ -8,6 +8,7 @@ import { handleDesign } from "./handlers/design";
 import { handleBuild } from "./handlers/build";
 import { handleTest } from "./handlers/test";
 import { handleRefine } from "./handlers/refine";
+import { handleRelease } from "./handlers/release";
 import { handleFeedback } from "./handlers/feedback";
 import { handleForceSync, handleSyncStatus } from "./handlers/sync";
 import { InstructionSyncService } from "./sync";
@@ -82,6 +83,8 @@ export function activate(context: vscode.ExtensionContext): void {
           await handleBuild(request, chatContext, stream, token);
         } else if (request.command === "test") {
           usageCommandOverride = await handleTest(request, chatContext, stream, token);
+        } else if (request.command === "release") {
+          await handleRelease(request, chatContext, stream, token);
         } else {
           await handleAgent(request, chatContext, stream, token);
         }

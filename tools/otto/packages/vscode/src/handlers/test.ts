@@ -147,8 +147,12 @@ async function runDeferred(
   templateKey: string
 ): Promise<void> {
   const almTool = resolveAlmTool(config);
+  // Every Test skill (including local-mode execute) already fetches/uses the PM
+  // tool or Salesforce DX, so "alm"-style wording (verify the MCP is connected)
+  // fits all of them — unlike Build/Design/Refine, Test never had a plain-file-only
+  // local mode to special-case.
   return runPhaseAgent("test", config, request, stream, token, userMessage, {
-    defer: { root, phaseLabel: "Test", mcpName: mcpDisplayName(almTool) },
+    defer: { root, phaseLabel: "Test", mode: "alm", mcpName: mcpDisplayName(almTool) },
     templateKey,
   });
 }

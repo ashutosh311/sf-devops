@@ -11,8 +11,8 @@ export function mcpDisplayName(almTool: string): string {
 }
 
 /**
- * Open a fully-rendered phase prompt, pre-filled, in the Copilot Chat panel so the
- * user can run it in **Agent mode** with tool access.
+ * Persist a fully-rendered phase prompt to disk, then point the Copilot Chat panel
+ * at it (in **Agent mode**) rather than opening it there directly.
  *
  * ALM-mode refine/design/build must fetch from / update the PM tool (JIRA/ADO) and
  * read/write/delete local artifact files. A bare `model.sendRequest` inside a chat
@@ -20,23 +20,31 @@ export function mcpDisplayName(almTool: string): string {
  * same deferred pattern used by push-backlog / sync-pm / data-dictionary: render the
  * prompt, inject context, and hand it to the agent-mode session that does have tools.
  *
- * The prompt is also persisted under the project's active config dir so the run
- * survives if the chat-open command is unavailable on this VS Code / Copilot version.
+ * The chat query itself is a short "read this file" pointer, never the rendered
+ * prompt text — pasting the full instructions into the visible, persisted chat
+ * transcript would expose Slalom's proprietary SDLC prompt content on the client's
+ * screen. Agent mode reads `fullPrompt` from disk itself.
  */
 export async function openPromptInAgentMode(opts: {
   root: string;
   phase: string;
   phaseLabel: string;
-  mcpName: string;
+  /** ALM mode fetches/updates a PM tool; Local mode only needs file + (optionally) Salesforce DX tool access. Drives the banner wording below. */
+  mode: "alm" | "local";
+  /** MCP the run depends on (PM tool for ALM; e.g. "Salesforce DX" for a local build/design). Omit when the phase needs no specific MCP (e.g. Refine's local mode — file access only). */
+  mcpName?: string;
   fullPrompt: string;
+  /** Short, non-sensitive task description (e.g. a story key) shown in chat instead of `fullPrompt`. */
+  userMessage: string;
   stream: vscode.ChatResponseStream;
   /** Extra tool-scope note appended to the banner (e.g. Confluence/wiki write access for design publishing). */
   extraToolsNote?: string;
 }): Promise<void> {
-  const { root, phase, phaseLabel, mcpName, fullPrompt, stream, extraToolsNote } = opts;
+  const { root, phase, phaseLabel, mode, mcpName, fullPrompt, userMessage, stream, extraToolsNote } = opts;
 
   const configDirName = path.basename(resolveConfigDir(root));
-  const generatedPromptPath = path.join(root, configDirName, "prompts", `${phase}.md`);
+  const relativePromptPath = path.join(configDirName, "prompts", `${phase}.md`);
+  const generatedPromptPath = path.join(root, relativePromptPath);
   try {
     fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
     fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
@@ -44,7 +52,9 @@ export async function openPromptInAgentMode(opts: {
     // non-fatal — best-effort
   }
 
-  // Lightweight size guard on the injected prompt. The batch expansion happens at
+  const chatQuery = `Read ${relativePromptPath} and follow its instructions.\n\n${userMessage}`;
+
+  // Lightweight size guard on the persisted prompt. The batch expansion happens at
   // agent runtime, so length is only a proxy for the real risk. Measured renders:
   // design ≈ 11.5k tokens, or ≈ 21k with the Revenue Cloud skills inlined; every
   // other phase is under 8k. The threshold sits between the two so it fires on the
@@ -55,18 +65,26 @@ export async function openPromptInAgentMode(opts: {
       ? `\n\n⚠️ The rendered prompt is large (~${approxTokens.toLocaleString()} tokens). For an epic/sprint batch, prefer a model with a large context window and consider designing in smaller scopes if the agent runs short on context.`
       : "";
 
+  const toolsPurpose = mode === "local"
+    ? (mcpName ? `read, write local artifact files, and use the ${mcpName} MCP` : "read and write local artifact files")
+    : `fetch/update ${mcpName} and read, write, and delete local artifact files`;
+  const toolsCheck = !mcpName ? "" :
+    mode === "local"
+      ? `- Verify the **${mcpName} MCP** is listed in the tools section — without it the agent can't deploy, run tests, or query the org\n`
+      : `- Verify the **${mcpName} MCP** is listed in the tools section — without it the agent will fall back to local mode\n`;
+
   try {
     await vscode.commands.executeCommand("workbench.action.chat.open", {
-      query: fullPrompt,
+      query: chatQuery,
       isPartialQuery: true,
     });
     stream.markdown(
-      `### ${phaseLabel} — opened in Copilot Chat (ALM mode)\n\n` +
+      `### ${phaseLabel} — opened in Copilot Chat (${mode === "local" ? "Local mode" : "ALM mode"})\n\n` +
       `The prompt has been pre-filled in the Copilot Chat panel with your project context injected.\n\n` +
       `**Before pressing Enter:**\n` +
       `- Switch to the **Copilot Chat** panel (it should now be in focus)\n` +
-      `- Make sure **Agent mode** is selected (not Ask or Edit) so it can fetch/update ${mcpName} and read, write, and delete local artifact files\n` +
-      `- Verify the **${mcpName} MCP** is listed in the tools section — without it the agent will fall back to local mode\n` +
+      `- Make sure **Agent mode** is selected (not Ask or Edit) so it can ${toolsPurpose}\n` +
+      toolsCheck +
       (extraToolsNote ? `- ${extraToolsNote}\n` : "") +
       `\nThen press **Enter** to run.` +
       sizeNote
@@ -76,12 +94,12 @@ export async function openPromptInAgentMode(opts: {
     // VS Code / Copilot versions. Point the user to the generated file instead.
     stream.markdown(
       `### ${phaseLabel} — run manually in agent mode\n\n` +
-      `The prompt has been saved to \`${configDirName}/prompts/${phase}.md\`.\n\n` +
+      `The prompt has been saved to \`${relativePromptPath}\`.\n\n` +
       `**To run it:**\n` +
       `1. Open **Copilot Chat** and switch to **Agent mode**\n` +
-      `2. Verify the **${mcpName} MCP** is connected\n` +
+      (mcpName ? `2. Verify the **${mcpName} MCP** is connected\n` : "") +
       (extraToolsNote ? `   - ${extraToolsNote}\n` : "") +
-      `3. Type: \`Read ${configDirName}/prompts/${phase}.md and follow its instructions.\`\n` +
+      `3. Type: \`Read ${relativePromptPath} and follow its instructions.\`\n` +
       sizeNote
     );
   }

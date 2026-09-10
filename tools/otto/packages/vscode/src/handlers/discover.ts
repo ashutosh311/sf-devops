@@ -2426,10 +2426,13 @@ async function runDeferred(ctx: SkillContext, skill: "push-backlog" | "sync-pm")
   const skillLabel = skill === "push-backlog" ? "Push Backlog" : "Sync PM Status";
   const mcpName = isAdo ? "Azure DevOps" : "Atlassian";
 
-  // Persist the generated prompt so it survives if the chat open fails. Write
-  // under the project's active config dir (.otto for new, .sdlc for existing).
+  // Persist under the project's active config dir (.otto for new, .sdlc for
+  // existing). The chat query below only ever points at this file — it never
+  // carries the rendered prompt itself, which would expose Slalom's proprietary
+  // SDLC prompt content in the visible, persisted chat transcript.
   const configDirName = path.basename(resolveConfigDir(ctx.root));
-  const generatedPromptPath = path.join(ctx.root, configDirName, "prompts", `${skill}.md`);
+  const relativePromptPath = path.join(configDirName, "prompts", `${skill}.md`);
+  const generatedPromptPath = path.join(ctx.root, relativePromptPath);
   try {
     fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
     fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
@@ -2437,12 +2440,13 @@ async function runDeferred(ctx: SkillContext, skill: "push-backlog" | "sync-pm")
     // non-fatal — best-effort
   }
 
-  // Open VS Code Chat with the pre-built prompt pre-filled.
+  // Open VS Code Chat with a short pointer pre-filled (not the rendered prompt).
   // isPartialQuery: true means the input is populated but not auto-sent, giving the user
   // a chance to verify agent mode and MCP tools are active before running.
+  const chatQuery = `Read ${relativePromptPath} and follow its instructions.\n\n${userRequest}`;
   try {
     await vscode.commands.executeCommand("workbench.action.chat.open", {
-      query: fullPrompt,
+      query: chatQuery,
       isPartialQuery: true,
     });
     ctx.stream.markdown(

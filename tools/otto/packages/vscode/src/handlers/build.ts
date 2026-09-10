@@ -43,7 +43,7 @@ export async function handleBuild(
   // Inline PM key → skip all menus, direct ALM invocation.
   if (INLINE_KEY_RE.test(request.prompt)) {
     return runPhaseAgent("build", config, request, stream, token, request.prompt.trim(), {
-      defer: { root, phaseLabel: "Build", mcpName: mcpDisplayName(resolveAlmTool(config)) },
+      defer: { root, phaseLabel: "Build", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
     });
   }
 
@@ -127,7 +127,11 @@ async function runLocalMode(
     `dependency order, deploy to the sandbox org, and write \`implementation-record.md\` ` +
     `in the same folder (no JIRA/ADO transitions).`;
 
-  return runPhaseAgent("build", config, request, stream, token, userMessage);
+  // Scaffolding/deploying/testing needs real tool access (Salesforce DX MCP +
+  // file read/write) that a bare model.sendRequest doesn't have — defer to Agent mode.
+  return runPhaseAgent("build", config, request, stream, token, userMessage, {
+    defer: { root, phaseLabel: "Build", mode: "local", mcpName: "Salesforce DX" },
+  });
 }
 
 // ── ALM mode ──────────────────────────────────────────────────────────────────
@@ -166,6 +170,6 @@ async function runAlmMode(
   }
 
   return runPhaseAgent("build", config, request, stream, token, userMessage, {
-    defer: { root, phaseLabel: "Build", mcpName: mcpDisplayName(almTool) },
+    defer: { root, phaseLabel: "Build", mode: "alm", mcpName: mcpDisplayName(almTool) },
   });
 }

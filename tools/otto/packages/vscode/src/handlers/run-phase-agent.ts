@@ -21,7 +21,7 @@ export async function runPhaseAgent(
   token: vscode.CancellationToken,
   userMessage: string,
   opts?: {
-    defer?: { root: string; phaseLabel: string; mcpName: string };
+    defer?: { root: string; phaseLabel: string; mode: "alm" | "local"; mcpName?: string };
     /** Render a composed sub-skill key (e.g. "test-apex-unit") instead of the
      *  bare phase, while still reporting/labelling the run as `phase`. */
     templateKey?: string;
@@ -52,8 +52,10 @@ export async function runPhaseAgent(
       // under a run still working from the first.
       phase: opts.templateKey ?? phase,
       phaseLabel: opts.defer.phaseLabel,
+      mode: opts.defer.mode,
       mcpName: opts.defer.mcpName,
       fullPrompt,
+      userMessage,
       stream,
     });
   }

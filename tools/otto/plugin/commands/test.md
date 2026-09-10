@@ -1,7 +1,10 @@
 ---
 description: Test agent — execute AC, author test cases, Apex unit/perf tests, Playwright E2E
 argument-hint: "[skill] [TICKET-KEY]"
-allowed-tools: ["mcp__plugin_otto_otto__otto_prompt"]
+# No allowed-tools restriction: the returned instructions call out to whatever
+# ALM/Salesforce MCP server the host has configured (Atlassian, ADO, Salesforce
+# DX) plus Read/Write/Bash — an explicit allowlist here would silently strip
+# that access. Mirrors the Copilot pack's tools: ["*"] for this same agent.
 ---
 
 Parse `$1` and `$2` for an optional **skill** and an optional **ticket key** — either may appear in either position, and both may be omitted.

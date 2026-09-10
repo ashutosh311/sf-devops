@@ -1,6 +1,9 @@
 ---
 description: Discovery agent — map requirements, identify unknowns, draft epics and stories
-allowed-tools: ["mcp__plugin_otto_otto__otto_prompt"]
+# No allowed-tools restriction: the returned instructions call out to whatever
+# ALM/Salesforce MCP server the host has configured (Atlassian, ADO, Salesforce
+# DX) plus Read/Write/Bash — an explicit allowlist here would silently strip
+# that access. Mirrors the Copilot pack's tools: ["*"] for this same agent.
 ---
 
 Call `otto_prompt` on the `otto` MCP server with `command: "discover"`.

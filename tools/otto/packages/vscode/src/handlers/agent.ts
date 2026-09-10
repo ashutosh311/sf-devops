@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { renderPrompt, CACHE_CURRENT_DIR, resolveProjectKey, extractStoryKey } from "@otto/core";
 import { requireConfig } from "../config";
 
-const PHASE_COMMANDS = new Set(["discover", "design", "build", "test", "release"]);
+const PHASE_COMMANDS = new Set(["discover", "design", "build", "test"]);
 
 export async function handleAgent(
   request: vscode.ChatRequest,

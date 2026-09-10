@@ -96,10 +96,13 @@ export async function openDataDictionary(
 
   const fullPrompt = `${systemPrompt}\n\n---\n\n${contextLines.join("\n")}\n\n---\n\n${userRequest}`;
 
-  // Persist so the run survives if the chat-open call fails. Write under the
-  // project's active config dir (.otto for new projects, .sdlc for existing).
+  // Persist under the project's active config dir (.otto for new projects, .sdlc
+  // for existing). The chat query below only ever points at this file — it never
+  // carries the rendered prompt itself, which would expose Slalom's proprietary
+  // SDLC prompt content in the visible, persisted chat transcript.
   const configDirName = path.basename(resolveConfigDir(root));
-  const generatedPromptPath = path.join(root, configDirName, "prompts", "data-dictionary.md");
+  const relativePromptPath = path.join(configDirName, "prompts", "data-dictionary.md");
+  const generatedPromptPath = path.join(root, relativePromptPath);
   try {
     fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
     fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
@@ -107,9 +110,11 @@ export async function openDataDictionary(
     // non-fatal — best-effort
   }
 
+  const chatQuery = `Read ${relativePromptPath} and follow its instructions.\n\n${userRequest}`;
+
   try {
     await vscode.commands.executeCommand("workbench.action.chat.open", {
-      query: fullPrompt,
+      query: chatQuery,
       isPartialQuery: true,
     });
     stream.markdown(
