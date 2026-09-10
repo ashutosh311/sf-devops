@@ -51,6 +51,7 @@ type Skill =
   | "hub-audit"
   | "whats-next"
   | "registers-to-stories"
+  | "pull-ado-artifacts"
   | "data-dictionary";
 
 interface SkillMenuItem extends vscode.QuickPickItem {
@@ -75,6 +76,7 @@ const MENU: SkillMenuItem[] = [
   { skill: "compose-deliverable", label: "$(file) Compose a deliverable", description: "client-facing document" },
   { skill: "hub-audit", label: "$(checklist) Audit the knowledge hub", description: "completeness + phase-gate readiness" },
   { skill: "registers-to-stories", label: "$(list-unordered) Registers to stories", description: "convert register entries to user stories" },
+  { skill: "pull-ado-artifacts", label: "$(repo) Pull documents from an Azure DevOps repo", description: "recursively walk a repo folder into 00 - Inbox (requires Azure DevOps MCP + repositories domain)" },
   { skill: "data-dictionary", label: "$(book) Data Dictionary", description: "build object-reference docs (Conceptual fidelity — business entities)" },
   { skill: "feedback", label: "$(comment) Give feedback", description: "rate the last command / leave a note" },
   { skill: "whats-next", label: "$(question) What's next?", description: "orientation + recommended next step" },
@@ -121,6 +123,7 @@ export async function handleDiscover(
     case "feedback": return runFeedback(ctx);
     case "push-backlog":
     case "sync-pm": return runDeferred(ctx, skill);
+    case "pull-ado-artifacts": return runPullAdoArtifacts(ctx);
     case "data-dictionary": return openDataDictionary(ctx.root, ctx.config, ctx.request, ctx.stream, "discover");
     default: return runAdvisory(ctx, skill);
   }
@@ -1925,6 +1928,16 @@ async function runProcessSession(ctx: SkillContext): Promise<void> {
   const inboxFiles = listInboxFiles(inboxDir);
 
   if (!inboxFiles.length) {
+    if (ctx.config.alm?.tool === "ADO") {
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: "$(cloud-download) Pull a session from Azure DevOps Wiki", value: "wiki" as const },
+          { label: "$(new-file) I'll drop a local file myself", value: "local" as const },
+        ],
+        { title: "00 - Inbox/ is empty", placeHolder: "Where should this session's source material come from?", ignoreFocusOut: true }
+      );
+      if (pick?.value === "wiki") return runPullAdoWikiSession(ctx);
+    }
     ctx.stream.markdown(
       "⛔ `00 - Inbox/` is empty. Drop a workshop transcript or notes file (`.txt`, `.md`, `.docx` or `.pdf`) into `artifacts/00 - Inbox/` and run this again."
     );
@@ -2476,12 +2489,164 @@ async function runDeferred(ctx: SkillContext, skill: "push-backlog" | "sync-pm")
   }
 }
 
+async function runPullAdoArtifacts(ctx: SkillContext): Promise<void> {
+  if (ctx.config.alm?.tool !== "ADO") {
+    ctx.stream.markdown(
+      "⛔ Pulling repo artifacts requires this project's PM tool to be Azure DevOps.\n\n" +
+      "Run `@otto /init` and choose Azure DevOps, or configure the Azure DevOps MCP separately if you just want the repositories domain without switching the PM tool."
+    );
+    return;
+  }
+
+  const systemPrompt = ADO_ARTIFACT_PULL_PROMPT.replace("{{paths.artifacts}}", ctx.config.paths.artifacts);
+  const userRequest = ctx.request.prompt.trim() || "Pull documents from an Azure DevOps repo into the local Inbox.";
+  const fullPrompt = `${systemPrompt}\n\n---\n\n${userRequest}`;
+
+  const configDirName = path.basename(resolveConfigDir(ctx.root));
+  const generatedPromptPath = path.join(ctx.root, configDirName, "prompts", "pull-ado-artifacts.md");
+  try {
+    fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
+    fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
+  } catch {
+    // non-fatal — best-effort
+  }
+
+  try {
+    await vscode.commands.executeCommand("workbench.action.chat.open", {
+      query: fullPrompt,
+      isPartialQuery: true,
+    });
+    ctx.stream.markdown(
+      `### Pull ADO Repo Artifacts — opened in Copilot Chat\n\n` +
+      `The prompt has been pre-filled in the Copilot Chat panel.\n\n` +
+      `**Before pressing Enter:**\n` +
+      `- Switch to the **Copilot Chat** panel (it should now be in focus)\n` +
+      `- Make sure **Agent mode** is selected (not Ask or Edit)\n` +
+      `- Verify the **Azure DevOps MCP** is listed in the tools section, with the **repositories** domain enabled\n\n` +
+      `Then press **Enter** to run.`
+    );
+  } catch {
+    ctx.stream.markdown(
+      `### Pull ADO Repo Artifacts — run manually in agent mode\n\n` +
+      `The prompt has been saved to \`${configDirName}/prompts/pull-ado-artifacts.md\`.\n\n` +
+      `**To run it:**\n` +
+      `1. Open **Copilot Chat** and switch to **Agent mode**\n` +
+      `2. Verify the **Azure DevOps MCP** is connected with the **repositories** domain enabled\n` +
+      `3. Type: \`Read ${configDirName}/prompts/pull-ado-artifacts.md and follow its instructions.\`\n`
+    );
+  }
+}
+
+const ADO_WIKI_SESSION_PULL_PROMPT = `# Pull an ADO Wiki Page as a Session Source
+
+You are pulling one workshop transcript / notes page from an Azure DevOps wiki into this project's local Inbox, so it can go through the normal \`/discover process-session\` pipeline.
+
+## Step 0 — confirm the Azure DevOps MCP is connected
+
+Check your available tools for the Azure DevOps MCP server (its tools appear as \`ado-*\`, \`mcp__ado__*\`, or similarly named per host). It must include the **wiki** domain — tools for listing wikis and reading page content. If you don't see wiki-domain tools, tell the user:
+
+> "The Azure DevOps MCP wiki domain isn't available. Ask your tech lead to add \`wiki\` to the ADO MCP server's \`-d\` domain list and reload."
+
+and stop.
+
+## Step 1 — confirm the target
+
+Ask the user (if not already given in their message):
+- Which **wiki** in this ADO project to read from (list them if unsure)
+- Which **page path** to pull (e.g. \`/Discovery/2026-09-10 Workshop\`)
+
+## Step 2 — fetch the page content
+
+Use the wiki-domain "get page content" tool to fetch the page's raw markdown.
+
+## Step 3 — write it into the local Inbox
+
+Write the content into \`{{paths.artifacts}}/00 - Inbox/\` as a \`.md\` file, named after the wiki page title (sanitised for the filesystem). If a file of that name already exists there, do not overwrite it — save the new one with a \` (1)\`, \` (2)\`, etc. suffix instead, matching the intake convention already used for locally dropped files.
+
+## Step 4 — report back and hand off
+
+Tell the user the exact filename it was saved as, then tell them to run \`@otto /discover process-session\` next — this skill only pulls the raw page content, it does not extract insights from it.`;
+
+async function runPullAdoWikiSession(ctx: SkillContext): Promise<void> {
+  const systemPrompt = ADO_WIKI_SESSION_PULL_PROMPT.replace("{{paths.artifacts}}", ctx.config.paths.artifacts);
+  const userRequest = ctx.request.prompt.trim() || "Pull a workshop session from an Azure DevOps wiki page into the local Inbox.";
+  const fullPrompt = `${systemPrompt}\n\n---\n\n${userRequest}`;
+
+  const configDirName = path.basename(resolveConfigDir(ctx.root));
+  const generatedPromptPath = path.join(ctx.root, configDirName, "prompts", "pull-ado-wiki-session.md");
+  try {
+    fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
+    fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
+  } catch {
+    // non-fatal — best-effort
+  }
+
+  try {
+    await vscode.commands.executeCommand("workbench.action.chat.open", {
+      query: fullPrompt,
+      isPartialQuery: true,
+    });
+    ctx.stream.markdown(
+      `### Pull ADO Wiki Session — opened in Copilot Chat\n\n` +
+      `The prompt has been pre-filled in the Copilot Chat panel.\n\n` +
+      `**Before pressing Enter:**\n` +
+      `- Switch to the **Copilot Chat** panel (it should now be in focus)\n` +
+      `- Make sure **Agent mode** is selected (not Ask or Edit)\n` +
+      `- Verify the **Azure DevOps MCP** is listed in the tools section, with the **wiki** domain enabled\n\n` +
+      `Then press **Enter** to run. Once it finishes, run \`@otto /discover process-session\` again to actually process the pulled page.`
+    );
+  } catch {
+    ctx.stream.markdown(
+      `### Pull ADO Wiki Session — run manually in agent mode\n\n` +
+      `The prompt has been saved to \`${configDirName}/prompts/pull-ado-wiki-session.md\`.\n\n` +
+      `**To run it:**\n` +
+      `1. Open **Copilot Chat** and switch to **Agent mode**\n` +
+      `2. Verify the **Azure DevOps MCP** is connected with the **wiki** domain enabled\n` +
+      `3. Type: \`Read ${configDirName}/prompts/pull-ado-wiki-session.md and follow its instructions.\`\n`
+    );
+  }
+}
+
 // ── advisory skills (read files → LLM → stream) ───────────────────────────────
 //
 // The skill catalogue (instruction + folders per skill) lives in @otto/core's
 // DISCOVER_ADVISORY — shared with the MCP server (Claude Code plugin, Copilot
 // pack) via renderDiscoverAdvisoryPrompt() so both front ends read the same
 // folders and give the model the same task instruction. Never fork a copy here.
+
+const ADO_ARTIFACT_PULL_PROMPT = `# Pull ADO Repo Artifacts
+
+You are pulling discovery documents from an Azure DevOps Git repository into this project's local Inbox so they can be processed the same way as any other dropped file.
+
+## Step 0 — confirm the Azure DevOps MCP is connected
+
+Check your available tools for the Azure DevOps MCP server (its tools appear as \`ado-*\`, \`mcp__ado__*\`, or similarly named per host). It must include the **repositories** domain — tools for listing repo items and reading file content (e.g. list/get repository items, get item content). If you don't see repositories-domain tools, tell the user:
+
+> "The Azure DevOps MCP repositories domain isn't available. Ask your tech lead to add \`repositories\` to the ADO MCP server's \`-d\` domain list and reload."
+
+and stop.
+
+## Step 1 — confirm the target
+
+Ask the user (if not already given in their message):
+- Which **repository** in this ADO project to read from
+- Which **folder path** within that repo to start at (default: repo root)
+
+## Step 2 — recursively list every file
+
+Using the repositories-domain tools, list items under the target folder with full recursion (folders and files). For every folder returned, descend into it — do not stop at one level. Build a flat list of every file's path.
+
+## Step 3 — pull each file's content
+
+For each file, fetch its content via the repositories-domain "get item content" tool.
+
+## Step 4 — write into the local Inbox
+
+Write each file into \`{{paths.artifacts}}/00 - Inbox/\`, preserving the original filename. If a file of that name already exists there, do not overwrite it — save the new one with a \` (1)\`, \` (2)\`, etc. suffix instead, matching the intake convention already used for locally dropped files.
+
+## Step 5 — report back
+
+List every file pulled in (with its original repo path and the local filename it was saved as), and note any files skipped due to a naming collision. Tell the user to run \`@otto /discover process-session\` (or the relevant intake skill) next to process what was pulled in — this skill only pulls the raw files, it does not extract insights from them.`;
 
 async function runAdvisory(ctx: SkillContext, skill: Skill): Promise<void> {
   const spec = DISCOVER_ADVISORY[skill as DiscoverAdvisorySkill];

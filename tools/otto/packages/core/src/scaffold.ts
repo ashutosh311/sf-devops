@@ -140,7 +140,13 @@ function buildPmMcpEntry(config: OttoConfig, format: "vscode" | "claude"): Recor
   if (config.alm?.tool === "ADO") {
     // Extract the org name from the full URL, e.g. "https://dev.azure.com/MyOrg" → "MyOrg"
     const orgName = config.alm.organization.replace(/^https?:\/\/dev\.azure\.com\//, "").replace(/\/$/, "");
-    const args = ["-y", "@azure-devops/mcp", orgName, "-d", "core", "work", "work-items", "--authentication", "interactive"];
+    // "repositories" is included alongside the work-item domains so a project can pull
+    // discovery documents recursively from an Azure Repos folder (see the discover
+    // agent's pull-ado-artifacts skill) — no separate server or auth is needed for it.
+    // "wiki" is included so the agent can read/create/update Azure DevOps wiki pages
+    // (a distinct ADO subsystem from both work items and Azure Repos) ad hoc, without
+    // needing a bespoke skill — the MCP tools alone are enough once this is on.
+    const args = ["-y", "@azure-devops/mcp", orgName, "-d", "core", "work", "work-items", "repositories", "wiki", "--authentication", "interactive"];
     return format === "vscode"
       ? { ado: { type: "stdio", command: "npx", args } }
       : { ado: { command: "npx", args } };
