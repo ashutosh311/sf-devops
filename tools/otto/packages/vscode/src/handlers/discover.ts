@@ -25,8 +25,8 @@ import {
 } from "../backlog-md";
 import { extractFileText, extractPdfImages } from "../extract";
 import { trackFeedback } from "../usage";
-import { pushBacklogAdoTemplate, pushBacklogJiraTemplate, syncPmAdoTemplate, syncPmJiraTemplate, resolveConfigDir } from "@otto/core";
-import type { OttoConfig } from "@otto/core";
+import { pushBacklogAdoTemplate, pushBacklogJiraTemplate, syncPmAdoTemplate, syncPmJiraTemplate, resolveConfigDir, DISCOVER_ADVISORY } from "@otto/core";
+import type { OttoConfig, DiscoverAdvisorySkill } from "@otto/core";
 import { openDataDictionary } from "./data-dictionary";
 
 // ── Skill catalogue ─────────────────────────────────────────────────────────
@@ -2477,57 +2477,14 @@ async function runDeferred(ctx: SkillContext, skill: "push-backlog" | "sync-pm")
 }
 
 // ── advisory skills (read files → LLM → stream) ───────────────────────────────
-
-interface AdvisorySpec {
-  instruction: string;
-  folders: string[];
-}
-
-const ADVISORY: Record<string, AdvisorySpec> = {
-  synthesize: {
-    instruction:
-      "Synthesize the discovery evidence into key themes, patterns, and current-state insights. Produce a clear markdown summary a consultant can share.",
-    folders: ["00 - Registers", "01 - Sessions"],
-  },
-  analyze: {
-    instruction:
-      "Analyze and prioritize the discovery evidence: rank pain points by impact/frequency, flag coverage gaps, and highlight the highest-value focus areas. Output markdown.",
-    folders: ["00 - Registers", "02 - Current State"],
-  },
-  "conflict-check": {
-    instruction:
-      "Surface contradictions and misalignments across the sessions and registers before they become delivery blockers. List each conflict with the sources involved.",
-    folders: ["00 - Registers", "01 - Sessions"],
-  },
-  "compose-deliverable": {
-    instruction:
-      "Compose a clear, client-facing discovery deliverable (executive summary, current state, key findings, recommended direction) from the artifacts provided.",
-    folders: ["00 - Registers", "02 - Current State", "03 - Future State"],
-  },
-  "prep-workshop": {
-    instruction:
-      "Prepare for an upcoming discovery workshop: propose an agenda, facilitation guide, key questions to close open gaps, and a short pre-read. Base it on what is already known.",
-    folders: ["00 - Registers", "01 - Sessions"],
-  },
-  "hub-audit": {
-    instruction:
-      "Audit the discovery knowledge hub for completeness. Report what content is present vs missing per area, register health, and a phase-gate readiness verdict.",
-    folders: ["00 - Project", "00 - Registers", "01 - Sessions", "02 - Current State", "03 - Future State", "04 - Backlog"],
-  },
-  "whats-next": {
-    instruction:
-      "Give the user a concise orientation: what has been done so far in discovery, what is missing, and the single recommended next step (naming the exact /discover sub-command).",
-    folders: ["00 - Project", "00 - Registers", "01 - Sessions", "02 - Current State", "04 - Backlog"],
-  },
-  "registers-to-stories": {
-    instruction:
-      "Convert the register entries directly into well-formed user stories (As a…, I want…, so that…). Group them under likely epics. This is discovery-level only — no technical design.",
-    folders: ["00 - Registers"],
-  },
-};
+//
+// The skill catalogue (instruction + folders per skill) lives in @otto/core's
+// DISCOVER_ADVISORY — shared with the MCP server (Claude Code plugin, Copilot
+// pack) via renderDiscoverAdvisoryPrompt() so both front ends read the same
+// folders and give the model the same task instruction. Never fork a copy here.
 
 async function runAdvisory(ctx: SkillContext, skill: Skill): Promise<void> {
-  const spec = ADVISORY[skill];
+  const spec = DISCOVER_ADVISORY[skill as DiscoverAdvisorySkill];
   if (!spec) {
     ctx.stream.markdown(`⛔ Unknown discovery skill: \`${skill}\`.`);
     return;

@@ -1,11 +1,19 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
+import { DISCOVER_ADVISORY_SKILLS } from "@otto/core";
 import { renderCommand } from "./render.js";
 
 const STORY_KEY_SCHEMA = z.object({
   storyKey: z.string().optional().describe("JIRA story key (e.g. PROJ-42) or, for refine/design, an epic key or sprint to process every eligible child story in it"),
 });
 type StoryKeyArgs = z.infer<typeof STORY_KEY_SCHEMA>;
+
+const DISCOVER_ARGS_SCHEMA = z.object({
+  skill: z.string().optional().describe(
+    `Optional sub-skill: ${DISCOVER_ADVISORY_SKILLS.join(" | ")}. Omit to show the menu.`
+  ),
+});
+type DiscoverArgs = z.infer<typeof DISCOVER_ARGS_SCHEMA>;
 
 const TEST_ARGS_SCHEMA = z.object({
   storyKey: z.string().optional().describe("Ticket key, e.g. PROJ-42"),
@@ -27,8 +35,8 @@ const PHASE_DESCRIPTIONS: Record<string, string> = {
 // Phases that take an optional storyKey argument (test moves out — it also takes a skill)
 const PHASES_WITH_KEY = ["refine", "design", "build"] as const;
 
-// Phases with no arguments
-const PHASES_STORYLESS = ["discover", "release"] as const;
+// Phases with no arguments beyond the discover skill menu (discover) or none at all (release)
+const PHASES_STORYLESS = ["release"] as const;
 
 export function registerPrompts(server: McpServer, mcpVersion: string): void {
   registerStatic(server, "about", "What is this tool, how to use it, and all available commands", mcpVersion);
@@ -37,6 +45,7 @@ export function registerPrompts(server: McpServer, mcpVersion: string): void {
   for (const phase of PHASES_STORYLESS) {
     registerStoryless(server, phase, mcpVersion);
   }
+  registerDiscover(server, mcpVersion);
   for (const phase of PHASES_WITH_KEY) {
     registerWithStoryKey(server, phase, mcpVersion);
   }
@@ -55,6 +64,18 @@ function registerStoryless(server: McpServer, phase: string, mcpVersion: string)
     const { text } = await renderCommand(phase, mcpVersion);
     return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
   });
+}
+
+function registerDiscover(server: McpServer, mcpVersion: string): void {
+  server.prompt(
+    "discover",
+    PHASE_DESCRIPTIONS.discover,
+    DISCOVER_ARGS_SCHEMA.shape,
+    async ({ skill }: DiscoverArgs) => {
+      const { text } = await renderCommand("discover", mcpVersion, undefined, undefined, skill);
+      return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
+    }
+  );
 }
 
 function registerWithStoryKey(server: McpServer, phase: string, mcpVersion: string): void {

@@ -8,6 +8,7 @@ import { buildTemplate } from "./templates/build.js";
 import { testTemplate } from "./templates/test.js";
 import { releaseTemplate } from "./templates/release.js";
 import { dataDictionaryTemplate } from "./templates/data-dictionary.js";
+import { discoverAdvisoryTemplate } from "./templates/discover-advisory.js";
 import { testExecuteTemplate } from "./templates/test-execute.js";
 import { testWriteCasesTemplate } from "./templates/test-write-cases.js";
 import { testApexUnitTemplate } from "./templates/test-apex-unit.js";
@@ -19,6 +20,7 @@ import orgImpactAssessmentInstruction from "../../../../../devops/instructions/o
 import prerequisiteCheckInstruction   from "../../../../../devops/instructions/prerequisite-check.md";
 import { readCachedTemplate, readCachedInstruction, readCachedSkill } from "./cache.js";
 import { getRevenueCloudSkills, REVENUE_CLOUD_SKILL_FILES } from "./skills.js";
+import { DISCOVER_ADVISORY, type DiscoverAdvisorySkill } from "./discover-advisory.js";
 
 // {{#eq a b}}...{{/eq}} helper for estimation approach conditionals
 Handlebars.registerHelper("eq", function (this: unknown, a: unknown, b: unknown, options: Handlebars.HelperOptions) {
@@ -37,9 +39,10 @@ export const PHASE_TEMPLATES: Record<string, string> = {
   build: buildTemplate,
   test: testTemplate,
   release: releaseTemplate,
-  // Cross-cutting sub-command (not an SDLC phase gated by config.phases) —
-  // registered here so it renders through the same Handlebars/cache pipeline.
+  // Cross-cutting sub-commands (not SDLC phases gated by config.phases) —
+  // registered here so they render through the same Handlebars/cache pipeline.
   "data-dictionary": dataDictionaryTemplate,
+  "discover-advisory": discoverAdvisoryTemplate,
   // Test sub-skills. Hyphenated (never `:`) — these keys become filenames in
   // instructions.zip via scripts/package-instructions.mjs, and `:` is illegal
   // on Windows. Composed with skillTemplateKey() below; never write one of
@@ -177,4 +180,23 @@ export function renderAllPrompts(config: OttoConfig, opts?: RenderOptions): Reco
   return Object.fromEntries(
     config.phases.map((phase) => [phase, renderPrompt(phase, config, opts)])
   );
+}
+
+/**
+ * Renders one of Discover's "advisory" sub-skills (synthesize, analyze,
+ * conflict-check, ...) — a shared read-files-then-report template plus the
+ * per-skill task instruction and folder list appended as context, the same
+ * composition pattern data-dictionary uses. Single source of truth so VS Code
+ * and the MCP server (Claude Code plugin, Copilot pack) never drift on which
+ * folders a skill reads or what it's asked to do with them.
+ */
+export function renderDiscoverAdvisoryPrompt(config: OttoConfig, skill: DiscoverAdvisorySkill, opts?: RenderOptions): string {
+  const systemPrompt = renderPrompt("discover-advisory", config, opts);
+  const spec = DISCOVER_ADVISORY[skill];
+  const contextLines = [
+    `SKILL: ${skill}`,
+    `INSTRUCTION: ${spec.instruction}`,
+    `FOLDERS: ${spec.folders.join(", ")}`,
+  ];
+  return `${systemPrompt}\n\n---\n\n${contextLines.join("\n")}`;
 }

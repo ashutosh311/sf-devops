@@ -94,7 +94,7 @@ const PROMPT_SCHEMA = z.object({
   storyKey:    z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine and design, may also be an epic key or sprint to process every eligible child story."),
   projectRoot: PROJECT_ROOT_FIELD,
   skill:       z.string().optional().describe(
-    "Optional sub-skill. For `test`: execute | write-cases | apex-unit | apex-perf | pw-setup | pw-write. Omit to show the menu (or, with a storyKey but no skill, run `execute`)."
+    "Optional sub-skill. For `test`: execute | write-cases | apex-unit | apex-perf | pw-setup | pw-write (omit to show the menu, or with a storyKey but no skill, run `execute`). For `discover`: synthesize | analyze | conflict-check | compose-deliverable | prep-workshop | hub-audit | whats-next | registers-to-stories (omit to show the menu)."
   ),
 });
 

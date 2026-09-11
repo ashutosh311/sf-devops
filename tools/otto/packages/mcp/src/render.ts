@@ -1,4 +1,12 @@
-import { renderPrompt, CACHE_CURRENT_DIR, TEST_SKILLS, skillTemplateKey } from "@otto/core";
+import {
+  renderPrompt,
+  CACHE_CURRENT_DIR,
+  TEST_SKILLS,
+  skillTemplateKey,
+  renderDiscoverAdvisoryPrompt,
+  DISCOVER_ADVISORY_SKILLS,
+  type DiscoverAdvisorySkill,
+} from "@otto/core";
 import { requireConfig } from "./config.js";
 import { buildAboutText, INIT_DISPATCH } from "./about.js";
 
@@ -12,7 +20,12 @@ export type Command = (typeof COMMANDS)[number];
 /** Sub-skills valid per command. Extend here when another phase gains a menu. */
 export const COMMAND_SKILLS: Record<string, readonly string[]> = {
   test: TEST_SKILLS,
+  discover: DISCOVER_ADVISORY_SKILLS,
 };
+
+function isDiscoverAdvisorySkill(skill: string): skill is DiscoverAdvisorySkill {
+  return (DISCOVER_ADVISORY_SKILLS as readonly string[]).includes(skill);
+}
 
 /**
  * Applies a command's implicit skill default. A `test` call that names a story
@@ -64,7 +77,6 @@ export async function renderCommand(
       };
     }
 
-    let templateKey: string = command;
     const effectiveSkill = resolveSkill(command, storyKey, skill);
     if (effectiveSkill) {
       const allowed = COMMAND_SKILLS[command] ?? [];
@@ -74,10 +86,14 @@ export async function renderCommand(
           text: `Unknown skill "${effectiveSkill}" for ${command}. Valid skills: ${allowed.join(", ") || "none"}.`,
         };
       }
-      templateKey = skillTemplateKey(command, effectiveSkill);
     }
 
-    let text = renderPrompt(templateKey, config, { cacheDir: CACHE_CURRENT_DIR });
+    // Discover's advisory skills (synthesize, analyze, ...) are read-files-then-
+    // report work sharing one template — rendered via renderDiscoverAdvisoryPrompt()
+    // rather than a per-skill PHASE_TEMPLATES key like the test-* skills use.
+    let text = effectiveSkill && command === "discover" && isDiscoverAdvisorySkill(effectiveSkill)
+      ? renderDiscoverAdvisoryPrompt(config, effectiveSkill, { cacheDir: CACHE_CURRENT_DIR })
+      : renderPrompt(effectiveSkill ? skillTemplateKey(command, effectiveSkill) : command, config, { cacheDir: CACHE_CURRENT_DIR });
 
     if (storyKey) {
       const key = storyKey.toUpperCase();
