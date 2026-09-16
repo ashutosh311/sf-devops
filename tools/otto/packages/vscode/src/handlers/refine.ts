@@ -366,6 +366,11 @@ interface EpicSourceSkillSpec {
   readonly cancelledMsg: string;
   /** Usage-tracking key + template registry key. */
   readonly templateKey: "refine-generate-stories" | "refine-gap-analysis";
+  /** Whether dismissing the source picker silently falls back to scanning the
+   *  inbox. generate-stories opts in (its prompt documents the inbox default);
+   *  gap-analysis opts out — its prompt has no inbox concept, so a dismissed
+   *  picker cancels rather than silently widening the scan. */
+  readonly inboxFallback: boolean;
   /** Builds the instruction sent to the agent. */
   readonly buildMessage: (epicRef: string, mode: "local" | "alm", sourceLine: string) => string;
 }
@@ -374,6 +379,7 @@ const GENERATE_STORIES_SPEC: EpicSourceSkillSpec = {
   titleSuffix: "Generate Stories",
   cancelledMsg: "Generation cancelled.",
   templateKey: "refine-generate-stories",
+  inboxFallback: true,
   buildMessage: (epicRef, mode, sourceLine) =>
     `Generate candidate stories under epic ${epicRef} (${mode} mode). ${sourceLine}\n\n` +
     `Draft each story with a title, user story, business context, and Gherkin acceptance criteria only — ` +
@@ -386,6 +392,7 @@ const GAP_ANALYSIS_SPEC: EpicSourceSkillSpec = {
   titleSuffix: "Gap Analysis",
   cancelledMsg: "Gap analysis cancelled.",
   templateKey: "refine-gap-analysis",
+  inboxFallback: false,
   buildMessage: (epicRef, mode, sourceLine) =>
     `Run a story gap analysis for epic ${epicRef} (${mode} mode). ${sourceLine}\n\n` +
     `Cross-reference the epic's existing child stories against the sources and report candidate ` +
@@ -476,21 +483,32 @@ async function runEpicSourceSkill(
     epicRef = key.trim();
   }
 
-  // Source intake — the user points at the transcripts/files to read. Defaults to
-  // the inbox so the agent never scans the whole repo.
+  // Source intake — the user points at the transcripts/files to read.
   const inboxDir = path.join(root, config.paths.artifacts, "00 - Inbox");
   const picked = await vscode.window.showOpenDialog({
     canSelectMany: true,
     canSelectFiles: true,
     canSelectFolders: true,
     openLabel: "Use as source",
-    defaultUri: vscode.Uri.file(fs.existsSync(inboxDir) ? inboxDir : root),
-    title: `${spec.titleSuffix} — select source transcripts/files (Cancel to use the inbox)`,
+    defaultUri: vscode.Uri.file(spec.inboxFallback && fs.existsSync(inboxDir) ? inboxDir : root),
+    title: spec.inboxFallback
+      ? `${spec.titleSuffix} — select source transcripts/files (Cancel to use the inbox)`
+      : `${spec.titleSuffix} — select source transcripts/files`,
   });
   const sources = (picked ?? []).map((u) => path.relative(root, u.fsPath));
-  const sourceLine = sources.length
-    ? `Read ONLY these source files/folders:\n${sources.map((s) => `- \`${s}\``).join("\n")}`
-    : `No specific sources selected — read ONLY the files in \`${path.relative(root, inboxDir)}\`.`;
+  let sourceLine: string;
+  if (sources.length) {
+    sourceLine = `Read ONLY these source files/folders:\n${sources.map((s) => `- \`${s}\``).join("\n")}`;
+  } else if (spec.inboxFallback) {
+    // generate-stories: dismissing the picker intentionally defaults to the inbox
+    // (documented in its prompt), so the agent never scans the whole repo.
+    sourceLine = `No specific sources selected — read ONLY the files in \`${path.relative(root, inboxDir)}\`.`;
+  } else {
+    // gap-analysis: no inbox concept — require an explicit choice rather than
+    // silently widening the scan, matching the skill's read-only contract.
+    stream.markdown(`${spec.cancelledMsg} No source files were selected — Gap Analysis needs at least one transcript/file to check the epic against.`);
+    return;
+  }
 
   const userMessage = spec.buildMessage(epicRef, mode, sourceLine);
 
