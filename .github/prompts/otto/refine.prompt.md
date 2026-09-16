@@ -21,17 +21,19 @@ Available skills:
 |---------|-------------|
 | `#otto/refine story` _(default — a bare ticket key routes here)_ | `refine/story.prompt.md` |
 | `#otto/refine generate-stories` | `refine/generate-stories.prompt.md` |
+| `#otto/refine gap-analysis` | `refine/gap-analysis.prompt.md` |
 | `#otto/refine data-dictionary` | `data-dictionary.prompt.md` |
 
 > 🧭 **Routing index — not a procedure.** This menu is a routing index and
 > contains **no skill's procedure**. When the user's request is ambiguous, present
-> the three options and ask them to pick; once they choose, **load that skill's
+> the four options and ask them to pick; once they choose, **load that skill's
 > prompt file and follow it verbatim.** Never run a skill from its one-line menu
 > description here.
 
 **Routing rules:**
 - A **bare ticket key** with no skill (e.g. `#otto/refine PROJ-42`) → run the **`story`** skill (`refine/story.prompt.md`). The key may be a story key (refine that one story), an epic key (refine every unrefined story under it), or a sprint.
 - "generate stories", "draft stories", "stories from this transcript/notes", "break this epic into stories" → the **`generate-stories`** skill (`refine/generate-stories.prompt.md`).
+- "what stories are missing", "gap analysis", "did we miss any stories", "is this epic complete" → the **`gap-analysis`** skill (`refine/gap-analysis.prompt.md`). It cross-references an epic's existing stories against named sources and reports candidate *missed* stories as a review artifact — it **creates nothing**. **Disambiguate from `generate-stories`:** both take an epic + named files, but gap-analysis *asks what's missing* (read-only), while generate-stories *drafts the missing stories* into the backlog. If the user wants a completeness check or a list of gaps, route here; if they want stories authored, route to generate-stories. When genuinely ambiguous, ask which they want.
 - Anything about capturing business entities/attributes as an object-reference doc → the **`data-dictionary`** skill (`data-dictionary.prompt.md`) — from refine it produces **Inferred** fidelity. See `devops/standards/data-dictionary.md`.
 - If neither a skill nor a key is given, present the menu above and ask which to run.
 

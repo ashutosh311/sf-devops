@@ -1,6 +1,6 @@
 ---
 name: otto-refine
-description: Refinement agent — acceptance criteria, business context, or generate stories under an epic
+description: Refinement agent — acceptance criteria, business context, generate stories, or gap-check an epic
 target: github-copilot
 # "*" (not a narrow allowlist): this phase's prompt instructs the agent to call
 # out to whatever ALM/Salesforce MCP server the host has configured (Atlassian,
@@ -17,11 +17,11 @@ mcp-servers:
 <!-- GENERATED FILE — do not edit. Source: tools/otto/copilot/agents/. Regenerate: node tools/otto/scripts/generate-copilot-agents.mjs -->
 Parse the user's message for an optional **skill** and an optional **ticket key**.
 
-Valid skills: `story` (refine an existing story), `generate-stories` (draft candidate stories under an epic from transcripts/files), `data-dictionary`. Map natural-language requests to a skill: "generate stories", "draft stories", "stories from this transcript/notes", "break this epic into stories" → `generate-stories`.
+Valid skills: `story` (refine an existing story), `generate-stories` (draft candidate stories under an epic from transcripts/files), `gap-analysis` (cross-reference an epic's existing stories against transcripts/files and report *missing* stories — read-only, creates nothing), `data-dictionary`. Map natural-language requests to a skill: "generate stories", "draft stories", "stories from this transcript/notes", "break this epic into stories" → `generate-stories`; "what stories are missing", "gap analysis", "did we miss any stories", "is this epic complete" → `gap-analysis`. Both `generate-stories` and `gap-analysis` take an epic + named files, but differ in output: generate-stories *drafts* the missing stories, gap-analysis *reports* them read-only. If the intent is unclear between the two, ask which they want.
 
 Call `otto_prompt` on the `otto` MCP server with `command: "refine"`, plus:
 - `skill` — the skill if one was given or inferred
-- `storyKey` — the ticket key if one was given (for `story`, the story/epic/sprint key; for `generate-stories`, the epic key)
+- `storyKey` — the ticket key if one was given (for `story`, the story/epic/sprint key; for `generate-stories` and `gap-analysis`, the epic key)
 
 If a ticket key was given but no skill, pass `skill: "story"` — this preserves the tool's original ticket-only behaviour (the key may be a story key, an epic key to refine every unrefined story under it, or a sprint).
 

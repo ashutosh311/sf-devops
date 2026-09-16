@@ -303,6 +303,20 @@ test("REFINE_SKILLS all compose to a registered PHASE_TEMPLATES key", () => {
   }
 });
 
+test("refine-gap-analysis stays inside the refine boundary — read-only, no drafting/transition/estimate", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("refine-gap-analysis", cfg);
+    // Gap analysis is a completeness check — it must never advance a story to the design gate...
+    assert.ok(!out.includes("Ready for Design"), "gap-analysis must not transition stories to Ready for Design");
+    // ...must explicitly disclaim estimation (the plan's boundary, mechanically enforced)...
+    assert.ok(/story-point estimation/.test(out), "gap-analysis should disclaim estimation");
+    // ...and must describe its evidence-backed gap output, not draft/create stories.
+    assert.ok(/gap/i.test(out), "gap-analysis should describe gap identification");
+    assert.ok(/evidence/i.test(out), "gap-analysis should require supporting evidence");
+    assert.ok(/epic-gap-analysis\.md/.test(out), "gap-analysis should write the review artifact");
+  }
+});
+
 test("refine-generate-stories stays inside the refine boundary — no status transition, no design/estimate", () => {
   for (const cfg of [jiraCfg, adoCfg, localCfg]) {
     const out = renderPrompt("refine-generate-stories", cfg);

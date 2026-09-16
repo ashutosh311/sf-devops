@@ -55,7 +55,7 @@
           },
           {
             "name": "refine",
-            "description": "Refine a story, or generate stories under an epic  —  usage: /refine [skill] [PROJ-42]"
+            "description": "Refine a story, generate stories under an epic, or gap-check an epic for missing stories  —  usage: /refine [skill] [PROJ-42]"
           },
           {
             "name": "design",

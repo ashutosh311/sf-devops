@@ -102,6 +102,7 @@ export async function handleRefine(
     [
       { label: "$(checklist) Refine a story", description: "add Gherkin acceptance criteria + business context", value: "story" as const },
       { label: "$(sparkle) Generate stories", description: "draft stories under an epic from transcripts/files", value: "generate-stories" as const },
+      { label: "$(search) Gap analysis", description: "check an epic for missing stories against transcripts/files (read-only)", value: "gap-analysis" as const },
       { label: "$(book) Data Dictionary", description: "build/maintain object-reference docs (Inferred fidelity)", value: "data-dictionary" as const },
     ],
     { title: "Refine Agent", placeHolder: "What would you like to do?", ignoreFocusOut: true }
@@ -129,6 +130,10 @@ async function dispatch(
 ): Promise<string | undefined> {
   if (skill === "generate-stories") {
     return runGenerateStories(root, existingConfig, request, stream, token);
+  }
+
+  if (skill === "gap-analysis") {
+    return runGapAnalysis(root, existingConfig, request, stream, token);
   }
 
   // "story" — an inline key bypasses the mode picker, exactly as before this menu.
@@ -348,23 +353,86 @@ async function runRefineAgent(
   });
 }
 
-// ── Generate-stories skill ────────────────────────────────────────────────────
+// ── Generate-stories & Gap-analysis skills ────────────────────────────────────
+// Both take the same input (an epic + named transcripts/files) and share the mode
+// pick, epic selection, and source intake. They differ only in the instruction sent
+// to the agent and the template rendered: generate-stories *drafts* the missing
+// stories into the backlog, while gap-analysis *reports* missing stories read-only.
 
-async function runGenerateStories(
+interface EpicSourceSkillSpec {
+  /** Suffix for quick-pick / input titles, e.g. "Generate Stories". */
+  readonly titleSuffix: string;
+  /** Message shown when the user cancels a step. */
+  readonly cancelledMsg: string;
+  /** Usage-tracking key + template registry key. */
+  readonly templateKey: "refine-generate-stories" | "refine-gap-analysis";
+  /** Builds the instruction sent to the agent. */
+  readonly buildMessage: (epicRef: string, mode: "local" | "alm", sourceLine: string) => string;
+}
+
+const GENERATE_STORIES_SPEC: EpicSourceSkillSpec = {
+  titleSuffix: "Generate Stories",
+  cancelledMsg: "Generation cancelled.",
+  templateKey: "refine-generate-stories",
+  buildMessage: (epicRef, mode, sourceLine) =>
+    `Generate candidate stories under epic ${epicRef} (${mode} mode). ${sourceLine}\n\n` +
+    `Draft each story with a title, user story, business context, and Gherkin acceptance criteria only — ` +
+    `no solution design, org discovery, component/data-model decisions, or story-point estimation. ` +
+    `Write the drafts into the local backlog and present them as a review table; do not create any ` +
+    `${mode === "alm" ? "PM items" : "records outside the local backlog"} until I explicitly ask to push.`,
+};
+
+const GAP_ANALYSIS_SPEC: EpicSourceSkillSpec = {
+  titleSuffix: "Gap Analysis",
+  cancelledMsg: "Gap analysis cancelled.",
+  templateKey: "refine-gap-analysis",
+  buildMessage: (epicRef, mode, sourceLine) =>
+    `Run a story gap analysis for epic ${epicRef} (${mode} mode). ${sourceLine}\n\n` +
+    `Cross-reference the epic's existing child stories against the sources and report candidate ` +
+    `MISSING stories, each with a one-line description, supporting evidence (source file + short excerpt), ` +
+    `and a confidence rating — plus a coverage view of which source requirements are already represented. ` +
+    `Write the review artifact to \`{EPIC-KEY}/epic-gap-analysis.md\` and present it in chat. ` +
+    `Business context + gap identification only — no solution design, component/data-model decisions, or ` +
+    `estimation. Do NOT draft, write, or create any story anywhere; this is read-only.`,
+};
+
+function runGenerateStories(
   root: string,
   existingConfig: OttoConfig | undefined,
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken
 ): Promise<string | undefined> {
+  return runEpicSourceSkill(root, existingConfig, request, stream, token, GENERATE_STORIES_SPEC);
+}
+
+function runGapAnalysis(
+  root: string,
+  existingConfig: OttoConfig | undefined,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken
+): Promise<string | undefined> {
+  return runEpicSourceSkill(root, existingConfig, request, stream, token, GAP_ANALYSIS_SPEC);
+}
+
+async function runEpicSourceSkill(
+  root: string,
+  existingConfig: OttoConfig | undefined,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken,
+  spec: EpicSourceSkillSpec
+): Promise<string | undefined> {
+  const menuTitle = `Refine Agent — ${spec.titleSuffix}`;
   const modePick = await vscode.window.showQuickPick(
     [
-      { label: "$(folder) Local mode", description: "draft into the local backlog under a backlog epic — no PM tool required", value: "local" as const },
-      { label: "$(cloud) ALM mode", description: "draft under a JIRA/ADO epic, push explicitly when ready", value: "alm" as const },
+      { label: "$(folder) Local mode", description: "work against a backlog epic — no PM tool required", value: "local" as const },
+      { label: "$(cloud) ALM mode", description: "work against a JIRA/ADO epic", value: "alm" as const },
     ],
-    { title: "Refine Agent — Generate Stories", placeHolder: "How would you like to run generation?", ignoreFocusOut: true }
+    { title: menuTitle, placeHolder: "How would you like to run this?", ignoreFocusOut: true }
   );
-  if (!modePick) { stream.markdown("Generation cancelled."); return; }
+  if (!modePick) { stream.markdown(spec.cancelledMsg); return; }
 
   let config: OttoConfig;
   let epicRef: string;
@@ -376,7 +444,7 @@ async function runGenerateStories(
     if (!fs.existsSync(backlogPath)) {
       stream.markdown(
         `⛔ No backlog found at \`${path.relative(root, backlogPath)}\`.\n\n` +
-        "Run `@otto /discover manage-backlog` to generate the backlog first, then pick the epic to draft under."
+        "Run `@otto /discover manage-backlog` to generate the backlog first, then pick the epic."
       );
       return;
     }
@@ -388,9 +456,9 @@ async function runGenerateStories(
     }
     const epicPick = await vscode.window.showQuickPick(
       epics.map((e) => ({ label: `$(symbol-class) ${e.name ?? e.id}`, description: e.id, value: e.id })),
-      { title: "Refine Agent — Generate Stories", placeHolder: "Which epic should the new stories sit under?", ignoreFocusOut: true }
+      { title: menuTitle, placeHolder: "Which epic?", ignoreFocusOut: true }
     );
-    if (!epicPick) { stream.markdown("Generation cancelled."); return; }
+    if (!epicPick) { stream.markdown(spec.cancelledMsg); return; }
     epicRef = epicPick.value;
   } else {
     const almConfig = existingConfig ?? (await promptForJiraConfig(stream));
@@ -399,12 +467,12 @@ async function runGenerateStories(
     const almTool = resolveAlmTool(config);
     const projectKey = resolveProjectKey(config);
     const key = await vscode.window.showInputBox({
-      title: "Refine Agent — Generate Stories",
-      prompt: `Enter the ${almTool} epic key the new stories should sit under`,
+      title: menuTitle,
+      prompt: `Enter the ${almTool} epic key`,
       placeHolder: `${projectKey}-100`,
       ignoreFocusOut: true,
     });
-    if (!key?.trim()) { stream.markdown("Generation cancelled."); return; }
+    if (!key?.trim()) { stream.markdown(spec.cancelledMsg); return; }
     epicRef = key.trim();
   }
 
@@ -417,22 +485,17 @@ async function runGenerateStories(
     canSelectFolders: true,
     openLabel: "Use as source",
     defaultUri: vscode.Uri.file(fs.existsSync(inboxDir) ? inboxDir : root),
-    title: "Generate Stories — select source transcripts/files (Cancel to use the inbox)",
+    title: `${spec.titleSuffix} — select source transcripts/files (Cancel to use the inbox)`,
   });
   const sources = (picked ?? []).map((u) => path.relative(root, u.fsPath));
   const sourceLine = sources.length
     ? `Read ONLY these source files/folders:\n${sources.map((s) => `- \`${s}\``).join("\n")}`
     : `No specific sources selected — read ONLY the files in \`${path.relative(root, inboxDir)}\`.`;
 
-  const userMessage =
-    `Generate candidate stories under epic ${epicRef} (${mode} mode). ${sourceLine}\n\n` +
-    `Draft each story with a title, user story, business context, and Gherkin acceptance criteria only — ` +
-    `no solution design, org discovery, component/data-model decisions, or story-point estimation. ` +
-    `Write the drafts into the local backlog and present them as a review table; do not create any ` +
-    `${mode === "alm" ? "PM items" : "records outside the local backlog"} until I explicitly ask to push.`;
+  const userMessage = spec.buildMessage(epicRef, mode, sourceLine);
 
   await runPhaseAgent("refine", config, request, stream, token, userMessage, {
-    templateKey: "refine-generate-stories",
+    templateKey: spec.templateKey,
     defer: {
       root,
       phaseLabel: "Refine",
@@ -440,7 +503,7 @@ async function runGenerateStories(
       mcpName: mode === "alm" ? mcpDisplayName(resolveAlmTool(config)) : undefined,
     },
   });
-  return "refine-generate-stories";
+  return spec.templateKey;
 }
 
 

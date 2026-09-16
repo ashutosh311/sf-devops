@@ -5,6 +5,7 @@ import { discoverTemplate } from "./templates/discover.js";
 import { refineTemplate } from "./templates/refine.js";
 import { refineStoryTemplate } from "./templates/refine-story.js";
 import { refineGenerateStoriesTemplate } from "./templates/refine-generate-stories.js";
+import { refineGapAnalysisTemplate } from "./templates/refine-gap-analysis.js";
 import { designTemplate } from "./templates/design.js";
 import { buildTemplate } from "./templates/build.js";
 import { testTemplate } from "./templates/test.js";
@@ -48,6 +49,7 @@ export const PHASE_TEMPLATES: Record<string, string> = {
   // Refine sub-skills. Same hyphenated-key rule as the test-* keys below.
   "refine-story": refineStoryTemplate,
   "refine-generate-stories": refineGenerateStoriesTemplate,
+  "refine-gap-analysis": refineGapAnalysisTemplate,
   // Test sub-skills. Hyphenated (never `:`) — these keys become filenames in
   // instructions.zip via scripts/package-instructions.mjs, and `:` is illegal
   // on Windows. Composed with skillTemplateKey() below; never write one of
@@ -67,9 +69,10 @@ export type TestSkill = (typeof TEST_SKILLS)[number];
 
 /** Sub-skills the `refine` phase exposes as a menu. `story` is the implicit
  *  default (a bare `#otto/refine PROJ-42` runs it), preserving pre-menu behaviour;
- *  `generate-stories` drafts new candidate stories under an epic from sources.
+ *  `generate-stories` drafts new candidate stories under an epic from sources;
+ *  `gap-analysis` reports missing stories under an epic against named sources.
  *  Exported so every front end validates against the same list. */
-export const REFINE_SKILLS = ["story", "generate-stories"] as const;
+export const REFINE_SKILLS = ["story", "generate-stories", "gap-analysis"] as const;
 export type RefineSkill = (typeof REFINE_SKILLS)[number];
 
 /** Composes a sub-skill registry key. Hyphen separator is required — see the

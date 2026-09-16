@@ -26,14 +26,14 @@ type TestArgs = z.infer<typeof TEST_ARGS_SCHEMA>;
 const REFINE_ARGS_SCHEMA = z.object({
   storyKey: z.string().optional().describe("Story key (e.g. PROJ-42), epic key, or sprint. For the story skill, an epic/sprint refines every eligible child story. For generate-stories, an epic key/ID is the epic new stories are drafted under."),
   skill:    z.string().optional().describe(
-    "Sub-skill: story | generate-stories | data-dictionary. Omit to show the menu (or, with a storyKey but no skill, run story). generate-stories drafts new candidate stories under an epic from user-specified transcripts/files."
+    "Sub-skill: story | generate-stories | gap-analysis | data-dictionary. Omit to show the menu (or, with a storyKey but no skill, run story). generate-stories drafts new candidate stories under an epic from user-specified transcripts/files; gap-analysis cross-references an epic's existing stories against those files and reports candidate missing stories (read-only, creates nothing)."
   ),
 });
 type RefineArgs = z.infer<typeof REFINE_ARGS_SCHEMA>;
 
 const PHASE_DESCRIPTIONS: Record<string, string> = {
   discover: "Discovery agent — maps requirements, identifies unknowns, drafts epics and stories",
-  refine:   "Refinement agent — menu-driven: refine a story (AC, open questions) for a JIRA story/epic/sprint, generate new candidate stories under an epic from transcripts/files, or build the shared data dictionary",
+  refine:   "Refinement agent — menu-driven: refine a story (AC, open questions) for a JIRA story/epic/sprint, generate new candidate stories under an epic from transcripts/files, run a gap analysis reporting missing stories under an epic, or build the shared data dictionary",
   design:   "Technical design agent — solution approach, data model, component breakdown, sub-tasks for a JIRA story, epic, or sprint (epic/sprint ⇒ designs every eligible child story + publishes an epic synthesis design)",
   build:    "Build agent — scaffolds Apex, LWC, config metadata; reviews with you; deploys to sandbox",
   test:     "Test agent — menu-driven: execute AC in the sandbox, author test cases in Xray/Zephyr/ADO Test Plans, extend Apex unit + performance tests, or set up and write Playwright E2E tests",

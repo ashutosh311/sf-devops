@@ -34,6 +34,22 @@ skills:
       - "stories from these notes"
       - "break this epic into stories"
 
+  - id: gap-analysis
+    name: gap-analysis
+    description: >
+      Use when the user has an epic and wants to know whether any stories are MISSING — cross-references
+      the epic's existing child stories against named transcripts/files and surfaces candidate missed
+      stories with evidence. Produces a read-only review artifact (artifacts/{EPIC-KEY}/epic-gap-analysis.md)
+      + chat summary; creates nothing. Contrast with generate-stories, which DRAFTS the missing stories:
+      same input, opposite output. Flow is gap-analysis → confirm → generate-stories.
+    kind: workflow
+    path: .github/prompts/otto/refine/gap-analysis.prompt.md
+    trigger_phrases:
+      - "what stories are missing"
+      - "gap analysis"
+      - "did we miss any stories"
+      - "is this epic complete"
+
   - id: data-dictionary
     name: data-dictionary
     description: >

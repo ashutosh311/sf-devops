@@ -76,9 +76,12 @@ ${hostName()} will walk you through a short setup and scaffold the project with:
 |---|---|
 | \`story\` | INVEST-validate an existing story, split if too big, write Gherkin AC *(ALM mode transitions it to Ready for Design)* |
 | \`generate-stories\` | Draft **new** candidate stories under an epic from user-specified transcripts/files, into the local backlog for review + explicit push |
+| \`gap-analysis\` | Cross-reference an epic's existing stories against user-specified transcripts/files and report candidate **missing** stories with evidence — a read-only review artifact (\`{EPIC-KEY}/epic-gap-analysis.md\`); creates nothing |
 | \`data-dictionary\` | Build/maintain the shared object-reference data dictionary at Inferred fidelity |
 
 **generate-stories vs Discover:** use \`generate-stories\` when an epic already exists and you want its stories drafted from a few named files without re-running discovery. For bulk source→backlog work use \`${cmd("discover")}\` (\`process-session\`, \`manage-backlog\`, \`registers-to-stories\`). Both write the same backlog format.
+
+**gap-analysis vs generate-stories:** both take the same input (an epic + named transcripts/files) but have opposite outputs — \`gap-analysis\` *asks what's missing* (read-only artifact, creates nothing), while \`generate-stories\` *drafts the missing stories* into the backlog. The flow is gap-analysis → confirm → generate-stories.
 
 ### Test skills
 
