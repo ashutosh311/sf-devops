@@ -2,6 +2,7 @@ import {
   renderPrompt,
   CACHE_CURRENT_DIR,
   TEST_SKILLS,
+  REFINE_SKILLS,
   skillTemplateKey,
   renderDiscoverAdvisoryPrompt,
   DISCOVER_ADVISORY_SKILLS,
@@ -17,9 +18,13 @@ export type Phase = (typeof PHASES)[number];
 export const COMMANDS = ["about", "init", ...PHASES] as const;
 export type Command = (typeof COMMANDS)[number];
 
-/** Sub-skills valid per command. Extend here when another phase gains a menu. */
+/** Sub-skills valid per command. Extend here when another phase gains a menu.
+ *  `data-dictionary` is a cross-cutting shared skill: it composes to the single
+ *  `data-dictionary` template (not `<phase>-data-dictionary`), routed as a special
+ *  case in renderCommand below. */
 export const COMMAND_SKILLS: Record<string, readonly string[]> = {
   test: TEST_SKILLS,
+  refine: [...REFINE_SKILLS, "data-dictionary"],
   discover: DISCOVER_ADVISORY_SKILLS,
 };
 
@@ -37,6 +42,7 @@ function isDiscoverAdvisorySkill(skill: string): skill is DiscoverAdvisorySkill 
 export function resolveSkill(command: string, storyKey?: string, skill?: string): string | undefined {
   if (skill) return skill;
   if (command === "test" && storyKey) return "execute";
+  if (command === "refine" && storyKey) return "story";
   return undefined;
 }
 
@@ -91,9 +97,16 @@ export async function renderCommand(
     // Discover's advisory skills (synthesize, analyze, ...) are read-files-then-
     // report work sharing one template — rendered via renderDiscoverAdvisoryPrompt()
     // rather than a per-skill PHASE_TEMPLATES key like the test-* skills use.
-    let text = effectiveSkill && command === "discover" && isDiscoverAdvisorySkill(effectiveSkill)
-      ? renderDiscoverAdvisoryPrompt(config, effectiveSkill, { cacheDir: CACHE_CURRENT_DIR })
-      : renderPrompt(effectiveSkill ? skillTemplateKey(command, effectiveSkill) : command, config, { cacheDir: CACHE_CURRENT_DIR });
+    // `data-dictionary` is cross-cutting: any phase that lists it renders the single
+    // shared `data-dictionary` template, never a composed `<phase>-data-dictionary`.
+    let text: string;
+    if (effectiveSkill === "data-dictionary") {
+      text = renderPrompt("data-dictionary", config, { cacheDir: CACHE_CURRENT_DIR });
+    } else if (effectiveSkill && command === "discover" && isDiscoverAdvisorySkill(effectiveSkill)) {
+      text = renderDiscoverAdvisoryPrompt(config, effectiveSkill, { cacheDir: CACHE_CURRENT_DIR });
+    } else {
+      text = renderPrompt(effectiveSkill ? skillTemplateKey(command, effectiveSkill) : command, config, { cacheDir: CACHE_CURRENT_DIR });
+    }
 
     if (storyKey) {
       const key = storyKey.toUpperCase();

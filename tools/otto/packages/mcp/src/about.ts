@@ -62,11 +62,23 @@ ${hostName()} will walk you through a short setup and scaffold the project with:
 | \`${cmd("about")}\` | Show this help |
 | \`${cmd("init")}\` | Set up or reconfigure the SDLC for this project |
 | \`${cmd("discover")}\` | Discovery agent — maps requirements, creates epics and stories |
-| \`${cmd("refine", "PROJ-42")}\` | Refines a JIRA story — AC, open questions, effort |
+| \`${cmd("refine", "PROJ-42")}\` | Refinement agent — menu-driven (see Refine skills below) |
 | \`${cmd("design", "PROJ-42")}\` | Technical design — solution approach, data model, sub-tasks |
 | \`${cmd("build", "PROJ-42")}\` | Build agent — scaffolds Apex/LWC/config, deploys to sandbox |
 | \`${cmd("test", "PROJ-42")}\` | Test agent — menu-driven (see Test skills below) |
 | \`${cmd("release")}\` | Release agent — deployment notes, checklist, JIRA transitions |
+
+### Refine skills
+
+\`${cmd("refine", "PROJ-42")}\` alone runs **story** (today's behaviour). \`${cmd("refine")}\` with no arguments shows the menu. Ask for a skill by name to run one directly:
+
+| Skill | What it does |
+|---|---|
+| \`story\` | INVEST-validate an existing story, split if too big, write Gherkin AC *(ALM mode transitions it to Ready for Design)* |
+| \`generate-stories\` | Draft **new** candidate stories under an epic from user-specified transcripts/files, into the local backlog for review + explicit push |
+| \`data-dictionary\` | Build/maintain the shared object-reference data dictionary at Inferred fidelity |
+
+**generate-stories vs Discover:** use \`generate-stories\` when an epic already exists and you want its stories drafted from a few named files without re-running discovery. For bulk source→backlog work use \`${cmd("discover")}\` (\`process-session\`, \`manage-backlog\`, \`registers-to-stories\`). Both write the same backlog format.
 
 ### Test skills
 

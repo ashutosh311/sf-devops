@@ -1,24 +1,26 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
+import * as fs from "node:fs";
 import {
-  renderPrompt,
-  CACHE_CURRENT_DIR,
   DEFAULT_PATHS,
   DEFAULT_STANDARDS,
   CONFIG_VERSION,
   TOOL_VERSION,
+  REFINE_SKILLS,
   type OttoConfig,
+  type RefineSkill,
   type StoryStatusMap,
   type EpicStatusMap,
   type SubTaskStatusMap,
   resolveProjectKey,
   resolveAlmTool,
-  extractStoryKey,
 } from "@otto/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
+import { readBacklogWorkbook } from "../backlog";
 import { isDataDictionaryToken, openDataDictionary } from "./data-dictionary";
 import { scanEligibleStories, pickStoryScope, storyFolderPath } from "./backlog-scope";
-import { openPromptInAgentMode, mcpDisplayName } from "./agent-defer";
+import { runPhaseAgent } from "./run-phase-agent";
+import { mcpDisplayName } from "./agent-defer";
 
 type JiraStatusMap = { story: StoryStatusMap; epic: EpicStatusMap; subTask: SubTaskStatusMap };
 
@@ -39,6 +41,15 @@ const DEFAULT_STATUS_MAP: JiraStatusMap = {
 
 const INLINE_KEY_RE = /[A-Za-z][A-Za-z0-9]+-\d+/;
 
+// A lowercase, kebab-case token that *looks like* an attempted skill id but isn't
+// one of the real ones (e.g. a typo like `generate-stores`). Ordinary prose and
+// ticket keys never match this shape, so it only ever catches a misspelled skill
+// token — reject it explicitly rather than falling through to the ticket-only
+// shortcut and silently refining the wrong thing.
+const SKILL_SHAPED_RE = /^[a-z]+(-[a-z]+)+$/;
+
+const SKILL_IDS = new Set<string>(REFINE_SKILLS);
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export async function handleRefine(
@@ -46,21 +57,39 @@ export async function handleRefine(
   _context: vscode.ChatContext,
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken
-): Promise<void> {
+): Promise<string | undefined> {
   const root = getWorkspaceRoot();
   const existingConfig = root ? await loadConfig(root) : undefined;
 
   // Data dictionary token → run immediately, no JIRA/config prompts required.
   if (root && isDataDictionaryToken(request.prompt)) {
     const ddConfig = existingConfig ?? buildMinimalConfig("", path.basename(root));
-    return openDataDictionary(root, ddConfig, request, stream, "refine");
+    await openDataDictionary(root, ddConfig, request, stream, "refine");
+    return "data-dictionary";
   }
 
-  // Inline PM key (e.g. "/refine PROJ-42") → skip all menus, direct ALM invocation.
-  if (root && INLINE_KEY_RE.test(request.prompt)) {
+  const trimmed = request.prompt.trim();
+  const [firstToken, ...rest] = trimmed.split(/\s+/);
+  const remainder = rest.join(" ").trim();
+
+  // Leading skill token (e.g. "/refine generate-stories" or "/refine story PROJ-42").
+  if (root && firstToken && SKILL_IDS.has(firstToken)) {
+    return dispatch(firstToken as RefineSkill, root, existingConfig, request, stream, token, remainder);
+  }
+
+  // An unrecognized kebab-case leading token — reject rather than letting the
+  // ticket-only check below match a key elsewhere and silently run `story`.
+  if (root && firstToken && SKILL_SHAPED_RE.test(firstToken)) {
+    stream.markdown(`⛔ Unknown skill "${firstToken}". Valid skills: ${REFINE_SKILLS.join(", ")}.`);
+    return;
+  }
+
+  // Inline PM key (e.g. "/refine PROJ-42") → skip all menus, direct ALM refinement.
+  if (root && INLINE_KEY_RE.test(trimmed)) {
     const config = existingConfig ?? await promptForJiraConfig(stream);
     if (!config) return;
-    return runRefineAgent(config, request, stream, token, request.prompt.trim(), { defer: true, root, mode: "alm" });
+    await runRefineAgent(config, request, stream, token, trimmed, { defer: true, root, mode: "alm" });
+    return "refine-story";
   }
 
   if (!root) {
@@ -71,7 +100,8 @@ export async function handleRefine(
   // ── Top-level action menu ────────────────────────────────────────────────────
   const action = await vscode.window.showQuickPick(
     [
-      { label: "$(checklist) Refine a story", description: "add Gherkin acceptance criteria + business context", value: "refine" as const },
+      { label: "$(checklist) Refine a story", description: "add Gherkin acceptance criteria + business context", value: "story" as const },
+      { label: "$(sparkle) Generate stories", description: "draft stories under an epic from transcripts/files", value: "generate-stories" as const },
       { label: "$(book) Data Dictionary", description: "build/maintain object-reference docs (Inferred fidelity)", value: "data-dictionary" as const },
     ],
     { title: "Refine Agent", placeHolder: "What would you like to do?", ignoreFocusOut: true }
@@ -80,9 +110,46 @@ export async function handleRefine(
 
   if (action.value === "data-dictionary") {
     const ddConfig = existingConfig ?? buildMinimalConfig("", path.basename(root));
-    return openDataDictionary(root, ddConfig, request, stream, "refine");
+    await openDataDictionary(root, ddConfig, request, stream, "refine");
+    return "data-dictionary";
   }
 
+  return dispatch(action.value, root, existingConfig, request, stream, token, "");
+}
+
+/** Routes to the right refine skill and returns the composed usage-tracking key. */
+async function dispatch(
+  skill: RefineSkill,
+  root: string,
+  existingConfig: OttoConfig | undefined,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken,
+  remainder: string
+): Promise<string | undefined> {
+  if (skill === "generate-stories") {
+    return runGenerateStories(root, existingConfig, request, stream, token);
+  }
+
+  // "story" — an inline key bypasses the mode picker, exactly as before this menu.
+  if (remainder && INLINE_KEY_RE.test(remainder)) {
+    const config = existingConfig ?? await promptForJiraConfig(stream);
+    if (!config) return;
+    await runRefineAgent(config, request, stream, token, remainder, { defer: true, root, mode: "alm" });
+    return "refine-story";
+  }
+  return runStorySkill(root, existingConfig, request, stream, token);
+}
+
+// ── Story skill — Local / ALM mode sub-picker ─────────────────────────────────
+
+async function runStorySkill(
+  root: string,
+  existingConfig: OttoConfig | undefined,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken
+): Promise<string | undefined> {
   // ── Mode menu (replaces the model asking "local or ALM?" in-flow) ───────────
   const modePick = await vscode.window.showQuickPick(
     [
@@ -94,9 +161,11 @@ export async function handleRefine(
   if (!modePick) { stream.markdown("Refinement cancelled."); return; }
 
   if (modePick.value === "local") {
-    return runLocalMode(root, existingConfig ?? buildMinimalConfig("", path.basename(root)), request, stream, token);
+    await runLocalMode(root, existingConfig ?? buildMinimalConfig("", path.basename(root)), request, stream, token);
+    return "refine-story";
   }
-  return runAlmMode(root, existingConfig, request, stream, token);
+  await runAlmMode(root, existingConfig, request, stream, token);
+  return "refine-story";
 }
 
 // ── Local mode ────────────────────────────────────────────────────────────────
@@ -250,6 +319,12 @@ async function runAlmMode(
 
 // ── Shared model call ────────────────────────────────────────────────────────
 
+/**
+ * Renders the `refine-story` template (not the bare `refine` menu) and runs it.
+ * Delegates to the shared phase-agent helper so the generated prompt file is
+ * keyed by `refine-story` — otherwise it would collide with the `refine-generate-stories`
+ * prompt file when both skills run in the same session.
+ */
 async function runRefineAgent(
   config: OttoConfig,
   request: vscode.ChatRequest,
@@ -258,87 +333,116 @@ async function runRefineAgent(
   userMessage: string,
   opts?: { defer?: boolean; root?: string; mode?: "alm" | "local" }
 ): Promise<void> {
-  let systemPrompt: string;
-  try {
-    systemPrompt = renderPrompt("refine", config, { cacheDir: CACHE_CURRENT_DIR });
-  } catch (err) {
-    stream.markdown(`⛔ Could not render refine prompt: ${String(err)}`);
-    return;
-  }
+  const mode = opts?.mode ?? "alm";
+  return runPhaseAgent("refine", config, request, stream, token, userMessage, {
+    templateKey: "refine-story",
+    defer:
+      opts?.defer && opts.root
+        ? {
+            root: opts.root,
+            phaseLabel: "Refine",
+            mode,
+            mcpName: mode === "alm" ? mcpDisplayName(resolveAlmTool(config)) : undefined,
+          }
+        : undefined,
+  });
+}
 
-  // Substitute the story key if the user message contains one (e.g. "PROJ-42")
-  const storyKey = extractStoryKey(userMessage, resolveProjectKey(config));
-  if (storyKey) {
-    systemPrompt = systemPrompt
-      .replace(/\{STORY_KEY\}/g, storyKey)
-      .replace(/\{TICKET_KEY\}/g, storyKey);
-  }
+// ── Generate-stories skill ────────────────────────────────────────────────────
 
-  // ALM mode must fetch/update the PM tool and delete the transient local
-  // refinement-notes.md after pushing AC; local mode still needs to read the
-  // backlog and write refinement-notes.md. Either way that's tool access a bare
-  // model.sendRequest doesn't have, so defer to a Copilot Chat agent session.
-  if (opts?.defer && opts.root) {
-    const mode = opts.mode ?? "alm";
-    const fullPrompt = `${systemPrompt}\n\n---\n\n${userMessage}`;
-    return openPromptInAgentMode({
-      root: opts.root,
-      phase: "refine",
-      phaseLabel: "Refine",
-      mode,
-      mcpName: mode === "alm" ? mcpDisplayName(resolveAlmTool(config)) : undefined,
-      fullPrompt,
-      userMessage,
-      stream,
-    });
-  }
+async function runGenerateStories(
+  root: string,
+  existingConfig: OttoConfig | undefined,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken
+): Promise<string | undefined> {
+  const modePick = await vscode.window.showQuickPick(
+    [
+      { label: "$(folder) Local mode", description: "draft into the local backlog under a backlog epic — no PM tool required", value: "local" as const },
+      { label: "$(cloud) ALM mode", description: "draft under a JIRA/ADO epic, push explicitly when ready", value: "alm" as const },
+    ],
+    { title: "Refine Agent — Generate Stories", placeHolder: "How would you like to run generation?", ignoreFocusOut: true }
+  );
+  if (!modePick) { stream.markdown("Generation cancelled."); return; }
 
-  const model = request.model;
-  const messages = [
-    vscode.LanguageModelChatMessage.User(systemPrompt),
-    vscode.LanguageModelChatMessage.User(userMessage),
-  ];
+  let config: OttoConfig;
+  let epicRef: string;
+  const mode = modePick.value;
 
-  try {
-    const promptTokens = await model.countTokens(messages[0], token);
-    const userTokens   = await model.countTokens(messages[1], token);
-    const totalTokens  = promptTokens + userTokens;
-    const limit        = model.maxInputTokens;
-    const pct          = Math.round((totalTokens / limit) * 100);
-
-    if (pct >= 95) {
+  if (mode === "local") {
+    config = existingConfig ?? buildMinimalConfig("", path.basename(root));
+    const backlogPath = path.join(root, config.paths.artifacts, "04 - Backlog", "Backlog Tracker.xlsx");
+    if (!fs.existsSync(backlogPath)) {
       stream.markdown(
-        `⛔ Prompt is too large for this model (${totalTokens.toLocaleString()} / ${limit.toLocaleString()} tokens, ${pct}%). ` +
-        `Try a model with a larger context window or start a new chat session.`
+        `⛔ No backlog found at \`${path.relative(root, backlogPath)}\`.\n\n` +
+        "Run `@otto /discover manage-backlog` to generate the backlog first, then pick the epic to draft under."
       );
       return;
     }
-    if (pct >= 80) {
-      stream.markdown(
-        `⚠️ Prompt is using ${pct}% of this model's input limit ` +
-        `(${totalTokens.toLocaleString()} / ${limit.toLocaleString()} tokens). ` +
-        `Consider starting a new session after this step.\n\n`
-      );
+    const data = await readBacklogWorkbook(backlogPath);
+    const epics = (data.epics ?? []).filter((e): e is typeof e & { id: string } => !!e.id);
+    if (epics.length === 0) {
+      stream.markdown("ℹ️ The backlog has no epics yet. Run `@otto /discover manage-backlog` to create at least one epic first.");
+      return;
     }
-  } catch {
-    // countTokens not available on all model versions — continue.
+    const epicPick = await vscode.window.showQuickPick(
+      epics.map((e) => ({ label: `$(symbol-class) ${e.name ?? e.id}`, description: e.id, value: e.id })),
+      { title: "Refine Agent — Generate Stories", placeHolder: "Which epic should the new stories sit under?", ignoreFocusOut: true }
+    );
+    if (!epicPick) { stream.markdown("Generation cancelled."); return; }
+    epicRef = epicPick.value;
+  } else {
+    const almConfig = existingConfig ?? (await promptForJiraConfig(stream));
+    if (!almConfig) return;
+    config = almConfig;
+    const almTool = resolveAlmTool(config);
+    const projectKey = resolveProjectKey(config);
+    const key = await vscode.window.showInputBox({
+      title: "Refine Agent — Generate Stories",
+      prompt: `Enter the ${almTool} epic key the new stories should sit under`,
+      placeHolder: `${projectKey}-100`,
+      ignoreFocusOut: true,
+    });
+    if (!key?.trim()) { stream.markdown("Generation cancelled."); return; }
+    epicRef = key.trim();
   }
 
-  try {
-    const response = await model.sendRequest(messages, {}, token);
-    for await (const chunk of response.text) {
-      stream.markdown(chunk);
-    }
-  } catch (err) {
-    if ((err as { code?: string }).code === "NoPermissions") {
-      stream.markdown("⛔ Copilot access is required. Sign in to GitHub Copilot and try again.");
-    } else if ((err as { code?: string }).code === "Blocked") {
-      stream.markdown("⛔ Request blocked — quota or content policy limit reached. Try again shortly or switch model.");
-    } else {
-      stream.markdown(`⛔ Model error: ${String(err)}`);
-    }
-  }
+  // Source intake — the user points at the transcripts/files to read. Defaults to
+  // the inbox so the agent never scans the whole repo.
+  const inboxDir = path.join(root, config.paths.artifacts, "00 - Inbox");
+  const picked = await vscode.window.showOpenDialog({
+    canSelectMany: true,
+    canSelectFiles: true,
+    canSelectFolders: true,
+    openLabel: "Use as source",
+    defaultUri: vscode.Uri.file(fs.existsSync(inboxDir) ? inboxDir : root),
+    title: "Generate Stories — select source transcripts/files (Cancel to use the inbox)",
+  });
+  const sources = (picked ?? []).map((u) => path.relative(root, u.fsPath));
+  const sourceLine = sources.length
+    ? `Read ONLY these source files/folders:\n${sources.map((s) => `- \`${s}\``).join("\n")}`
+    : `No specific sources selected — read ONLY the files in \`${path.relative(root, inboxDir)}\`.`;
+
+  const userMessage =
+    `Generate candidate stories under epic ${epicRef} (${mode} mode). ${sourceLine}\n\n` +
+    `Draft each story with a title, user story, business context, and Gherkin acceptance criteria only — ` +
+    `no solution design, org discovery, component/data-model decisions, or story-point estimation. ` +
+    `Write the drafts into the local backlog and present them as a review table; do not create any ` +
+    `${mode === "alm" ? "PM items" : "records outside the local backlog"} until I explicitly ask to push.`;
+
+  await runPhaseAgent("refine", config, request, stream, token, userMessage, {
+    templateKey: "refine-generate-stories",
+    defer: {
+      root,
+      phaseLabel: "Refine",
+      mode,
+      mcpName: mode === "alm" ? mcpDisplayName(resolveAlmTool(config)) : undefined,
+    },
+  });
+  return "refine-generate-stories";
 }
+
 
 // ── Config helpers ───────────────────────────────────────────────────────────
 

@@ -1,0 +1,47 @@
+catalog_version: v1
+description: Refinement phase skill routing. Maps skill IDs to prompt paths so the AI can route user requests to the correct sub-prompt.
+skills_root: .github/prompts/otto/refine
+
+skills:
+  - id: story
+    name: story
+    description: >
+      Use when the user asks to refine an existing story, epic, or sprint — validate INVEST,
+      break down where needed, and add Gherkin acceptance criteria + business context. This is
+      the default when a ticket key is supplied with no skill.
+    kind: workflow
+    path: .github/prompts/otto/refine/story.prompt.md
+    trigger_phrases:
+      - "refine this story"
+      - "refine PROJ-123"
+      - "add acceptance criteria"
+      - "refine the sprint"
+      - "refine every story in this epic"
+
+  - id: generate-stories
+    name: generate-stories
+    description: >
+      Use when the user has an epic and wants candidate stories drafted from named transcripts,
+      notes, or documents — the epic-scoped ad-hoc path that skips re-running discovery. Drafts
+      into the local backlog for review, then pushed explicitly. Business context + draft Gherkin
+      AC only — no design, no estimation.
+    kind: workflow
+    path: .github/prompts/otto/refine/generate-stories.prompt.md
+    trigger_phrases:
+      - "generate stories"
+      - "draft stories"
+      - "stories from this transcript"
+      - "stories from these notes"
+      - "break this epic into stories"
+
+  - id: data-dictionary
+    name: data-dictionary
+    description: >
+      Use when the user asks to build or maintain an object-reference data dictionary during
+      refinement. Shared skill — produces Inferred fidelity from the refine phase.
+    kind: workflow
+    path: .github/prompts/otto/data-dictionary.prompt.md
+    trigger_phrases:
+      - "data dictionary"
+      - "document the objects"
+      - "object reference"

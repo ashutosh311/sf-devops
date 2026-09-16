@@ -9,6 +9,7 @@ import {
   QUESTIONS,
   PHASE_TEMPLATES,
   TEST_SKILLS,
+  REFINE_SKILLS,
   skillTemplateKey,
 } from "../dist/index.js";
 
@@ -126,11 +127,20 @@ test("design template supports Local mode for both tools", () => {
   }
 });
 
-test("refine template supports Local mode for both tools", () => {
+test("refine-story sub-skill supports Local mode for both tools", () => {
   for (const cfg of [jiraCfg, adoCfg]) {
-    const out = renderPrompt("refine", cfg);
-    assert.ok(out.includes("Local mode"), "refine should describe Local mode");
+    const out = renderPrompt("refine-story", cfg);
+    assert.ok(out.includes("Local mode"), "refine-story should describe Local mode");
   }
+});
+
+test("refine menu is a routing index — carries the guard, not the skills' procedures", () => {
+  const out = renderPrompt("refine", jiraCfg);
+  // The menu must tell the agent to re-invoke for the real procedure...
+  assert.ok(/routing/i.test(out), "refine menu should describe itself as routing only");
+  assert.ok(out.includes('skill: "<chosen-skill>"'), "refine menu should instruct re-invocation with a skill");
+  // ...and must NOT inline a skill's procedure (the INVEST step lives in refine-story).
+  assert.ok(!out.includes("3a — INVEST validation"), "refine menu should not contain the story skill's procedure");
 });
 
 test("misconfiguration (no status map) fails loudly", () => {
@@ -283,6 +293,23 @@ test("TEST_SKILLS all compose to a registered PHASE_TEMPLATES key", () => {
   for (const skill of TEST_SKILLS) {
     const key = skillTemplateKey("test", skill);
     assert.ok(PHASE_TEMPLATES[key], `no template registered for composed key "${key}"`);
+  }
+});
+
+test("REFINE_SKILLS all compose to a registered PHASE_TEMPLATES key", () => {
+  for (const skill of REFINE_SKILLS) {
+    const key = skillTemplateKey("refine", skill);
+    assert.ok(PHASE_TEMPLATES[key], `no template registered for composed key "${key}"`);
+  }
+});
+
+test("refine-generate-stories stays inside the refine boundary — no status transition, no design/estimate", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("refine-generate-stories", cfg);
+    // Drafting must never advance a story to the design gate...
+    assert.ok(!out.includes("Ready for Design"), "generate-stories must not transition stories to Ready for Design");
+    // ...and must explicitly disclaim estimation (the plan's boundary, mechanically enforced).
+    assert.ok(/story-point estimation/.test(out), "generate-stories should disclaim estimation");
   }
 });
 

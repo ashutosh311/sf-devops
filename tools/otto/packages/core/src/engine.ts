@@ -3,6 +3,8 @@ import type { OttoConfig } from "./schema.js";
 import { resolveAlmTool, resolveProjectKey, resolveDeliverable, DEFAULT_STATUS_MAP } from "./schema.js";
 import { discoverTemplate } from "./templates/discover.js";
 import { refineTemplate } from "./templates/refine.js";
+import { refineStoryTemplate } from "./templates/refine-story.js";
+import { refineGenerateStoriesTemplate } from "./templates/refine-generate-stories.js";
 import { designTemplate } from "./templates/design.js";
 import { buildTemplate } from "./templates/build.js";
 import { testTemplate } from "./templates/test.js";
@@ -43,6 +45,9 @@ export const PHASE_TEMPLATES: Record<string, string> = {
   // registered here so they render through the same Handlebars/cache pipeline.
   "data-dictionary": dataDictionaryTemplate,
   "discover-advisory": discoverAdvisoryTemplate,
+  // Refine sub-skills. Same hyphenated-key rule as the test-* keys below.
+  "refine-story": refineStoryTemplate,
+  "refine-generate-stories": refineGenerateStoriesTemplate,
   // Test sub-skills. Hyphenated (never `:`) — these keys become filenames in
   // instructions.zip via scripts/package-instructions.mjs, and `:` is illegal
   // on Windows. Composed with skillTemplateKey() below; never write one of
@@ -59,6 +64,13 @@ export const PHASE_TEMPLATES: Record<string, string> = {
  *  (MCP, VS Code, CLI) validates against the same list. */
 export const TEST_SKILLS = ["execute", "write-cases", "apex-unit", "apex-perf", "pw-setup", "pw-write"] as const;
 export type TestSkill = (typeof TEST_SKILLS)[number];
+
+/** Sub-skills the `refine` phase exposes as a menu. `story` is the implicit
+ *  default (a bare `#otto/refine PROJ-42` runs it), preserving pre-menu behaviour;
+ *  `generate-stories` drafts new candidate stories under an epic from sources.
+ *  Exported so every front end validates against the same list. */
+export const REFINE_SKILLS = ["story", "generate-stories"] as const;
+export type RefineSkill = (typeof REFINE_SKILLS)[number];
 
 /** Composes a sub-skill registry key. Hyphen separator is required — see the
  *  Windows-filename note on PHASE_TEMPLATES above. */

@@ -55,7 +55,7 @@
           },
           {
             "name": "refine",
-            "description": "Refine a JIRA story or sprint"
+            "description": "Refine a story, or generate stories under an epic  —  usage: /refine [skill] [PROJ-42]"
           },
           {
             "name": "design",

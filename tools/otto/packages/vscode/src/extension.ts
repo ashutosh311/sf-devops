@@ -76,7 +76,7 @@ export function activate(context: vscode.ExtensionContext): void {
         } else if (request.command === "discover") {
           await handleDiscover(request, chatContext, stream, token);
         } else if (request.command === "refine") {
-          await handleRefine(request, chatContext, stream, token);
+          usageCommandOverride = await handleRefine(request, chatContext, stream, token);
         } else if (request.command === "design") {
           await handleDesign(request, chatContext, stream, token);
         } else if (request.command === "build") {
