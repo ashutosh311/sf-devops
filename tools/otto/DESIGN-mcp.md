@@ -419,7 +419,7 @@ The only scaffold addition is writing `.mcp.json` next to `.vscode/mcp.json` (se
 
 ## 11. MCP-to-MCP: Salesforce and the PM tool
 
-The phase prompts instruct Claude to use the Salesforce MCP and the PM-tool MCP for org metadata, Apex tests, and work-item/status operations — exactly as the VSIX templates already do. Those are **separate MCP servers** that Claude Code connects to directly; our server does not proxy them. For JIRA projects the PM-tool MCP is Atlassian (which also serves Confluence); for Azure DevOps projects it is the Azure DevOps MCP, which must be added to the config manually (the scaffold writes the Atlassian entry by default).
+The phase prompts instruct Claude to use the Salesforce MCP and the PM-tool MCP for org metadata, Apex tests, and work-item/status operations — exactly as the VSIX templates already do. Those are **separate MCP servers** that Claude Code connects to directly; our server does not proxy them. For JIRA projects the PM-tool MCP is Atlassian (which also serves Confluence); for Azure DevOps projects it is the Azure DevOps MCP, which the scaffold writes automatically (`buildPmMcpEntry()` in `core/scaffold.ts`) — no manual config step needed for either PM tool.
 
 `scaffoldRepo()` is extended to emit a Claude-Code-flavoured `.mcp.json` carrying the same two server definitions it already writes to `.vscode/mcp.json`:
 
