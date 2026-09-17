@@ -2502,8 +2502,12 @@ async function runPullAdoArtifacts(ctx: SkillContext): Promise<void> {
   const userRequest = ctx.request.prompt.trim() || "Pull documents from an Azure DevOps repo into the local Inbox.";
   const fullPrompt = `${systemPrompt}\n\n---\n\n${userRequest}`;
 
+  // The chat query below only ever points at this file — it never carries the
+  // rendered prompt itself, which would expose Slalom's proprietary SDLC prompt
+  // content in the visible, persisted chat transcript (see runDeferred above).
   const configDirName = path.basename(resolveConfigDir(ctx.root));
-  const generatedPromptPath = path.join(ctx.root, configDirName, "prompts", "pull-ado-artifacts.md");
+  const relativePromptPath = path.posix.join(configDirName, "prompts", "pull-ado-artifacts.md");
+  const generatedPromptPath = path.join(ctx.root, relativePromptPath);
   try {
     fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
     fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
@@ -2511,9 +2515,10 @@ async function runPullAdoArtifacts(ctx: SkillContext): Promise<void> {
     // non-fatal — best-effort
   }
 
+  const chatQuery = `Read ${relativePromptPath} and follow its instructions.\n\n${userRequest}`;
   try {
     await vscode.commands.executeCommand("workbench.action.chat.open", {
-      query: fullPrompt,
+      query: chatQuery,
       isPartialQuery: true,
     });
     ctx.stream.markdown(
@@ -2572,8 +2577,12 @@ async function runPullAdoWikiSession(ctx: SkillContext): Promise<void> {
   const userRequest = ctx.request.prompt.trim() || "Pull a workshop session from an Azure DevOps wiki page into the local Inbox.";
   const fullPrompt = `${systemPrompt}\n\n---\n\n${userRequest}`;
 
+  // The chat query below only ever points at this file — it never carries the
+  // rendered prompt itself, which would expose Slalom's proprietary SDLC prompt
+  // content in the visible, persisted chat transcript (see runDeferred above).
   const configDirName = path.basename(resolveConfigDir(ctx.root));
-  const generatedPromptPath = path.join(ctx.root, configDirName, "prompts", "pull-ado-wiki-session.md");
+  const relativePromptPath = path.posix.join(configDirName, "prompts", "pull-ado-wiki-session.md");
+  const generatedPromptPath = path.join(ctx.root, relativePromptPath);
   try {
     fs.mkdirSync(path.dirname(generatedPromptPath), { recursive: true });
     fs.writeFileSync(generatedPromptPath, fullPrompt, "utf-8");
@@ -2581,9 +2590,10 @@ async function runPullAdoWikiSession(ctx: SkillContext): Promise<void> {
     // non-fatal — best-effort
   }
 
+  const chatQuery = `Read ${relativePromptPath} and follow its instructions.\n\n${userRequest}`;
   try {
     await vscode.commands.executeCommand("workbench.action.chat.open", {
-      query: fullPrompt,
+      query: chatQuery,
       isPartialQuery: true,
     });
     ctx.stream.markdown(
