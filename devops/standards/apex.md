@@ -404,6 +404,28 @@ if (!accounts.isEmpty()) {
 Account acc = [SELECT Id FROM Account WHERE Id = :accountId]; // throws if missing
 ```
 
+### SOQL/DML Security Enforcement — USER_MODE vs SECURITY_ENFORCED
+
+Salesforce has deprecated `WITH SECURITY_ENFORCED` in favour of explicit user-mode enforcement (`WITH USER_MODE` for SOQL, `AccessLevel.USER_MODE` for DML) — see [Enforcing User Mode for Database Operations](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_enforce_usermode.htm). `USER_MODE` enforces object-, field-, **and** sharing-level security for the running user; `SECURITY_ENFORCED` only ever enforced object/field-level security.
+
+Apply the following migration policy — do not blanket-migrate every existing class in one pass:
+
+1. **New classes** — MUST use `WITH USER_MODE` on every SOQL query and `AccessLevel.USER_MODE` on every DML operation (including via `UnitOfWork`, `Database.insert`, etc.). Never write new code against `SECURITY_ENFORCED`.
+2. **Significant changes to an existing class** — a change large enough to already require full regression testing of that class (e.g. a rewrite of core logic, a new trigger event, a materially changed method signature) MUST take the opportunity to migrate all SOQL/DML in the class from `SECURITY_ENFORCED` to `USER_MODE` as part of that change, and record the migration explicitly in the class's `Revision(s)` header (see §5 Script Header) — e.g. `Revision(s): AB, 22 Sep 2026, Migrated SOQL/DML from SECURITY_ENFORCED to USER_MODE`.
+3. **Minor changes to an existing class** — a small, isolated fix (e.g. a bug fix, a single new field reference) that does not otherwise require full regression testing of the class MUST leave existing `SECURITY_ENFORCED` usages untouched. Do not opportunistically swap security modes as a side effect of an unrelated small change — this avoids introducing untested sharing-enforcement behaviour changes outside the scope of the ticket.
+
+```apex
+// GOOD — new code
+List<Account> accounts = [SELECT Id, Name FROM Account WHERE Id = :accountId WITH USER_MODE];
+insert as user new Account(Name = 'Acme');
+// or: Database.insert(new Account(Name = 'Acme'), AccessLevel.USER_MODE);
+
+// LEGACY — only acceptable in an untouched class pending a significant change
+List<Account> accounts = [SELECT Id, Name FROM Account WHERE Id = :accountId WITH SECURITY_ENFORCED];
+```
+
+Use `Security.stripInaccessible()` where inaccessible fields/records should be silently stripped rather than raising an exception (e.g. before displaying partial data), regardless of which mode above applies.
+
 ### Never Hardcode Ids or Environment-Specific Values
 
 Salesforce record Ids differ between environments. Use Custom Metadata, Custom Settings, or query by DeveloperName/Name instead:

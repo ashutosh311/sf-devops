@@ -288,15 +288,19 @@ NEVER hardcode user-facing strings in LWC JS or HTML templates.
 
 Use LDS (`getRecord`, `getFieldValue`, `lightning-record-form`) wherever possible. LDS enforces field-level security automatically and provides caching.
 
-### Custom Apex — WITH SECURITY_ENFORCED
+### Custom Apex — Enforce User Mode
 
-When LDS cannot satisfy the requirement and a custom Apex controller is needed, SOQL queries MUST use `WITH SECURITY_ENFORCED` to throw an exception when the running user lacks field access:
+When LDS cannot satisfy the requirement and a custom Apex controller is needed, SOQL queries MUST use `WITH USER_MODE` to enforce object-, field-, and row-level security for the running user:
 
 ```apex
 List<Account> accounts = [SELECT Id, Name, HiddenField__c
                             FROM Account
-                            WITH SECURITY_ENFORCED];
+                            WITH USER_MODE];
 ```
+
+DML triggered from these controllers MUST also run in user mode — pass `AccessLevel.USER_MODE` explicitly (e.g. `Database.insert(records, AccessLevel.USER_MODE)`, or via `UnitOfWork`) rather than relying on default system-mode DML. Use `Security.stripInaccessible()` only where inaccessible fields should be silently stripped rather than raising an error.
+
+`WITH SECURITY_ENFORCED` is deprecated by Salesforce in favour of `WITH USER_MODE`/`AS USER` (see [Enforcing User Mode](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_enforce_usermode.htm)) — do NOT use it in new code.
 
 The calling LWC MUST handle the resulting exception and display a user-friendly error message.
 

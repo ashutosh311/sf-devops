@@ -12,7 +12,7 @@ Prescriptive standards for Salesforce projects. Each document is structured for 
 
 | File | Covers |
 |------|--------|
-| [apex.md](apex.md) | Trigger framework, feature toggles, logging, design patterns, testing |
+| [apex.md](apex.md) | Trigger framework, feature toggles, logging, design patterns, testing, data security (USER_MODE) |
 | [lwc.md](lwc.md) | Component structure, naming, wire/imperative, error handling, JEST testing |
 | [omniscript.md](omniscript.md) | OmniScript design, IP/DR patterns, DataRaptor rules, Apex testing wrappers |
 | [configuration.md](configuration.md) | Metadata naming, profiles vs permission sets, validation rules, flows |
