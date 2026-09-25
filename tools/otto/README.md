@@ -320,7 +320,7 @@ Each event is a single row with these fields only:
 |---|---|---|
 | `Command` | `build`, `refine`, `init`, `test-apex-unit`, `Feedback` | The agent command — a Test skill records its composed key (e.g. `test-apex-unit`), not the bare `test` phase — or `Feedback` for VS Code feedback entries |
 | `Date` | `2026-07-15T12:34:00Z` | ISO 8601 timestamp |
-| `User` | `jane.doe@slalom.com` | Git identity, layered with richer session lookups on VS Code — see `src/usage.ts` on each front end |
+| `User` | `jane.doe@slalom.com` | Always aimed at a `@slalom.com` address — see [Identity](#identity) below |
 | `Project` | `protas-sc` | From `.otto/config.json` |
 | `Story` | `PSC-42` | VS Code: extracted from the prompt via a strict `KEY-<number>` regex. MCP: the `storyKey` argument the tool call already carries |
 | `Model` | `gpt-4o` | VS Code only — the active Copilot model family. Always blank from the MCP server, which has no visibility into which model the host is running |
@@ -340,6 +340,29 @@ internally, nor the model's response, so it under-counts the true cost of a comm
 (the active model family) is recorded reliably and is the more useful adoption signal of the two.
 Neither is available at all from the MCP server (Claude Code / Copilot Desktop) — the MCP protocol
 gives a local server no visibility into the host's model or token usage.
+
+### Identity
+
+The flow writes `User` into a SharePoint **Person** column, which only accepts an account in
+Slalom's tenant — a client address (common when a client repo sets `user.email` locally) fails the
+flow's `Create_item` action and the row is lost. Both front ends therefore resolve `User` via
+`resolveUsageIdentity` in `packages/core/src/usage.ts`, which never guesses an address:
+
+1. **Explicit override** — the `OTTO_USER_EMAIL` env var, else `git config otto.email`.
+2. **Any Slalom email** found — repo-local and global git `user.email`, plus (VS Code only) the
+   Microsoft session label and verified GitHub emails.
+3. The raw identity found, then `unknown`.
+
+If no Slalom address is found, Otto asks for one when an agent is next run (VS Code input box;
+MCP elicitation form from `otto_prompt` / `otto_init`), validates it ends in `@slalom.com`, and
+saves it as `git config --global otto.email`. Dismissing it skips the question for the rest of
+that VS Code window / MCP server session. It is only asked while tracking is enabled, so
+client-distributed builds never see it. MCP hosts without elicitation support can't show the
+form — set it manually there:
+
+```
+git config --global otto.email firstname.lastname@slalom.com
+```
 
 ### Gates
 

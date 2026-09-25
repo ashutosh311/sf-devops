@@ -1,6 +1,15 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { UsageQueue, USAGE_QUEUE_DIR, resolveGitIdentity, type UsageEntry } from "@otto/core";
+import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import {
+  UsageQueue,
+  USAGE_QUEUE_DIR,
+  resolveUsageIdentity,
+  isSlalomEmail,
+  validateSlalomEmail,
+  saveUserEmailOverride,
+  type UsageEntry,
+} from "@otto/core";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Command usage tracking for the MCP server — the shared backend for both the
@@ -85,8 +94,58 @@ let cachedUser: string | undefined;
 
 async function resolveUser(cwd: string): Promise<string> {
   if (cachedUser) return cachedUser;
-  cachedUser = await resolveGitIdentity(cwd);
+  cachedUser = await resolveUsageIdentity(cwd);
   return cachedUser;
+}
+
+/** Once per server process, so dismissing the form doesn't re-ask on every command. */
+let askedForEmail = false;
+
+/**
+ * Before an agent runs: if tracking is on and no Slalom address can be found,
+ * ask for one via an elicitation form and save it as `git config --global
+ * otto.email`. Silent no-op when the host doesn't support elicitation. Never
+ * throws — the agent always runs whatever happens here.
+ */
+export async function ensureSlalomIdentity(server: Server, cwd: string): Promise<void> {
+  try {
+    if (!isEnabled() || askedForEmail) return;
+    if (isSlalomEmail(await resolveUser(cwd))) return;
+    if (!server.getClientCapabilities()?.elicitation) return;
+    askedForEmail = true;
+
+    let message =
+      "Otto records command usage against your Slalom account, but your git email isn't a Slalom address. " +
+      "Enter your Slalom email — it's saved once as `git config --global otto.email`.";
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await server.elicitInput(
+        {
+          message,
+          requestedSchema: {
+            type: "object",
+            properties: {
+              email: { type: "string", title: "Slalom email", format: "email", description: "firstname.lastname@slalom.com" },
+            },
+            required: ["email"],
+          },
+        },
+        { timeout: 10 * 60_000 }
+      );
+      if (result.action !== "accept") return;
+
+      const email = String(result.content?.email ?? "");
+      const invalid = validateSlalomEmail(email);
+      if (!invalid) {
+        cachedUser = await saveUserEmailOverride(email);
+        writeDebugLog("identity saved to git config otto.email");
+        return;
+      }
+      message = `${invalid}.`;
+    }
+  } catch (e) {
+    writeDebugLog(`identity prompt error=${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 /**

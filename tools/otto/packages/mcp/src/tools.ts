@@ -16,7 +16,7 @@ import { COMMANDS, PHASES, renderCommand, resolveSkill } from "./render.js";
 import { INIT_PROMPT } from "./about.js";
 import { cmd } from "./surface.js";
 import { registerRcaTools } from "./rca.js";
-import { trackCommand } from "./usage.js";
+import { trackCommand, ensureSlalomIdentity } from "./usage.js";
 import {
   ABORTED,
   supportsElicitation,
@@ -145,6 +145,7 @@ function registerInit(server: McpServer, mcpVersion: string): void {
         // Resolve (and cache) the root up front so it's pinned for this whole
         // session even if the caller only supplies it on this first call.
         const root = await resolveProjectRoot(args.projectRoot);
+        await ensureSlalomIdentity(inner, root);
 
         // No elicitation support (older client, or the CLI): hand the model the
         // interview to conduct in conversation, finishing with otto_scaffold.
@@ -391,6 +392,9 @@ function registerPromptTool(server: McpServer, mcpVersion: string): void {
     "Return the full, project-specific instruction set for an SDLC command, rendered against the project's Otto config. Follow the returned instructions verbatim. Pass `projectRoot` (see its description) if you know the project's absolute path.",
     PROMPT_SCHEMA.shape,
     async (args: PromptArgs) => {
+      await resolveProjectRoot(args.projectRoot)
+        .then((root) => ensureSlalomIdentity(server.server, root))
+        .catch(() => undefined);
       const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey, args.projectRoot, args.skill);
       void trackPromptUsage(args).catch(() => undefined);
       return {

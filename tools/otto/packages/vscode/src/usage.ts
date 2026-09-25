@@ -2,8 +2,15 @@ import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { execFile } from "node:child_process";
-import { UsageQueue, USAGE_QUEUE_DIR, resolveGitIdentity, type UsageEntry } from "@otto/core";
+import {
+  UsageQueue,
+  USAGE_QUEUE_DIR,
+  resolveUsageIdentity,
+  isSlalomEmail,
+  validateSlalomEmail,
+  saveUserEmailOverride,
+  type UsageEntry,
+} from "@otto/core";
 import type { InstructionSyncService } from "./sync";
 import { githubGet } from "./github";
 
@@ -163,92 +170,110 @@ export class UsageTracker {
 
   // ── Identity ───────────────────────────────────────────────────────────────
 
-  // Resolve a real identifiable user, preferring an actual email address over a
-  // username/display label. Tried in order, each silent (never prompts) and
-  // best-effort (a failure just falls through to the next source):
-  //   1. Local git identity's email — cheapest, no network call, usually a real
-  //      corporate address.
-  //   2. VS Code's built-in Microsoft/Entra session — the same identity system
-  //      behind SharePoint/Power BI; only present if signed in with a Microsoft
-  //      account (e.g. via an Azure extension). Its account.label is typically
-  //      already the UPN/email.
-  //   3. GitHub's verified primary email via the REST API — requires the
-  //      `user:email` scope; requested silently, so it's a no-op if the user
-  //      hasn't already granted it (never triggers a consent prompt).
-  //   4. The existing GitHub session label (username, not an email) — same
-  //      session the instruction sync already uses.
-  //   5. Local git user.name, then the literal string "unknown" — shared with
-  //      the MCP server via @otto/core's resolveGitIdentity.
+  // Resolve a `@slalom.com` address — the SharePoint `User` column is a Person
+  // field, so a client email fails the flow. Selection rules (override, Slalom
+  // email, raw fallback — never a guess) live in @otto/core's
+  // resolveUsageIdentity, shared with the MCP server. Git is checked first; the
+  // VS Code-only sources below are only consulted when git has no Slalom email
+  // and no override is set. Each is silent (never prompts) and best-effort:
+  //   • VS Code's Microsoft/Entra session label — typically the UPN/email.
+  //   • All verified GitHub emails via the REST API — requires the `user:email`
+  //     scope; requested silently, so a no-op if the user hasn't granted it.
+  //   • The GitHub session's username — raw last-resort fallback only.
+  // If none is a Slalom address, ensureSlalomIdentity asks the user for one.
   private async resolveUser(): Promise<string> {
     if (this.cachedUser) return this.cachedUser;
+    this.cachedUser = await resolveUsageIdentity(this.gitCwd(), () => this.sessionCandidates());
+    return this.cachedUser;
+  }
 
-    const gitEmail = await this.gitUserEmail();
-    if (gitEmail) return this.cacheUser(gitEmail);
+  /** Once per window, so dismissing the box doesn't re-ask on every command. */
+  private askedForEmail = false;
+
+  /** Before an agent runs: if tracking is on and no Slalom address can be found,
+   *  ask for one and save it as `git config --global otto.email`. Never throws. */
+  async ensureSlalomIdentity(): Promise<void> {
+    try {
+      if (!this.isEnabled() || this.askedForEmail) return;
+      if (isSlalomEmail(await this.resolveUser())) return;
+      this.askedForEmail = true;
+
+      const email = await vscode.window.showInputBox({
+        title: "Otto — Slalom email",
+        prompt:
+          "Otto records command usage against your Slalom account, but your git email isn't a Slalom address. " +
+          "It's saved once as `git config --global otto.email`.",
+        placeHolder: "firstname.lastname@slalom.com",
+        ignoreFocusOut: true,
+        validateInput: (value) => validateSlalomEmail(value),
+      });
+      if (!email) return;
+
+      this.cachedUser = await saveUserEmailOverride(email);
+      writeDebugLog("identity saved to git config otto.email");
+    } catch (e) {
+      writeDebugLog(`identity prompt error=${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  private async sessionCandidates(): Promise<{ emails: string[]; names: string[] }> {
+    const emails: string[] = [];
+    const names: string[] = [];
 
     try {
       const msSession = await vscode.authentication.getSession("microsoft", ["email"], {
         silent: true,
       });
       const msLabel = msSession?.account?.label?.trim();
-      if (msLabel && msLabel.includes("@")) return this.cacheUser(msLabel);
+      if (msLabel && msLabel.includes("@")) emails.push(msLabel);
     } catch {
-      // Microsoft auth provider unavailable or no cached session — fall through.
+      // Microsoft auth provider unavailable or no cached session.
     }
 
     try {
-      const ghEmail = await this.resolveGitHubEmail();
-      if (ghEmail) return this.cacheUser(ghEmail);
+      emails.push(...(await this.resolveGitHubEmails()));
     } catch {
-      // GitHub email lookup failed (scope not granted, API error, offline) — fall through.
+      // Scope not granted, API error, or offline.
     }
 
+    // GitHub username — never derivable to first.last, only a raw fallback.
     try {
       const session = await vscode.authentication.getSession("github", ["repo"], {
         silent: true,
       });
       const label = session?.account?.label?.trim();
-      if (label) return this.cacheUser(label);
+      if (label) names.push(label);
     } catch {
-      // fall through
+      // No cached GitHub session.
     }
 
-    return this.cacheUser(await resolveGitIdentity(this.gitCwd(), { skipEmail: true }));
-  }
-
-  private cacheUser(value: string): string {
-    this.cachedUser = value;
-    return value;
+    return { emails, names };
   }
 
   private gitCwd(): string {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? os.homedir();
   }
 
-  private gitUserEmail(): Promise<string> {
-    return new Promise((resolve) => {
-      execFile("git", ["config", "user.email"], { cwd: this.gitCwd() }, (err, stdout) => {
-        resolve(err ? "" : stdout.trim());
-      });
-    });
-  }
-
   // Requests the `user:email` scope silently (no-op if not already granted) and
-  // fetches the account's verified primary email via GitHub's REST API. Distinct
-  // from the `repo`-scoped session used elsewhere: VS Code treats different scope
-  // sets as potentially different sessions, so this is a separate silent lookup.
-  private async resolveGitHubEmail(): Promise<string | undefined> {
+  // fetches the account's verified emails via GitHub's REST API, primary first.
+  // Distinct from the `repo`-scoped session used elsewhere: VS Code treats
+  // different scope sets as potentially different sessions, so this is a
+  // separate silent lookup.
+  private async resolveGitHubEmails(): Promise<string[]> {
     const session = await vscode.authentication.getSession("github", ["user:email"], {
       silent: true,
     });
     const token = session?.accessToken;
-    if (!token) return undefined;
+    if (!token) return [];
 
     const emails = await githubGet<Array<{ email: string; primary: boolean; verified: boolean }>>(
       "/user/emails",
       token
     );
-    const primary = emails.find((e) => e.primary && e.verified) ?? emails.find((e) => e.verified);
-    return primary?.email;
+    return emails
+      .filter((e) => e.verified)
+      .sort((a, b) => Number(b.primary) - Number(a.primary))
+      .map((e) => e.email);
   }
 
   /** Best-effort background flush — delegates to the shared queue. */
@@ -299,4 +324,8 @@ export function trackFeedback(fields: {
 
 export function flushUsageQueue(): void {
   void tracker?.flush().catch(() => undefined);
+}
+
+export async function ensureSlalomIdentity(): Promise<void> {
+  await tracker?.ensureSlalomIdentity();
 }

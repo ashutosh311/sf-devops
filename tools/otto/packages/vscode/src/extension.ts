@@ -20,6 +20,7 @@ import {
   trackCommand,
   trackFeedback,
   flushUsageQueue,
+  ensureSlalomIdentity,
 } from "./usage";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -67,6 +68,7 @@ export function activate(context: vscode.ExtensionContext): void {
       // of every Test skill collapsing into a single "test" row.
       let usageCommandOverride: string | undefined;
       try {
+        await ensureSlalomIdentity();
         if (request.command === "init") {
           await handleInit(request, chatContext, stream);
         } else if (request.command === "about") {

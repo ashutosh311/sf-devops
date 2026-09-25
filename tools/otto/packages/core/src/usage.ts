@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as os from "node:os";
 import * as http from "node:http";
 import * as https from "node:https";
 import { execFile } from "node:child_process";
@@ -254,29 +255,120 @@ export class UsageQueue {
   }
 }
 
-/**
- * Local git identity fallback shared by every front end: email, then
- * user.name, then "unknown". Silent and best-effort — never prompts, never
- * throws. Front ends with a richer identity source (e.g. VS Code's
- * Microsoft/GitHub session lookups) should try those first and only fall
- * back to this. Pass `skipEmail` when the caller already ran `git config
- * user.email` itself and got nothing, to avoid shelling out twice.
- */
-export async function resolveGitIdentity(
-  cwd: string,
-  options?: { skipEmail?: boolean },
-): Promise<string> {
-  if (!options?.skipEmail) {
-    const email = await gitConfig(cwd, "user.email");
-    if (email) return email;
-  }
-  const name = await gitConfig(cwd, "user.name");
-  return name || "unknown";
+// ── Identity ─────────────────────────────────────────────────────────────────
+//
+// The Power Automate flow writes `User` into a SharePoint Person column, which
+// only accepts an account in Slalom's tenant. Consultants on client projects
+// usually have a repo-local (or even global) git identity set to their *client*
+// address, so sending that as-is fails the flow's Create_item action and the row
+// is lost. Identity resolution therefore looks for a real `@slalom.com` address —
+// it never guesses one:
+//   1. An explicit override — `OTTO_USER_EMAIL` env var, else
+//      `git config otto.email` (set globally by the front ends when they ask).
+//   2. Any candidate email already on the Slalom domain.
+//   3. Whatever raw identity we have, then "unknown".
+// When the result isn't a Slalom address, each front end asks the user for it
+// (see `isSlalomEmail` / `saveUserEmailOverride`) the next time an agent runs.
+
+export const SLALOM_EMAIL_DOMAIN = "slalom.com";
+export const USER_EMAIL_ENV_OVERRIDE = "OTTO_USER_EMAIL";
+const USER_EMAIL_GIT_KEY = "otto.email";
+
+export interface IdentityCandidates {
+  emails: string[];
+  names: string[];
 }
 
-function gitConfig(cwd: string, key: string): Promise<string> {
+export function isSlalomEmail(email: string): boolean {
+  return /^[^\s@]+@slalom\.com$/i.test(email.trim());
+}
+
+/** Validation message for a user-entered address, or `undefined` if it's usable. */
+export function validateSlalomEmail(input: string): string | undefined {
+  return isSlalomEmail(input) ? undefined : `Enter your Slalom email address, e.g. firstname.lastname@${SLALOM_EMAIL_DOMAIN}`;
+}
+
+/** Pure selection step — exported so it can be unit-tested without git. */
+export function pickUsageIdentity(candidates: IdentityCandidates, override?: string): string {
+  const explicit = override?.trim();
+  if (explicit && explicit.includes("@")) return explicit.toLowerCase();
+
+  const emails = candidates.emails.map((e) => e.trim()).filter((e) => e.includes("@"));
+  const names = candidates.names.map((n) => n.trim()).filter(Boolean);
+
+  const slalom = emails.find(isSlalomEmail);
+  if (slalom) return slalom.toLowerCase();
+
+  return emails[0] ?? names[0] ?? "unknown";
+}
+
+/** The explicit override, if one is set: env var first, then `git config otto.email`. */
+export async function resolveUserEmailOverride(cwd: string): Promise<string | undefined> {
+  const fromEnv = process.env[USER_EMAIL_ENV_OVERRIDE]?.trim();
+  if (fromEnv) return fromEnv;
+  return (await gitConfig(cwd, USER_EMAIL_GIT_KEY)) || undefined;
+}
+
+/** Persist the user's Slalom address as `git config --global otto.email`, so
+ *  every project and every Otto front end on this machine picks it up. Returns
+ *  the saved (normalised) address; throws if the address is invalid or git fails. */
+export async function saveUserEmailOverride(email: string): Promise<string> {
+  const value = email.trim().toLowerCase();
+  const invalid = validateSlalomEmail(value);
+  if (invalid) throw new Error(invalid);
+  await new Promise<void>((resolve, reject) => {
+    execFile("git", ["config", "--global", USER_EMAIL_GIT_KEY, value], { cwd: os.homedir() }, (err) =>
+      err ? reject(err) : resolve()
+    );
+  });
+  return value;
+}
+
+/** Effective (repo-local wins) and global git identity. The global identity is
+ *  collected separately because it's the one most likely to still be Slalom's
+ *  when a client repo overrides user.email locally. */
+export async function gitIdentityCandidates(cwd: string): Promise<IdentityCandidates> {
+  const [email, globalEmail, name, globalName] = await Promise.all([
+    gitConfig(cwd, "user.email"),
+    gitConfig(cwd, "user.email", true),
+    gitConfig(cwd, "user.name"),
+    gitConfig(cwd, "user.name", true),
+  ]);
+  return {
+    emails: [...new Set([email, globalEmail].filter(Boolean))],
+    names: [...new Set([name, globalName].filter(Boolean))],
+  };
+}
+
+/**
+ * Resolve the `User` value for a usage entry. Silent and best-effort — never
+ * prompts, never throws. Front ends with richer identity sources (e.g. VS
+ * Code's Microsoft/GitHub sessions) pass them as `extra`; git candidates are
+ * always considered first.
+ */
+export async function resolveUsageIdentity(
+  cwd: string,
+  extra?: () => Promise<Partial<IdentityCandidates>>,
+): Promise<string> {
+  const override = await resolveUserEmailOverride(cwd);
+  const git = await gitIdentityCandidates(cwd);
+  if (override || git.emails.some(isSlalomEmail) || !extra) return pickUsageIdentity(git, override);
+
+  let more: Partial<IdentityCandidates> = {};
+  try {
+    more = await extra();
+  } catch {
+    // richer sources are optional — git candidates alone still resolve
+  }
+  return pickUsageIdentity({
+    emails: [...git.emails, ...(more.emails ?? [])],
+    names: [...git.names, ...(more.names ?? [])],
+  });
+}
+
+function gitConfig(cwd: string, key: string, global = false): Promise<string> {
   return new Promise((resolve) => {
-    execFile("git", ["config", key], { cwd }, (err, stdout) => {
+    execFile("git", ["config", ...(global ? ["--global"] : []), key], { cwd }, (err, stdout) => {
       resolve(err ? "" : stdout.trim());
     });
   });
