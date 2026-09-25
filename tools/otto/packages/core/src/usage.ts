@@ -288,6 +288,30 @@ export function validateSlalomEmail(input: string): string | undefined {
   return isSlalomEmail(input) ? undefined : `Enter your Slalom email address, e.g. firstname.lastname@${SLALOM_EMAIL_DOMAIN}`;
 }
 
+/**
+ * A pre-fill for the "enter your Slalom email" prompt — never used without the
+ * user confirming it. On Slalom-provisioned machines the OS login name is the
+ * Slalom username (e.g. `mark.wraith`), so `<login>@slalom.com` is usually
+ * right. Only offered when the login is `first.last`-shaped: a bare `john` or
+ * `admin` on a personal or client machine could match a *different* real
+ * Slalom account, which is worse than an empty box.
+ */
+export function suggestSlalomEmail(): string | undefined {
+  let login = "";
+  try {
+    login = os.userInfo().username;
+  } catch {
+    login = process.env.USER ?? process.env.LOGNAME ?? process.env.USERNAME ?? "";
+  }
+  return slalomEmailForLogin(login);
+}
+
+/** Pure step behind `suggestSlalomEmail` — exported for unit tests. */
+export function slalomEmailForLogin(login: string): string | undefined {
+  const name = login.trim().toLowerCase();
+  return /^[a-z][a-z-]*\.[a-z][a-z-]*$/.test(name) ? `${name}@${SLALOM_EMAIL_DOMAIN}` : undefined;
+}
+
 /** Pure selection step — exported so it can be unit-tested without git. */
 export function pickUsageIdentity(candidates: IdentityCandidates, override?: string): string {
   const explicit = override?.trim();

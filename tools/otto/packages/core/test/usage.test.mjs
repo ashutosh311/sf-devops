@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pickUsageIdentity, isSlalomEmail, validateSlalomEmail } from "../dist/index.js";
+import { pickUsageIdentity, isSlalomEmail, validateSlalomEmail, slalomEmailForLogin } from "../dist/index.js";
 
 const pick = (emails, names = [], override) => pickUsageIdentity({ emails, names }, override);
 
@@ -29,4 +29,12 @@ test("isSlalomEmail / validateSlalomEmail accept only a full slalom.com address"
     assert.ok(validateSlalomEmail(bad), bad);
   }
   assert.equal(validateSlalomEmail("jane.doe@slalom.com"), undefined);
+});
+
+test("login-name suggestion only for first.last-shaped logins", () => {
+  assert.equal(slalomEmailForLogin("mark.wraith"), "mark.wraith@slalom.com");
+  assert.equal(slalomEmailForLogin(" Mary-Jane.Smith "), "mary-jane.smith@slalom.com");
+  for (const bad of ["john", "admin", "root", "jdoe1", "a.b.c", ".doe", "jane.", "jane doe", ""]) {
+    assert.equal(slalomEmailForLogin(bad), undefined, bad);
+  }
 });

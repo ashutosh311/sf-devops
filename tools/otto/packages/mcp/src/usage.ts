@@ -8,6 +8,7 @@ import {
   isSlalomEmail,
   validateSlalomEmail,
   saveUserEmailOverride,
+  suggestSlalomEmail,
   type UsageEntry,
 } from "@otto/core";
 
@@ -114,6 +115,7 @@ export async function ensureSlalomIdentity(server: Server, cwd: string): Promise
     if (!server.getClientCapabilities()?.elicitation) return;
     askedForEmail = true;
 
+    const suggestion = suggestSlalomEmail();
     let message =
       "Otto records command usage against your Slalom account, but your git email isn't a Slalom address. " +
       "Enter your Slalom email — it's saved once as `git config --global otto.email`.";
@@ -125,7 +127,13 @@ export async function ensureSlalomIdentity(server: Server, cwd: string): Promise
           requestedSchema: {
             type: "object",
             properties: {
-              email: { type: "string", title: "Slalom email", format: "email", description: "firstname.lastname@slalom.com" },
+              email: {
+                type: "string",
+                title: "Slalom email",
+                format: "email",
+                description: "firstname.lastname@slalom.com",
+                ...(suggestion ? { default: suggestion } : {}),
+              },
             },
             required: ["email"],
           },

@@ -355,7 +355,9 @@ flow's `Create_item` action and the row is lost. Both front ends therefore resol
 
 If no Slalom address is found, Otto asks for one when an agent is next run (VS Code input box;
 MCP elicitation form from `otto_prompt` / `otto_init`), validates it ends in `@slalom.com`, and
-saves it as `git config --global otto.email`. Dismissing it skips the question for the rest of
+saves it as `git config --global otto.email`. The field is pre-filled with `<login>@slalom.com`
+when the OS login name is `first.last`-shaped (as on Slalom-provisioned machines), so most people
+just confirm it — it is never used without that confirmation. Dismissing it skips the question for the rest of
 that VS Code window / MCP server session. It is only asked while tracking is enabled, so
 client-distributed builds never see it. MCP hosts without elicitation support can't show the
 form — set it manually there:

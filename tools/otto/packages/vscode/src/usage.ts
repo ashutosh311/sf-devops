@@ -9,6 +9,7 @@ import {
   isSlalomEmail,
   validateSlalomEmail,
   saveUserEmailOverride,
+  suggestSlalomEmail,
   type UsageEntry,
 } from "@otto/core";
 import type { InstructionSyncService } from "./sync";
@@ -204,6 +205,7 @@ export class UsageTracker {
           "Otto records command usage against your Slalom account, but your git email isn't a Slalom address. " +
           "It's saved once as `git config --global otto.email`.",
         placeHolder: "firstname.lastname@slalom.com",
+        value: suggestSlalomEmail() ?? "",
         ignoreFocusOut: true,
         validateInput: (value) => validateSlalomEmail(value),
       });
