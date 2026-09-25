@@ -96,6 +96,13 @@ function toSchema(q: Question, def: unknown): PrimitiveSchema {
 
 // ── Low-level form helper ────────────────────────────────────────────────────
 
+/**
+ * How long a single form may stay open. The SDK's 60s request default counts the
+ * time a human spends filling the form in, which a multi-dropdown status-mapping
+ * form easily exceeds — and a timeout discards every answer given so far.
+ */
+const ELICITATION_TIMEOUT_MS = 30 * 60_000;
+
 async function askForm(
   server: Server,
   message: string,
@@ -104,10 +111,10 @@ async function askForm(
 ): Promise<Record<string, unknown> | Aborted> {
   if (Object.keys(properties).length === 0) return {};
 
-  const result = await server.elicitInput({
-    message,
-    requestedSchema: { type: "object", properties, required },
-  });
+  const result = await server.elicitInput(
+    { message, requestedSchema: { type: "object", properties, required } },
+    { timeout: ELICITATION_TIMEOUT_MS }
+  );
 
   if (result.action !== "accept" || !result.content) return ABORTED;
   return result.content as Record<string, unknown>;
