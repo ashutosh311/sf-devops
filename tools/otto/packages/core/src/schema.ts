@@ -154,6 +154,12 @@ export const DesignDeliverableSchema = z.object({
 });
 export type DesignDeliverable = z.infer<typeof DesignDeliverableSchema>;
 
+// ── Status transitions ────────────────────────────────────────────────────────
+
+/** How agents apply PM-tool status transitions. See `workflow.statusTransitions`. */
+export const StatusTransitionModeSchema = z.enum(["auto", "confirm", "off"]);
+export type StatusTransitionMode = z.infer<typeof StatusTransitionModeSchema>;
+
 // ── ADO status maps ───────────────────────────────────────────────────────────
 
 export const AdoStatusMapSchema = z.object({
@@ -215,6 +221,17 @@ export const OttoConfigSchema = z.object({
    */
   design: z.object({
     deliverable: DesignDeliverableSchema.optional(),
+  }).optional(),
+
+  /**
+   * Cross-agent workflow behaviour. `statusTransitions` controls whether agents move
+   * JIRA issues / ADO work items (stories, bugs/defects and sub-tasks) between
+   * statuses: `auto` (default — today's behaviour), `confirm` (ask before each
+   * transition) or `off` (never transition; tell the user what to set manually).
+   * Has no effect in Local mode, which never transitions anything.
+   */
+  workflow: z.object({
+    statusTransitions: StatusTransitionModeSchema.optional(),
   }).optional(),
 
   jira: z.object({
@@ -362,6 +379,11 @@ export interface ResolvedDeliverable {
   wikiPath?: string;
   sections: string[];
   storyField?: string;
+}
+
+/** The effective status-transition mode; absent → `auto` (unchanged behaviour). */
+export function resolveStatusTransitions(config: OttoConfig): StatusTransitionMode {
+  return config.workflow?.statusTransitions ?? "auto";
 }
 
 /**

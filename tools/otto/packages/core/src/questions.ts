@@ -1,4 +1,4 @@
-import type { OttoConfig, Phase, EstimationApproach, StoryStatusMap, EpicStatusMap, SubTaskStatusMap, DeliverableTarget } from "./schema.js";
+import type { OttoConfig, Phase, EstimationApproach, StoryStatusMap, EpicStatusMap, SubTaskStatusMap, DeliverableTarget, StatusTransitionMode } from "./schema.js";
 import { DEFAULT_STANDARDS } from "./schema.js";
 
 export type QuestionType =
@@ -55,6 +55,8 @@ export interface InterviewAnswers {
   adoProject: string;
   // LOCAL-specific (only set when pmTool === "LOCAL")
   localKeyPrefix: string;
+  /** How agents apply PM-tool status transitions (JIRA / ADO only). */
+  statusTransitions?: StatusTransitionMode;
   phases: Phase[];
   sprintLengthWeeks: number;
   estimationApproach: EstimationApproach;
@@ -92,6 +94,12 @@ export const DESIGN_DELIVERABLE_TARGET_OPTIONS: SelectOption<DeliverableTargetAn
   { label: "Azure DevOps wiki page", value: "wiki" },
   { label: "Local markdown file only", value: "local" },
   { label: "PM-tool comment only (no synthesis page)", value: "pm-comment" },
+];
+
+export const STATUS_TRANSITION_OPTIONS: SelectOption<StatusTransitionMode>[] = [
+  { label: "Automatic — agents move items once you approve the work (default)", value: "auto" },
+  { label: "Ask me before every status change", value: "confirm" },
+  { label: "Never — agents list the status changes for me to make", value: "off" },
 ];
 
 const designInScope = (a: Partial<InterviewAnswers>): boolean =>
@@ -197,6 +205,19 @@ export const QUESTIONS: Question[] = [
       /^[A-Z][A-Z0-9]+$/.test(String(v).trim().toUpperCase())
         ? true
         : "Must be uppercase letters and numbers (e.g. LOCAL)",
+  },
+  {
+    id: "statusTransitions",
+    section: "Project",
+    label: "How should agents change work-item statuses?",
+    hint: "Applies to every story, bug/defect and sub-task transition made by Refine, Design, Build and Test.",
+    type: "select",
+    options: STATUS_TRANSITION_OPTIONS,
+    default: "auto" as StatusTransitionMode,
+    when: (a) => {
+      const t = (a as Partial<InterviewAnswers>).pmTool;
+      return t === "JIRA" || t === "ADO";
+    },
   },
 
   // ── SDLC Phases ──────────────────────────────────────────────────────────

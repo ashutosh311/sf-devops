@@ -7,6 +7,9 @@ import {
   resolveProjectKey,
   OttoConfigSchema,
   QUESTIONS,
+  buildOttoConfig,
+  resolveExistingAnswer,
+  resolveStatusTransitions,
   PHASE_TEMPLATES,
   TEST_SKILLS,
   REFINE_SKILLS,
@@ -453,4 +456,97 @@ test('"test-write-cases" credential gate does not fire on an absent testManageme
     /testing\.testManagement.{0,20}is configured.{0,200}stop immediately/is,
     "the credential gate must condition its stop-immediately instruction on testManagement actually being configured"
   );
+});
+
+// ── Status transitions (workflow.statusTransitions) — GH-86 ────────────────────
+//
+// `auto` (default) must leave every prompt exactly as it renders with no workflow
+// block; `confirm` must require an explicit per-transition yes; `off` must forbid
+// status changes and hand them to the user. Covers every transitioning template.
+
+const TRANSITIONING = ["refine-story", "refine", "design", "build", "test", "test-execute"];
+const withMode = (cfg, mode) => ({ ...cfg, workflow: { statusTransitions: mode } });
+
+test("workflow.statusTransitions validates and resolves (default auto)", () => {
+  for (const mode of ["auto", "confirm", "off"]) {
+    assert.equal(OttoConfigSchema.safeParse(withMode(jiraCfg, mode)).success, true, mode);
+    assert.equal(resolveStatusTransitions(withMode(adoCfg, mode)), mode);
+  }
+  assert.equal(OttoConfigSchema.safeParse(withMode(jiraCfg, "sometimes")).success, false);
+  assert.equal(resolveStatusTransitions(jiraCfg), "auto");
+});
+
+for (const [name, cfg] of [["JIRA", jiraCfg], ["ADO", adoCfg]]) {
+  test(`${name}: explicit auto renders identically to no workflow block`, () => {
+    for (const key of TRANSITIONING) {
+      assert.equal(renderPrompt(key, withMode(cfg, "auto")), renderPrompt(key, cfg), key);
+      assert.ok(!renderPrompt(key, cfg).includes("Status transition policy"), `${key} leaks the policy in auto mode`);
+    }
+  });
+
+  for (const mode of ["confirm", "off"]) {
+    test(`${name}/${mode}: transitioning templates render cleanly and carry the policy`, () => {
+      for (const key of TRANSITIONING) {
+        const out = renderPrompt(key, withMode(cfg, mode));
+        const unresolved = out.match(/\{\{[^}]+\}\}/g) || [];
+        assert.deepEqual(unresolved, [], `${key} has unresolved handlebars: ${unresolved}`);
+      }
+      for (const key of ["refine-story", "design", "build", "test-execute"]) {
+        const out = renderPrompt(key, withMode(cfg, mode));
+        assert.ok(out.includes(`Status transition policy — ${mode}`), `${key} is missing the ${mode} policy block`);
+        assert.ok(out.includes("Status changes to make manually"), `${key} must hand skipped transitions to the user`);
+      }
+    });
+  }
+
+  test(`${name}/confirm: asks before each status change, separately from content approval`, () => {
+    const policy = renderPrompt("refine-story", withMode(cfg, "confirm"));
+    assert.match(policy, /wait for an explicit \*\*yes\*\* for that item/);
+    assert.match(policy, /is \*\*not\*\* approval of a status change/);
+    assert.match(policy, /Move \{STORY-KEY\} from '\{current status\}' to 'Ready for Design'\? \(yes \/ no\)/);
+    assert.match(renderPrompt("design", withMode(cfg, "confirm")), /Move \{STORY-KEY\} from '\{current status\}' to 'Ready for Build'/);
+    assert.match(renderPrompt("test-execute", withMode(cfg, "confirm")), /Move \{STORY-KEY\} from 'Ready for Test' to 'Done'/);
+    assert.match(renderPrompt("build", withMode(cfg, "confirm")), /sub-task to \*\*In Progress\*\*[^\n]*ask first/);
+  });
+
+  test(`${name}/off: forbids status-changing calls and never deletes notes on transition`, () => {
+    const tool = name === "ADO" ? "`update_work_item` setting `System.State`" : "`transitionJiraIssue`";
+    for (const key of ["refine-story", "design", "build", "test-execute"]) {
+      const out = renderPrompt(key, withMode(cfg, "off"));
+      assert.ok(out.includes(`never call ${tool}`), `${key} must forbid ${tool}`);
+    }
+    const refine = renderPrompt("refine-story", withMode(cfg, "off"));
+    assert.ok(refine.includes("**Do not change the status**"));
+    assert.ok(refine.includes("**Confirm the AC update succeeded**"), "notes deletion must key off the AC push, not a transition");
+    assert.ok(!refine.includes("**Confirm the transition succeeded**"));
+  });
+}
+
+test("LOCAL: status-transition mode has no effect", () => {
+  for (const key of TRANSITIONING) {
+    assert.equal(renderPrompt(key, withMode(localCfg, "off")), renderPrompt(key, localCfg), key);
+  }
+});
+
+test("/init: statusTransitions is asked for JIRA/ADO only and persisted only when non-default", () => {
+  const q = QUESTIONS.find((x) => x.id === "statusTransitions");
+  assert.ok(q, "statusTransitions question missing");
+  assert.equal(q.default, "auto");
+  assert.equal(q.when({ pmTool: "JIRA" }), true);
+  assert.equal(q.when({ pmTool: "ADO" }), true);
+  assert.equal(q.when({ pmTool: "LOCAL" }), false);
+
+  const answers = {
+    projectName: "Demo", pmTool: "ADO", jiraKey: "", jiraSite: "", jiraEmail: "",
+    adoOrganization: "https://dev.azure.com/o", adoProject: "P", localKeyPrefix: "",
+    phases: ["refine"], sprintLengthWeeks: 2, estimationApproach: "ta-assigns",
+    orgSandbox: "uat", apexCoverageThreshold: 85, revenueCloudEnabled: false,
+  };
+  assert.equal(buildOttoConfig({ ...answers, statusTransitions: "auto" }).workflow, undefined);
+  const confirmCfg = buildOttoConfig({ ...answers, statusTransitions: "confirm" });
+  assert.deepEqual(confirmCfg.workflow, { statusTransitions: "confirm" });
+  assert.equal(OttoConfigSchema.safeParse(confirmCfg).success, true);
+  assert.equal(buildOttoConfig({ ...answers, pmTool: "LOCAL", statusTransitions: "off" }).workflow, undefined);
+  assert.equal(resolveExistingAnswer("statusTransitions", confirmCfg), "confirm");
+  assert.equal(resolveExistingAnswer("statusTransitions", jiraCfg), "auto");
 });

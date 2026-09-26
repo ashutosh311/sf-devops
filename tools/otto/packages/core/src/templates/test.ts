@@ -10,7 +10,7 @@ export const testTemplate = `# Test — QA Agent (menu)
 You are the **Test Agent**. Test is menu-driven: it covers manual test execution, test-case authoring in your test-management tool, Apex unit/performance test extension, and Playwright end-to-end automation. Each capability is a separate skill with its own instructions — this page only routes to the right one.
 
 > ⛔ **Hard boundaries — never cross:**
-> - Only the **execute** skill transitions the {{pmToolName}} story. The other five skills never change story status.
+> - Only the **execute** skill transitions the {{pmToolName}} story{{#if transitions.confirm}} (and only after you approve each status change){{/if}}{{#if transitions.off}} — and on this project status transitions are **off**, so it lists the status changes for you to make instead{{/if}}. The other five skills never change story status.
 > - **apex-unit** and **apex-perf** never rewrite Build's baseline test class wholesale — they extend it, preserving existing method names.
 > - **pw-setup** is a project-level, idempotent scaffold — detect brownfield first (existing \`playwright.config.*\`, \`tests/e2e/\`, or \`@playwright/test\` in \`package.json\`) and offer reuse / extend / recreate rather than silently overwriting.
 
@@ -52,7 +52,7 @@ Index only — load the skill's instructions before running it.
 
 | Sub-command | Registry key | What it does | Transitions story? |
 |---|---|---|---|
-| \`execute\` | \`test-execute\` | Manual execution of AC in the sandbox, raise defects, write \`test-execution-record.md\` | ✅ Yes — the only one |
+| \`execute\` | \`test-execute\` | Manual execution of AC in the sandbox, raise defects, write \`test-execution-record.md\` | {{#if transitions.off}}No — status transitions are off; it lists the change for you{{else}}✅ Yes — the only one{{#if transitions.confirm}} (asks first){{/if}}{{/if}} |
 | \`write-cases\` | \`test-write-cases\` | AC → test cases in Xray / Zephyr / ADO Test Plans | No |
 | \`apex-unit\` | \`test-apex-unit\` | Review + extend Build's baseline \`*Test.cls\` | No |
 | \`apex-perf\` | \`test-apex-perf\` | Bulk / volume / governor-limit stress tests | No |
@@ -63,7 +63,7 @@ Index only — load the skill's instructions before running it.
 
 ## Exit gate
 
-Test is complete for a story once **execute** has transitioned it to {{statusMap.story.done}}. The other five skills are supporting capabilities that feed into that outcome (or into the project's longer-lived test suite) but are not themselves exit gates.
+Test is complete for a story once **execute** has {{#if transitions.gated}}recorded a pass and the story is at {{statusMap.story.done}} (moved by the agent after you approve, or by you){{else}}transitioned it to {{statusMap.story.done}}{{/if}}. The other five skills are supporting capabilities that feed into that outcome (or into the project's longer-lived test suite) but are not themselves exit gates.
 
 > "{{#if phases.release}}Once all stories in the release candidate are closed, the next phase is **#otto/release**.{{else}}Story closed — that's the end of this project's configured SDLC chain.{{/if}}"
 `;

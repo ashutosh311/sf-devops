@@ -48,7 +48,7 @@ Index only — load the skill's instructions before running it.
 
 | Sub-command | Registry key | What it does | Transitions story? |
 |---|---|---|---|
-| \`story\` | \`refine-story\` | INVEST-validate an existing story, split if too big, write Gherkin AC; ALM mode transitions to {{statusMap.story.readyForDesign}} | ✅ Yes (ALM) |
+| \`story\` | \`refine-story\` | INVEST-validate an existing story, split if too big, write Gherkin AC; ALM mode transitions to {{statusMap.story.readyForDesign}}{{#if transitions.confirm}} after asking you{{/if}}{{#if transitions.off}} — disabled here; you move the status yourself{{/if}} | {{#if transitions.off}}No (status transitions off){{else}}{{#if transitions.confirm}}✅ Yes (ALM, asks first){{else}}✅ Yes (ALM){{/if}}{{/if}} |
 | \`generate-stories\` | \`refine-generate-stories\` | Read user-specified transcripts/files → draft new candidate stories under an epic into the local backlog for review + explicit push | No |
 | \`gap-analysis\` | \`refine-gap-analysis\` | Cross-reference an epic's existing stories against user-specified transcripts/files → report candidate *missing* stories with evidence as a review artifact (\`{EPIC-KEY}/epic-gap-analysis.md\`); creates nothing. Same input as generate-stories, opposite output — flow is gap-analysis → generate-stories | No |
 | \`data-dictionary\` | \`data-dictionary\` | Build/maintain object-reference docs at **Inferred** fidelity (attributes implied by AC; API names marked \`(proposed)\`) | No |
@@ -59,7 +59,7 @@ Index only — load the skill's instructions before running it.
 
 ## Exit gate
 
-Refinement is complete for a story once **story** has produced agreed Gherkin AC (ALM mode: transitioned to {{statusMap.story.readyForDesign}}; Local mode: \`refinement-notes.md\` written). **generate-stories** and **data-dictionary** are supporting capabilities that feed that outcome — they are not themselves the phase exit gate.
+Refinement is complete for a story once **story** has produced agreed Gherkin AC (ALM mode: {{#if transitions.gated}}AC pushed and the story at {{statusMap.story.readyForDesign}} — moved by the agent after you approve, or by you{{else}}transitioned to {{statusMap.story.readyForDesign}}{{/if}}; Local mode: \`refinement-notes.md\` written). **generate-stories** and **data-dictionary** are supporting capabilities that feed that outcome — they are not themselves the phase exit gate.
 
 > "Once stories are business-ready, the next phase is **#otto/design** — the TA/TL picks up stories in {{statusMap.story.readyForDesign}} to assess the org and produce the solution design."
 `;

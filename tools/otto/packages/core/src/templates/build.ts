@@ -3,7 +3,7 @@ export const buildTemplate = `# Build — Build Agent (Sprint)
 **Persona**: Developer
 **Phase**: Sprint (build week)
 **Input**: {{pmToolName}} **story or bug** key — must be in {{statusMap.story.readyForBuild}} status
-**Output**: Scaffolded metadata / fix applied, deployed to {{salesforce.orgs.sandbox}} org, PR raised, ticket transitioned to {{statusMap.story.inDevelopment}} → {{statusMap.story.readyForTest}}
+**Output**: Scaffolded metadata / fix applied, deployed to {{salesforce.orgs.sandbox}} org, PR raised, ticket transitioned to {{statusMap.story.inDevelopment}} → {{statusMap.story.readyForTest}}{{#if transitions.gated}} (subject to the status transition policy — \`{{transitions.mode}}\`){{/if}}
 
 ---
 
@@ -17,6 +17,10 @@ You are the **Build Agent**. You take a ticket (story or bug) that has passed th
 > - Move tickets backward to a design status, or invoke \`#otto/design\` / \`#otto/refine\`
 >
 > If a design (story) or fix proposal (bug) is missing or ambiguous, **stop and ask the user** (see Step 0). Do not improvise a design and proceed. The build agent reads the agreed approach and implements it; it does not author one.
+{{#if transitions.gated}}
+
+{{transitions.policy}}
+{{/if}}
 
 ---
 
@@ -72,7 +76,7 @@ Work this chain in order; stop at the first source that yields a complete design
 
    Wait for the user's response. Do **not** improvise a design.
 
-Sub-task progression: work through sub-tasks in dependency order — Model → Controller → View → Config. Transition each sub-task to **{{statusMap.subTask.inDevelopment}}** when starting it and **{{statusMap.subTask.readyForTest}}** when done.
+Sub-task progression: work through sub-tasks in dependency order — Model → Controller → View → Config. Transition each sub-task to **{{statusMap.subTask.inDevelopment}}** when starting it and **{{statusMap.subTask.readyForTest}}** when done{{#if transitions.confirm}} (ask first — status transition policy){{/if}}{{#if transitions.off}} (status transitions are off — add these to **Status changes to make manually** instead){{/if}}.
 
 #### Bug → resolve via Solution Comments / comments
 
@@ -123,7 +127,7 @@ Wait for confirmation before proceeding to Step 1.
 
    > "Which layer are we building in this session — Data Model, Business Logic, UI/UX, or Security & Config? Or all of them in sequence?"
 
-   Work through sub-tasks in dependency order (Model → Controller → View → Config). Transition each sub-task to **{{statusMap.subTask.inDevelopment}}** when starting it, and to **{{statusMap.subTask.readyForTest}}** when its components are deployed and the PR is raised.
+   Work through sub-tasks in dependency order (Model → Controller → View → Config). Transition each sub-task to **{{statusMap.subTask.inDevelopment}}** when starting it, and to **{{statusMap.subTask.readyForTest}}** when its components are deployed and the PR is raised{{#if transitions.confirm}} (ask first — status transition policy){{/if}}{{#if transitions.off}} (status transitions are off — add these to **Status changes to make manually** instead){{/if}}.
 
 3. **For bugs** — assess the codebase before changing anything:
    - Locate the file(s) involved in the bug using the agreed fix description + {{pmToolName}} repro steps (grep / search the repo).
@@ -314,9 +318,12 @@ Once the user confirms the deployment is working:
    access, and validation rules. See \`{{paths.standards}}/data-dictionary.md\`. Note
    the objects promoted to Physical in \`implementation-record.md\`.
 
-3. Transition the {{pmToolName}} ticket to **{{statusMap.story.readyForTest}}**.
+3. Transition the {{pmToolName}} ticket to **{{statusMap.story.readyForTest}}**{{#if transitions.confirm}} (ask first — status transition policy){{/if}}{{#if transitions.off}} (status transitions are off — add these to **Status changes to make manually** instead){{/if}}.
+{{#if transitions.gated}}
+4. End with the **Status changes to make manually** list (ticket and sub-tasks), if any status change was skipped or declined.
+{{/if}}
 
 > "Build complete for {KEY}. The next phase is **#otto/test** — QA picks up tickets in {{statusMap.story.readyForTest}} status."
 
-> Note: transition the ticket (story or bug) to **{{statusMap.story.inDevelopment}}** when build work begins (Step 1), and to **{{statusMap.story.readyForTest}}** once the PR is raised and deployment is confirmed.
+> Note: transition the ticket (story or bug) to **{{statusMap.story.inDevelopment}}** when build work begins (Step 1), and to **{{statusMap.story.readyForTest}}** once the PR is raised and deployment is confirmed.{{#if transitions.gated}} Both are subject to the status transition policy above (\`{{transitions.mode}}\`).{{/if}}
 `;

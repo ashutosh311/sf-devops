@@ -61,6 +61,7 @@ const SCAFFOLD_SCHEMA = z.object({
   adoProject:            z.string().min(1).optional().describe("Azure DevOps project name"),
   // Local-only — optional when pmTool is LOCAL
   localKeyPrefix:        z.string().min(2).optional().describe("Work-item key prefix for local projects, e.g. LOCAL"),
+  statusTransitions:     z.enum(["auto", "confirm", "off"]).optional().describe("How agents change JIRA/ADO statuses: auto (default — move items once the work is approved), confirm (ask before every status change), off (never change status; list changes for the user). Ignored for LOCAL."),
   phases:                z.array(z.enum(PHASES)).min(1).describe("Enabled SDLC phases"),
   sprintLengthWeeks:     z.number().int().min(1).max(4).describe("Sprint length in weeks (1–4)"),
   estimationApproach:    z.enum(["ta-assigns", "team-vote", "both"]).describe("Estimation approach"),
@@ -232,6 +233,7 @@ function toAnswers(args: ScaffoldArgs): InterviewAnswers {
     adoOrganization:       args.adoOrganization ?? "",
     adoProject:            args.adoProject ?? "",
     localKeyPrefix:        args.localKeyPrefix ?? "LOCAL",
+    statusTransitions:     args.statusTransitions ?? "auto",
     phases:                args.phases,
     sprintLengthWeeks:     args.sprintLengthWeeks,
     estimationApproach:    args.estimationApproach,

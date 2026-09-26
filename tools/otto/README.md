@@ -189,6 +189,22 @@ devops/standards/          ← Slalom coding standards (Apex, LWC, Git, etc.)
 force-app/                 ← Salesforce metadata
 ```
 
+### Status transitions (JIRA / ADO)
+
+By default, agents move work items to the next status once you approve their output: Refine → Ready for Design, Design → Ready for Build, Build → Ready for Test (plus sub-task progression), and Test → Done / defect. You can change this with `workflow.statusTransitions` in `.otto/config.json`. `/init` asks the question for JIRA and ADO projects.
+
+| Mode | Behaviour |
+|---|---|
+| `auto` (default) | The agent changes the status as soon as you approve. This matches the behaviour before the setting existed. |
+| `confirm` | Before each status change, the agent asks you separately. Approving AC, a design or a PR does not also approve the status change. Batch runs ask per item. Anything you decline is listed under **Status changes to make manually**. |
+| `off` | The agent never changes status. Everything else still happens (AC, design comments, sub-tasks, PR), and the agent lists the status moves for you to make. |
+
+```json
+{ "workflow": { "statusTransitions": "confirm" } }
+```
+
+Leaving the block out is the same as `auto`. The setting has no effect in LOCAL mode, which has no PM tool. Status gates (for example, Design requiring **Ready for Design**) still apply in every mode, so a story left unmoved won't be picked up by the next phase until its status is updated.
+
 ---
 
 ## Instruction Updates

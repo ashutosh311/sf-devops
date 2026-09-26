@@ -1,6 +1,7 @@
 import Handlebars from "handlebars";
 import type { OttoConfig } from "./schema.js";
-import { resolveAlmTool, resolveProjectKey, resolveDeliverable, DEFAULT_STATUS_MAP } from "./schema.js";
+import { resolveAlmTool, resolveProjectKey, resolveDeliverable, resolveStatusTransitions, DEFAULT_STATUS_MAP } from "./schema.js";
+import type { StatusTransitionMode } from "./schema.js";
 import { discoverTemplate } from "./templates/discover.js";
 import { refineTemplate } from "./templates/refine.js";
 import { refineStoryTemplate } from "./templates/refine-story.js";
@@ -131,6 +132,20 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
   // stay declarative and non-regressive.
   const deliverable = resolveDeliverable(config, almTool);
 
+  // Status-transition policy (workflow.statusTransitions). `gated` is true only when a
+  // connected PM tool is in `confirm` or `off` mode — Local mode never transitions, so
+  // it always renders as `auto`. `policy` is empty in auto mode so existing prompts
+  // are unchanged; otherwise it's a block the phase templates embed near the top.
+  const transitionMode: StatusTransitionMode = almTool === "LOCAL" ? "auto" : resolveStatusTransitions(config);
+  const transitions = {
+    mode: transitionMode,
+    auto: transitionMode === "auto",
+    confirm: transitionMode === "confirm",
+    off: transitionMode === "off",
+    gated: transitionMode !== "auto",
+    policy: buildTransitionPolicy(transitionMode, almTool, pmToolName),
+  };
+
   // Pre-formatted status lists for the design agent's batch queries. Built here
   // rather than in the template because Handlebars has no join/dedupe: a project
   // whose gates collide (ADO's out-of-box Agile process maps several to "Active")
@@ -176,7 +191,47 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
     itemNoun,
     deliverable,
     designEligible,
+    transitions,
   });
+}
+
+/**
+ * The status-transition policy block embedded in every phase template that moves a
+ * PM-tool item. Empty in `auto` mode (and Local mode) so those prompts are unchanged.
+ */
+function buildTransitionPolicy(mode: StatusTransitionMode, almTool: "JIRA" | "ADO" | "LOCAL", pmToolName: string): string {
+  if (mode === "auto" || almTool === "LOCAL") return "";
+  const statusTools = almTool === "ADO"
+    ? "`update_work_item` setting `System.State`"
+    : "`transitionJiraIssue`";
+  const scope = "a story, bug, defect or sub-task";
+  const manualList =
+    "list it under **Status changes to make manually** in your final summary (item, current status → target status) so the user can apply it in " + pmToolName + ".";
+
+  if (mode === "confirm") {
+    return [
+      "> 🔀 **Status transition policy — confirm** (`workflow.statusTransitions: confirm`). This project requires the user's approval before **any** " + pmToolName + " status change.",
+      "> Every instruction in this prompt to transition, move or set the status of " + scope + " means: **first ask**, then act.",
+      ">",
+      `> 1. Immediately before the transition, ask: *"Move {KEY} from '{current status}' to '{target status}'? (yes / no)"* and wait for an explicit **yes** for that item.`,
+      "> 2. Approval of content (AC, design, comments, sub-tasks, the PR) is **not** approval of a status change — always ask separately.",
+      "> 3. When several transitions are due at the same point (batch runs, sub-tasks), present them as a numbered list and let the user approve or decline each one. Never treat silence or a content approval as consent.",
+      "> 4. If the user declines, skip **only** that transition — do not call " + statusTools + " for it, do not retry, and carry on with every other step. Then " + manualList,
+      "> 5. Interim \"in progress\" transitions that a later transition in the same run supersedes (e.g. a pickup marker) need not be listed for manual action — list only each item's final target status.",
+      "> 6. Status **gates** that read the current status still apply unchanged.",
+    ].join("\n");
+  }
+
+  return [
+    "> 🔀 **Status transition policy — off** (`workflow.statusTransitions: off`). This project does not allow agents to change " + pmToolName + " statuses.",
+    "> Wherever this prompt says to transition, move or set the status of " + scope + ":",
+    ">",
+    "> 1. **Do not** change the status — never call " + statusTools + " or any other status-changing tool.",
+    "> 2. Carry out every other write as normal (descriptions, acceptance criteria, comments, sub-task and defect creation, links).",
+    "> 3. Instead of each transition, " + manualList,
+    "> 4. Interim \"in progress\" transitions that a later transition in the same run supersedes (e.g. a pickup marker) need not be listed — list only each item's final target status.",
+    "> 5. Status **gates** that read the current status still apply unchanged.",
+  ].join("\n");
 }
 
 /** Prefer cache-synced skills, fall back to the bundled build-time copies. */

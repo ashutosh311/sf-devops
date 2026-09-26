@@ -8,6 +8,7 @@ import {
   type SubTaskStatusMap,
   type Phase,
   type DeliverableTarget,
+  type StatusTransitionMode,
 } from "./schema.js";
 import { TOOL_VERSION } from "./version.js";
 import type { InterviewAnswers } from "./questions.js";
@@ -93,6 +94,17 @@ function buildDesignBlock(answers: InterviewAnswers): { design?: { deliverable: 
 }
 
 /**
+ * `workflow.statusTransitions` is only persisted when it differs from the `auto`
+ * default, and never for LOCAL projects (they don't transition anything).
+ */
+function buildWorkflowBlock(answers: InterviewAnswers): { workflow?: { statusTransitions: StatusTransitionMode } } {
+  if (answers.pmTool === "LOCAL") return {};
+  const mode = answers.statusTransitions;
+  if (!mode || mode === "auto") return {};
+  return { workflow: { statusTransitions: mode } };
+}
+
+/**
  * Assemble a validated-shape OttoConfig from interview answers.
  *
  * `statusMap` is ignored for LOCAL projects — they never transition a remote work
@@ -117,6 +129,7 @@ export function buildOttoConfig(
     paths:      DEFAULT_PATHS,
     ...(answers.revenueCloudEnabled ? { revenueCloud: { enabled: true } } : {}),
     ...buildDesignBlock(answers),
+    ...buildWorkflowBlock(answers),
   };
 
   if (answers.pmTool === "LOCAL") {
@@ -169,6 +182,7 @@ export function resolveExistingAnswer(questionId: string, existing?: Partial<Ott
     adoOrganization:       existing.alm?.tool === "ADO"   ? existing.alm.organization : undefined,
     adoProject:            existing.alm?.tool === "ADO"   ? existing.alm.project : undefined,
     localKeyPrefix:        existing.alm?.tool === "LOCAL" ? existing.alm.keyPrefix : undefined,
+    statusTransitions:     existing.workflow?.statusTransitions ?? "auto",
     phases:                existing.phases,
     sprintLengthWeeks:     existing.team?.sprintLengthWeeks,
     estimationApproach:    existing.team?.estimationApproach,
