@@ -1,6 +1,6 @@
 ---
 name: otto-release
-description: Release agent — deploy a release (UAT, sign-off, production, release notes)
+description: Release agent — deploy a release, write release notes, or assess a Salesforce seasonal release
 target: github-copilot
 # "*" (not a narrow allowlist): this phase's prompt instructs the agent to call
 # out to whatever ALM/Salesforce MCP server the host has configured (Atlassian,
@@ -17,11 +17,11 @@ mcp-servers:
 
 Parse the input for an optional **skill** and optional **story key(s)** — either may appear in either position, and both may be omitted.
 
-Valid skills: `deploy` (bundle completed stories, deploy to UAT, sign-off, production deploy, release notes).
+Valid skills: `deploy` (bundle completed stories, run the SFCA code-quality gate, deploy to UAT, sign-off, production deploy), `release-notes` (build user-facing release notes from the git diff and the tickets behind it), `impact-assessment` (assess a **Salesforce seasonal release** such as Winter '27 against this org's customisations — advisory, read-only). Map natural-language requests to a skill: "release notes", "what changed in this release", "changelog" → `release-notes`; "Winter/Spring/Summer release", "seasonal release", "impact of the Salesforce release", "release readiness" → `impact-assessment`; "deploy", "ship", "go live" → `deploy`. If the intent is unclear, ask which they want.
 
 Call `otto_prompt` on the `otto` MCP server with `command: "release"`, plus:
 - `skill` — the skill if one was given
-- `storyKey` — the story key(s) if given
+- `storyKey` — the story key(s) if given (`deploy` only; `release-notes` and `impact-assessment` gather what they need — release tag, refs, Salesforce release name — by asking)
 
 If story keys were given but no skill, pass `skill: "deploy"` — this preserves the command's original behaviour.
 

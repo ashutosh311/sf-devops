@@ -246,7 +246,7 @@ Run \`/init\` again at any time to update the config — existing files are pres
 | \`/design PROJ-42\` | Technical design agent — solution approach, data model, component breakdown, sub-tasks; menu offers **Data Dictionary** |
 | \`/build PROJ-42\` | Build agent — scaffolds Apex, LWC, config; reviews with you; deploys to your sandbox; menu offers **Data Dictionary** |
 | \`/test PROJ-42\` | Test agent — generates test classes and JEST tests, validates coverage |
-| \`/release\` | Release agent — deployment notes, checklist, JIRA transitions |
+| \`/release\` | Release agent — quality-gated deploy, release notes, Salesforce seasonal-release impact assessment |
 | \`/feedback <comment>\` | Send feedback about the tooling — logged to help improve the agents |
 
 ---
@@ -304,7 +304,7 @@ The discovery agent has targeted sub-commands. Run \`/discover\` on its own to b
 @otto /design PROJ-42        ← technical design, produces solution-design.md
 @otto /build PROJ-42         ← scaffold, test, deploy, raise PR
 @otto /test PROJ-42          ← test coverage and validation
-@otto /release               ← release notes and deployment checklist
+@otto /release               ← quality-gated deploy, release notes, seasonal-release impact
 \`\`\`
 
 ---

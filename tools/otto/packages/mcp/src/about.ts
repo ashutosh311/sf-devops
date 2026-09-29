@@ -66,7 +66,7 @@ ${hostName()} will walk you through a short setup and scaffold the project with:
 | \`${cmd("design", "PROJ-42")}\` | Technical design — solution approach, data model, sub-tasks |
 | \`${cmd("build", "PROJ-42")}\` | Build agent — scaffolds Apex/LWC/config, deploys to sandbox |
 | \`${cmd("test", "PROJ-42")}\` | Test agent — menu-driven (see Test skills below) |
-| \`${cmd("release")}\` | Release agent — deployment notes, checklist, JIRA transitions |
+| \`${cmd("release")}\` | Release agent — quality-gated deploy, release notes, Salesforce seasonal-release impact assessment |
 
 ### Refine skills
 
@@ -106,7 +106,7 @@ ${cmd("refine", "PROJ-42").padEnd(36)}← refine each story before the sprint
 ${cmd("design", "PROJ-42").padEnd(36)}← technical design, produces solution-design.md
 ${cmd("build", "PROJ-42").padEnd(36)}← scaffold, deploy, raise PR
 ${cmd("test", "PROJ-42").padEnd(36)}← test coverage and validation
-${cmd("release").padEnd(36)}← release notes and deployment checklist
+${cmd("release").padEnd(36)}← quality-gated deploy, release notes, seasonal-release impact
 \`\`\`
 
 ---

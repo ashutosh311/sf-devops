@@ -110,7 +110,7 @@ The `@otto` (VS Code / GitHub Copilot) column is the primary invocation. The Cla
 | `@otto /design PROJ-42` | `/otto:design PROJ-42` | `/agent otto-design` | Technical design — solution, data model, sub-tasks |
 | `@otto /build PROJ-42` | `/otto:build PROJ-42` | `/agent otto-build` | Scaffold Apex/LWC/config, deploy to sandbox |
 | `@otto /test [skill] [PROJ-42]` | `/otto:test [skill] [PROJ-42]` | `/agent otto-test` | Menu-driven test agent (see Test skills below) |
-| `@otto /release` | `/otto:release` | `/agent otto-release` | Deployment notes, checklist, PM-tool transitions |
+| `@otto /release [skill] [PROJ-42]` | `/otto:release [skill] [PROJ-42]` | `/agent otto-release` | Menu-driven release agent (see Release skills below) |
 | `@otto /feedback <comment>` | — | — | Send feedback about the tooling (VS Code only) — logged to the usage list |
 
 Registering the MCP server directly instead of installing the plugin or pack (see [Development](#development)) gives the same commands as `/mcp__otto__<name>`. The server detects which surface it's running under and every message it prints uses the matching form.
@@ -138,6 +138,30 @@ Registering the MCP server directly instead of installing the plugin or pack (se
 
 With no `testing.testManagement` configured, `write-cases` writes `test-cases.md` locally only — a fully supported mode, not just a fallback.
 
+### Release skills
+
+`/release` alone shows a menu; `/release PROJ-42` (story keys with no skill) runs **deploy**, preserving the original shortcut. Name a skill directly (e.g. `/release release-notes`) to skip the menu.
+
+| Skill | What it does | Transitions the story? |
+|---|---|---|
+| `deploy` | Confirm scope, validate PRs, **SFCA quality gate on the changed files**, deploy to UAT, sign-off, production deploy, then hand off to `release-notes` | No |
+| `release-notes` | Diff the release branch, correlate commits to tickets, write user-facing notes (New / Fixed / Improved, one benefit line each) plus a technical appendix | No |
+| `impact-assessment` | Assess a **Salesforce seasonal release** (e.g. Winter '27) against this org's existing customisations — advisory and read-only | No |
+
+"Release" means two different things here: `deploy` and `release-notes` are about **your project's** release; `impact-assessment` is about **Salesforce's** platform release.
+
+**Quality gate (`deploy`).** Salesforce Code Analyzer v5 (`sf code-analyzer run`) scans only the files changed in the release diff, before the UAT deploy. Findings at or above `failOn` block the deploy; findings from `warnOn` up to (not including) `failOn` are reported. Only an explicit user decision can override a block, and it is recorded as `RISK-ACCEPTED` in `quality-gate.md`. Needs the Code Analyzer plugin and Java 11+. Optional config (both default as shown; severities are `Critical` `High` `Moderate` `Low` `Info`):
+
+```json
+"qualityGate": { "sfca": { "failOn": "High", "warnOn": "Moderate" } }
+```
+
+A `code-analyzer.yml` in the project root is picked up automatically.
+
+**Release scope.** `deploy` and `release-notes` share one diff — the release branch against `develop` (confirmed with you first; `main` or the previous tag are offered if that is empty), written to `artifacts/releases/{release-tag}/release-scope.md` so the gate and the notes describe the same change.
+
+**Impact assessment.** You confirm the sources first — the official release notes for the named release (proposed as `https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=264&type=5` for Winter '27; each season adds 2 to the release number) plus anything you add (URLs or local files). With a browser tool (e.g. the Playwright MCP) the agent reads the live notes; without one it asks you to save them into `artifacts/06 - Reference/sf-release-notes/{season-yy}/`. PDF/PPTX are converted with [`markitdown`](https://github.com/microsoft/markitdown). The assessment is built inventory-first from the repo (a live org is opt-in) and reads only the release-note sections that intersect it. Output: `artifacts/releases/salesforce-{season-yy}/impact-assessment.md`; findings are tagged **Confirmed** (traceable to a source read) or **Inferred**.
+
 ### Interactive prompts in Claude Code
 
 `/init` asks its questions as **native input forms**, not as a conversation. The server drives them over [MCP elicitation](https://modelcontextprotocol.io/specification/server/elicitation) — the same role `showInputBox`/`showQuickPick` play in the VS Code interview — so the model never conducts the interview and can't paraphrase a question, invent a default, or skip a field. Both surfaces walk the same `QUESTIONS` list in `packages/core/src/questions.ts` and hand the answers to the same `buildOttoConfig`.
@@ -154,7 +178,7 @@ The phase commands still use plain numbered menus rendered by the agent — elic
 /design PROJ-42    ← technical design → solution-design.md
 /build PROJ-42     ← scaffold, test, deploy, raise PR
 /test PROJ-42      ← execute AC in the sandbox, close the story (or run a specific test skill)
-/release           ← release notes and deployment checklist
+/release           ← quality-gated deploy, release notes, Salesforce release impact
 ```
 
 ---

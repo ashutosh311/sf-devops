@@ -322,8 +322,9 @@ test("the release menu routes to skill instructions rather than describing them 
     for (const skill of RELEASE_SKILLS) {
       assert.ok(out.includes(`\`${skill}\``), `menu is missing the "${skill}" skill`);
     }
-    // The menu is an index only — the deploy procedure must not leak into it.
+    // The menu is an index only — no skill's procedure may leak into it.
     assert.ok(!out.includes("sf project deploy start"), "menu must not embed the deploy procedure");
+    assert.ok(!out.includes("sf code-analyzer run"), "menu must not embed the quality-gate procedure");
   }
 });
 
@@ -332,9 +333,95 @@ test("release-deploy carries the full deploy procedure and never transitions a s
     const out = renderPrompt("release-deploy", cfg);
     assert.match(out, /sf project deploy start/, "deploy skill must contain the deploy command");
     assert.match(out, /UAT sign-off/, "deploy skill must keep the sign-off gate");
-    assert.match(out, /release-notes\.md/, "deploy skill must write release notes");
+    assert.match(out, /release-notes/, "deploy skill must hand off to the release-notes skill");
     assert.doesNotMatch(out, transitionsToDone, "release-deploy must not transition a story to Done");
   }
+});
+
+test("release-deploy gates the UAT deploy behind the SFCA scan, scoped to changed files", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  const gate = out.indexOf("sf code-analyzer run");
+  const deploy = out.indexOf("## Step 3 — Deploy to UAT");
+  assert.ok(gate !== -1, "deploy skill must run SFCA");
+  assert.ok(deploy !== -1, "deploy skill must still have its UAT deploy step");
+  assert.ok(gate < deploy, "the SFCA scan must come before the UAT deploy step");
+  assert.match(out, /--target/, "scan must target the changed files");
+  assert.match(out, /Do \*\*not\*\* scan the full org/, "scan must be limited to the release diff");
+  assert.match(out, /Do not proceed to Step 3/, "blocking findings must stop the deploy");
+  assert.match(out, /RISK-ACCEPTED/, "an explicit risk-accept path must be recorded, not silent");
+});
+
+test("SFCA gate severity comes from config, with defaults High / Moderate — never hardcoded", () => {
+  const def = renderPrompt("release-deploy", jiraCfg);
+  assert.match(def, /1 through 2 \(High and above\)/, "default failOn should render as High (levels 1-2)");
+  assert.match(def, /after 2 through 3 \(Moderate and above, but below High\)/, "default warnOn should render as Moderate");
+
+  const strict = renderPrompt("release-deploy", {
+    ...jiraCfg,
+    qualityGate: { sfca: { failOn: "Moderate", warnOn: "Low" } },
+  });
+  assert.match(strict, /1 through 3 \(Moderate and above\)/);
+  assert.match(strict, /after 3 through 4 \(Low and above, but below Moderate\)/);
+
+  // A warnOn that is not below failOn can never fire, so the warning tier is dropped.
+  const noWarn = renderPrompt("release-deploy", {
+    ...jiraCfg,
+    qualityGate: { sfca: { failOn: "Critical", warnOn: "Critical" } },
+  });
+  assert.doesNotMatch(noWarn, /\*\*Warning\*\*/);
+  assert.doesNotMatch(noWarn, /PASS WITH WARNINGS/);
+});
+
+test("qualityGate config validates and rejects unknown severities", () => {
+  assert.equal(OttoConfigSchema.safeParse({ ...jiraCfg, qualityGate: { sfca: { failOn: "High" } } }).success, true);
+  assert.equal(OttoConfigSchema.safeParse({ ...jiraCfg, qualityGate: {} }).success, true);
+  assert.equal(OttoConfigSchema.safeParse({ ...jiraCfg, qualityGate: { sfca: { failOn: "Severe" } } }).success, false);
+});
+
+test("release-notes builds from the git diff + tickets, in the agreed shape, and stays read-only", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release-release-notes", cfg);
+    assert.match(out, /git diff --name-status/, "must diff git for the authoritative scope");
+    assert.match(out, /release-scope\.md/, "must share the scope file with deploy");
+    assert.match(out, /\| Group \| Item \| Benefit \|/, "must use the Group | Item | Benefit shape");
+    assert.match(out, /New/);
+    assert.match(out, /Fixed/);
+    assert.match(out, /Improved/);
+    assert.match(out, /Technical appendix/, "must include the technical appendix");
+    assert.match(out, /never transitions a ticket/i, "must disclaim ticket transitions");
+    assert.doesNotMatch(out, transitionsToDone, "release-notes must not transition a story");
+  }
+  assert.match(renderPrompt("release-release-notes", jiraCfg), /searchJiraIssuesUsingJql/);
+  assert.match(renderPrompt("release-release-notes", adoCfg), /get_work_item/);
+  assert.doesNotMatch(renderPrompt("release-release-notes", adoCfg), /searchJiraIssuesUsingJql/);
+  assert.match(renderPrompt("release-release-notes", localCfg), /Local mode/);
+});
+
+test("impact-assessment confirms sources, is read-only/advisory, and never asserts beyond its sources", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release-impact-assessment", cfg);
+    assert.match(out, /release-notes\.salesforce_release_notes\.htm/, "must propose the official release-notes URL");
+    assert.match(out, /Winter '27 = 264/, "must anchor the release-number mapping");
+    assert.match(out, /confirm or extend/i, "user must confirm/extend the sources");
+    assert.match(out, /markitdown/, "must convert PDF/PPTX via markitdown");
+    assert.match(out, /browser tool/i, "must use a browser tool when available");
+    assert.match(out, /ask the user to save/i, "must fall back to user-supplied files");
+    assert.match(out, /Confirmed/);
+    assert.match(out, /Inferred/);
+    assert.match(out, /advisory/i, "must be advisory, not gating");
+    assert.match(out, /never modifies \S*force-app/, "must not write to force-app");
+    assert.match(out, /impact-assessment\.md/);
+    assert.doesNotMatch(out, transitionsToDone, "impact-assessment must not transition a story");
+  }
+});
+
+test("the environment check lists the Release skills' extra prerequisites", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  assert.match(out, /sf code-analyzer --help/);
+  assert.match(out, /java -version/);
+  const ia = renderPrompt("release-impact-assessment", jiraCfg);
+  assert.match(ia, /markitdown --version/);
+  assert.match(ia, /Playwright/);
 });
 
 test("refine-gap-analysis stays inside the refine boundary — read-only, no drafting/transition/estimate", () => {

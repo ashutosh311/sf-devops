@@ -33,6 +33,7 @@ of those tokens exactly. Match by identity, not exact equality:
 | **JIRA / Atlassian** | contains `atlassian` or `jira` (case-insensitive) |
 | **Azure DevOps** | contains `azure`, is a **whole segment** `ado` or `azuredevops`, or contains `workitem` |
 | **Salesforce DX** | contains `salesforce`, or is a **whole segment** `sf` / `sfdx` / `salesforce_dx` |
+| **Browser (Playwright)** | contains `playwright` (case-insensitive), or exposes `browser_navigate` / `browser_evaluate`-style tools |
 
 Anchor the short, generic tokens (`sf`, `ado`) as a **whole segment** — never as a
 bare substring — or you will false-match unrelated names (e.g. a project called
@@ -52,6 +53,10 @@ substrings.
 | **Node.js & npm** | build, test — running LWC Jest tests (`npm run test:unit`) | Run `node --version` and `npm --version` via Bash. |
 | **Git** | build, release — branching, committing, raising PRs | Run `git --version` via Bash. |
 | **Python 3** | only if this project's own scripts (e.g. under `utilities/`) require it | Run `python3 --version` via Bash. |
+| **Salesforce Code Analyzer plugin** (`sf code-analyzer`) | release — **deploy** skill (SFCA quality gate before the UAT deploy). Mandatory for that skill. | Run `sf code-analyzer --help` via Bash. The plugin installs itself on first use, but check explicitly so a missing plugin or network problem fails here rather than mid-gate. |
+| **Java (JDK 11+)** | release — **deploy** skill. Code Analyzer's PMD, CPD and Graph engines need it. | Run `java -version` via Bash; the major version must be 11 or higher. |
+| **Browser tool** (Playwright MCP) — *optional* | release — **impact-assessment** skill, to read the live Salesforce release notes (a JavaScript app that a plain HTTP fetch can't read). | Apply the §0 match for **Browser (Playwright)**. Absent ⇒ not a blocker: the skill falls back to asking the user to save the notes locally. |
+| **`markitdown`** — *optional* | release — **impact-assessment** skill, to convert PDF / PPTX / DOCX release materials to markdown. | Run `markitdown --version`, or `uvx markitdown --version`, via Bash. Absent ⇒ not a blocker: the skill falls back to asking for markdown/text exports. |
 
 ## 2. Check MCP tool availability
 
@@ -79,6 +84,10 @@ If something required is missing, stop before the phase's own Step 0 and tell th
 | Salesforce CLI (`sf`) | "The Salesforce CLI isn't installed. Install it with `npm install -g @salesforce/cli`, then authenticate a sandbox with `sf org login web --alias sandbox --instance-url https://test.salesforce.com`." |
 | Node.js / npm | "Node.js isn't installed, so I can't run the Jest test suite for LWC components. Install the LTS release from https://nodejs.org, or via a version manager such as `nvm install --lts`." |
 | Git | "Git isn't installed, so I can't branch, commit, or raise a PR. Install it via your OS package manager, e.g. `brew install git` (macOS) or `apt install git` (Linux), or from https://git-scm.com/downloads." |
+| Salesforce Code Analyzer plugin | "The Salesforce Code Analyzer plugin isn't available, so I can't run the quality gate. Install it with `sf plugins install code-analyzer`, confirm with `sf code-analyzer --help`, and re-run." |
+| Java 11+ | "Salesforce Code Analyzer needs a JDK, version 11 or later, and I couldn't find one. Install one (e.g. `brew install openjdk` on macOS, or Azul Zulu / Temurin from your package manager), make sure `java -version` reports 11+, and re-run." |
+| Browser tool (Playwright MCP) — optional | "No browser tool is connected, so I can't read the live Salesforce release notes myself. Either add the Playwright MCP (`npx @playwright/mcp@latest`) to your MCP config and restart the session, or save the release notes (browser *Print → Save as PDF*, or Salesforce's PDF) into the project folder and I'll work from those." |
+| `markitdown` — optional | "`markitdown` isn't installed, so I can't convert PDF/PPTX release materials to markdown. Install it with `pip install 'markitdown[all]'` (or run it on demand with `uvx markitdown`), or give me markdown/text exports instead." |
 | Python 3 | "This project's scripts expect Python 3, which isn't installed. Install it via `brew install python3` (macOS), `apt install python3` (Linux), or https://python.org/downloads (Windows)." |
 
 Ask the user to install or connect the missing piece and confirm when ready. If a phase can meaningfully continue with reduced capability (e.g. no JIRA access, falling back to purely local artifacts), say so explicitly and let the user choose — never silently proceed as if the tool were present.

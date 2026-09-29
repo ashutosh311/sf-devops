@@ -20,6 +20,10 @@ export const EstimationApproachSchema = z.enum([
 // skill's local-mode check, `{{#unless testing.testManagement}}`) — a `"none"`
 // value would make the block look "configured" while every template's provider
 // switch has no branch for it.
+/** Salesforce Code Analyzer (v5) severity names, most to least severe (levels 1-5). */
+export const SfcaSeveritySchema = z.enum(["Critical", "High", "Moderate", "Low", "Info"]);
+export type SfcaSeverity = z.infer<typeof SfcaSeveritySchema>;
+
 export const TestManagementProviderSchema = z.enum(["xray", "zephyr", "ado-test-plans"]);
 
 export const StoryStatusMapSchema = z.object({
@@ -247,6 +251,20 @@ export const OttoConfigSchema = z.object({
     statusMap: AdoStatusMapSchema,
   }).optional(),
 
+  /**
+   * Release-agent quality gate. Config-file-only, no `/init` interview question
+   * (follows the `testing` / `revenueCloud` precedent). Absent ⇒ resolveQualityGate
+   * applies the defaults, so existing configs keep validating and pick up the gate.
+   */
+  qualityGate: z.object({
+    sfca: z.object({
+      /** Findings at or above this severity block the UAT deploy. Default "High". */
+      failOn: SfcaSeveritySchema.optional(),
+      /** Findings at or above this severity (but below failOn) are reported as warnings. Default "Moderate". */
+      warnOn: SfcaSeveritySchema.optional(),
+    }).optional(),
+  }).optional(),
+
   branching: z.literal("gitflow"),
 
   paths: z.object({
@@ -420,5 +438,41 @@ export function resolveDeliverable(config: OttoConfig, almTool: "JIRA" | "ADO" |
     wikiPath: d?.wikiPath,
     sections: d?.sections && d.sections.length > 0 ? d.sections : [...DEFAULT_DESIGN_SECTIONS],
     storyField: d?.storyField,
+  };
+}
+
+export const DEFAULT_SFCA_FAIL_ON: SfcaSeverity = "High";
+export const DEFAULT_SFCA_WARN_ON: SfcaSeverity = "Moderate";
+
+const SFCA_LEVELS: Record<SfcaSeverity, number> = { Critical: 1, High: 2, Moderate: 3, Low: 4, Info: 5 };
+
+export interface ResolvedSfcaGate {
+  failOn: SfcaSeverity;
+  /** Code Analyzer numeric level (1 = Critical … 5 = Info) of `failOn`. */
+  failOnLevel: number;
+  /** Null when warnings are effectively off (warnOn is at or above failOn in severity). */
+  warnOn: SfcaSeverity | null;
+  warnOnLevel: number | null;
+}
+
+/**
+ * Resolve the effective SFCA gate, applying defaults. Exposed to templates as
+ * `{{qualityGate.sfca.*}}` so the severity cutoff is never hardcoded in a prompt.
+ * A `warnOn` that is not strictly less severe than `failOn` would never fire, so
+ * it collapses to null and the template omits the warning tier.
+ */
+export function resolveQualityGate(config: OttoConfig): { sfca: ResolvedSfcaGate } {
+  const failOn = config.qualityGate?.sfca?.failOn ?? DEFAULT_SFCA_FAIL_ON;
+  const warnOnCfg = config.qualityGate?.sfca?.warnOn ?? DEFAULT_SFCA_WARN_ON;
+  const failOnLevel = SFCA_LEVELS[failOn];
+  const warnOnLevel = SFCA_LEVELS[warnOnCfg];
+  const warns = warnOnLevel > failOnLevel;
+  return {
+    sfca: {
+      failOn,
+      failOnLevel,
+      warnOn: warns ? warnOnCfg : null,
+      warnOnLevel: warns ? warnOnLevel : null,
+    },
   };
 }

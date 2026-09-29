@@ -24,7 +24,9 @@ interface SkillMenuItem extends vscode.QuickPickItem {
 }
 
 const MENU: SkillMenuItem[] = [
-  { skill: "deploy", label: "$(rocket) Deploy a release", description: "UAT deploy, sign-off, production deploy, release notes" },
+  { skill: "deploy",            label: "$(rocket) Deploy a release",     description: "SFCA quality gate, UAT deploy, sign-off, production deploy" },
+  { skill: "release-notes",     label: "$(note) Release notes",          description: "user-facing notes from the git diff and the tickets behind it" },
+  { skill: "impact-assessment", label: "$(shield) Impact assessment",    description: "assess a Salesforce seasonal release (e.g. Winter '27) against this org" },
 ];
 
 const SKILL_IDS = new Set<string>(RELEASE_SKILLS);
@@ -87,17 +89,51 @@ async function dispatch(
 ): Promise<string> {
   const templateKey = skillTemplateKey("release", skill);
 
-  // An inline PM key bypasses the mode sub-picker — direct ALM invocation.
-  if (remainder && INLINE_KEY_RE.test(remainder)) {
-    await runPhaseAgent("release", config, request, stream, token, remainder, {
+  if (skill === "deploy") {
+    // An inline PM key bypasses the mode sub-picker — direct ALM invocation.
+    if (remainder && INLINE_KEY_RE.test(remainder)) {
+      await runPhaseAgent("release", config, request, stream, token, remainder, {
+        defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
+        templateKey,
+      });
+      return templateKey;
+    }
+    await runDeployModePicker(root, config, request, stream, token, templateKey);
+    return templateKey;
+  }
+
+  const userMessage = remainder || describeSkill(skill);
+
+  if (skill === "release-notes") {
+    // Reads git and (in ALM mode) the PM tool; writes only the release-notes artifact.
+    await runPhaseAgent("release", config, request, stream, token, userMessage, {
       defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
       templateKey,
     });
     return templateKey;
   }
 
-  await runDeployModePicker(root, config, request, stream, token, templateKey);
+  // impact-assessment: repo-first; the Salesforce DX MCP (optional live-org queries)
+  // and a browser tool (optional live release-note fetch) are both nice-to-haves.
+  await runPhaseAgent("release", config, request, stream, token, userMessage, {
+    defer: {
+      root,
+      phaseLabel: "Release",
+      mode: "local",
+      mcpName: "Salesforce DX",
+      extraToolsNote: "Optional: a browser tool (e.g. the **Playwright MCP**) lets the agent read Salesforce's live release notes; without one it will ask you to save them into the project folder.",
+    },
+    templateKey,
+  });
   return templateKey;
+}
+
+function describeSkill(skill: ReleaseSkill): string {
+  switch (skill) {
+    case "release-notes":     return "Write user-facing release notes for the release I specify.";
+    case "impact-assessment": return "Assess the Salesforce seasonal release I specify against this org's customisations.";
+    default:                  return "Run this Release skill.";
+  }
 }
 
 // ── Deploy skill — Local / ALM mode sub-picker ────────────────────────────────

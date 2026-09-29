@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 import type { OttoConfig } from "./schema.js";
-import { resolveAlmTool, resolveProjectKey, resolveDeliverable, resolveStatusTransitions, DEFAULT_STATUS_MAP } from "./schema.js";
+import { resolveAlmTool, resolveProjectKey, resolveDeliverable, resolveQualityGate, resolveStatusTransitions, DEFAULT_STATUS_MAP } from "./schema.js";
 import type { StatusTransitionMode } from "./schema.js";
 import { discoverTemplate } from "./templates/discover.js";
 import { refineTemplate } from "./templates/refine.js";
@@ -12,6 +12,8 @@ import { buildTemplate } from "./templates/build.js";
 import { testTemplate } from "./templates/test.js";
 import { releaseTemplate } from "./templates/release.js";
 import { releaseDeployTemplate } from "./templates/release-deploy.js";
+import { releaseReleaseNotesTemplate } from "./templates/release-release-notes.js";
+import { releaseImpactAssessmentTemplate } from "./templates/release-impact-assessment.js";
 import { dataDictionaryTemplate } from "./templates/data-dictionary.js";
 import { discoverAdvisoryTemplate } from "./templates/discover-advisory.js";
 import { testExecuteTemplate } from "./templates/test-execute.js";
@@ -54,6 +56,8 @@ export const PHASE_TEMPLATES: Record<string, string> = {
   "refine-gap-analysis": refineGapAnalysisTemplate,
   // Release sub-skills. Same hyphenated-key rule as the test-* keys below.
   "release-deploy": releaseDeployTemplate,
+  "release-release-notes": releaseReleaseNotesTemplate,
+  "release-impact-assessment": releaseImpactAssessmentTemplate,
   // Test sub-skills. Hyphenated (never `:`) — these keys become filenames in
   // instructions.zip via scripts/package-instructions.mjs, and `:` is illegal
   // on Windows. Composed with skillTemplateKey() below; never write one of
@@ -82,7 +86,7 @@ export type RefineSkill = (typeof REFINE_SKILLS)[number];
 /** Sub-skills the `release` phase exposes as a menu. `deploy` is the implicit
  *  default (a bare `#otto/release PROJ-42` runs it), preserving pre-menu behaviour.
  *  Exported so every front end validates against the same list. */
-export const RELEASE_SKILLS = ["deploy"] as const;
+export const RELEASE_SKILLS = ["deploy", "release-notes", "impact-assessment"] as const;
 export type ReleaseSkill = (typeof RELEASE_SKILLS)[number];
 
 /** Composes a sub-skill registry key. Hyphen separator is required — see the
@@ -186,6 +190,8 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
     revenueCloud: revenueCloudEnabled ? resolveRevenueCloudSkills(opts?.cacheDir) : {},
   };
 
+  const qualityGate = resolveQualityGate(config);
+
   const compiled = Handlebars.compile(raw, { noEscape: true });
   return compiled({
     ...config,
@@ -200,6 +206,7 @@ export function renderPrompt(phase: string, config: OttoConfig, opts?: RenderOpt
     itemNoun,
     deliverable,
     designEligible,
+    qualityGate,
     transitions,
   });
 }

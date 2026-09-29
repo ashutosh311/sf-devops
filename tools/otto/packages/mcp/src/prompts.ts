@@ -34,7 +34,7 @@ type RefineArgs = z.infer<typeof REFINE_ARGS_SCHEMA>;
 const RELEASE_ARGS_SCHEMA = z.object({
   storyKey: z.string().optional().describe("Story key(s) to release, e.g. PROJ-42"),
   skill:    z.string().optional().describe(
-    "Sub-skill: deploy. Omit to show the menu (or, with a storyKey but no skill, run deploy)."
+    "Sub-skill: deploy | release-notes | impact-assessment. Omit to show the menu (or, with a storyKey but no skill, run deploy). impact-assessment is about a Salesforce seasonal release (e.g. Winter '27), not this project's own release."
   ),
 });
 type ReleaseArgs = z.infer<typeof RELEASE_ARGS_SCHEMA>;
@@ -45,7 +45,7 @@ const PHASE_DESCRIPTIONS: Record<string, string> = {
   design:   "Technical design agent — solution approach, data model, component breakdown, sub-tasks for a JIRA story, epic, or sprint (epic/sprint ⇒ designs every eligible child story + publishes an epic synthesis design)",
   build:    "Build agent — scaffolds Apex, LWC, config metadata; reviews with you; deploys to sandbox",
   test:     "Test agent — menu-driven: execute AC in the sandbox, author test cases in Xray/Zephyr/ADO Test Plans, extend Apex unit + performance tests, or set up and write Playwright E2E tests",
-  release:  "Release agent — menu-driven: deploy a release (UAT, sign-off, production, release notes)",
+  release:  "Release agent — menu-driven: deploy a release (SFCA quality gate, UAT, sign-off, production), write user-facing release notes from the git diff, or assess a Salesforce seasonal release against the org",
 };
 
 // Phases that take an optional storyKey argument (refine + test move out — they also take a skill)
