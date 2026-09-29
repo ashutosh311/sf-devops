@@ -15,15 +15,15 @@ export const EstimationApproachSchema = z.enum([
   "both",
 ]);
 
+/** Salesforce Code Analyzer (v5) severity names, most to least severe (levels 1-5). */
+export const SfcaSeveritySchema = z.enum(["Critical", "High", "Moderate", "Low", "Info"]);
+export type SfcaSeverity = z.infer<typeof SfcaSeveritySchema>;
+
 // "none" is deliberately not a member here: "no test-management tool" is
 // expressed by omitting `testing.testManagement` entirely (see the `write-cases`
 // skill's local-mode check, `{{#unless testing.testManagement}}`) — a `"none"`
 // value would make the block look "configured" while every template's provider
 // switch has no branch for it.
-/** Salesforce Code Analyzer (v5) severity names, most to least severe (levels 1-5). */
-export const SfcaSeveritySchema = z.enum(["Critical", "High", "Moderate", "Low", "Info"]);
-export type SfcaSeverity = z.infer<typeof SfcaSeveritySchema>;
-
 export const TestManagementProviderSchema = z.enum(["xray", "zephyr", "ado-test-plans"]);
 
 export const StoryStatusMapSchema = z.object({
@@ -101,7 +101,8 @@ export function resolveProjectKey(config: OttoConfig): string {
  */
 export function extractStoryKey(text: string, projectKey: string): string {
   if (!projectKey || !text) return "";
-  const match = text.match(new RegExp(`\\b${projectKey}-\\d+\\b`, "i"));
+  const escaped = projectKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = text.match(new RegExp(`\\b${escaped}-\\d+\\b`, "i"));
   return match ? match[0].toUpperCase() : "";
 }
 
@@ -202,6 +203,9 @@ export const OttoConfigSchema = z.object({
   salesforce: z.object({
     orgs: z.object({
       sandbox: z.string().min(1),
+      /** Alias of the production org the Release agent's deploy skill targets after UAT
+       *  sign-off. Config-file-only (no `/init` question); absent ⇒ the skill asks for it. */
+      production: z.string().min(1).optional(),
     }),
   }),
 

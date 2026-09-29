@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { resolveAlmTool, resolveProjectKey, skillTemplateKey, RELEASE_SKILLS, type OttoConfig, type ReleaseSkill } from "@otto/core";
+import { resolveAlmTool, resolveProjectKey, extractStoryKey, skillTemplateKey, RELEASE_SKILLS, type OttoConfig, type ReleaseSkill } from "@otto/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { runPhaseAgent } from "./run-phase-agent";
 import { mcpDisplayName } from "./agent-defer";
@@ -7,9 +7,9 @@ import { mcpDisplayName } from "./agent-defer";
 /**
  * Release agent — skill-first, mirroring Test/Refine: an explicit skill picker
  * up front. `deploy` keeps the Local/ALM mode gate it always had. Every skill
- * deploys via the Salesforce DX MCP and/or queries the PM tool — a bare
- * `model.sendRequest` has no tool access, so this always defers to a Copilot
- * Chat agent-mode session, unlike the generic fallback handler it replaces.
+ * needs tool access (git, the PM tool, the Salesforce DX MCP or a browser) — a
+ * bare `model.sendRequest` has none, so this always defers to a Copilot Chat
+ * agent-mode session, unlike the generic fallback handler it replaces.
  */
 
 /**
@@ -21,10 +21,8 @@ import { mcpDisplayName } from "./agent-defer";
 function hasStoryRef(text: string, config: OttoConfig): boolean {
   const almTool = resolveAlmTool(config);
   if (almTool === "ADO") return /(?:^|\s)(?:AB)?#\d+\b/i.test(text);
-  const key = resolveProjectKey(config).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const patterns = [new RegExp(`\\b${key}-\\d+\\b`, "i")];
-  if (almTool === "LOCAL") patterns.push(/\bSTORY-\d+\b/i);
-  return patterns.some((re) => re.test(text));
+  if (extractStoryKey(text, resolveProjectKey(config))) return true;
+  return almTool === "LOCAL" && /\bSTORY-\d+\b/i.test(text);
 }
 
 // A lowercase, kebab-case token that looks like an attempted skill id but isn't
@@ -65,22 +63,24 @@ export async function handleRelease(
   const trimmed = request.prompt.trim();
   const tokens = trimmed ? trimmed.split(/\s+/) : [];
 
-  // A skill token anywhere in the prompt (e.g. "/release deploy PROJ-42" or
-  // "/release PROJ-42 release-notes") wins over the ticket-only shortcut; strip it
-  // from the message.
-  const skillIdx = tokens.findIndex((t) => SKILL_IDS.has(t));
-  if (skillIdx !== -1) {
-    const remainder = tokens.filter((_, i) => i !== skillIdx).join(" ");
-    return dispatch(tokens[skillIdx] as ReleaseSkill, root, config, request, stream, token, remainder);
+  // The skill and story keys may come in either order ("/release deploy PROJ-42",
+  // "/release PROJ-42 release-notes"), so the skill slot is the first token that
+  // isn't a story reference. Only that slot is checked: a skill word later in
+  // free text ("notes for what we deploy") is not a skill selection.
+  const slotIdx = tokens.findIndex((t) => !hasStoryRef(t, config));
+  const slot = slotIdx === -1 ? undefined : tokens[slotIdx];
+  if (slot && SKILL_IDS.has(slot)) {
+    const remainder = tokens.filter((_, i) => i !== slotIdx).join(" ");
+    return dispatch(slot as ReleaseSkill, root, config, request, stream, token, remainder);
   }
 
-  // An unrecognized kebab-case leading token — reject rather than guessing.
-  if (tokens[0] && SKILL_SHAPED_RE.test(tokens[0])) {
-    stream.markdown(`⛔ Unknown skill "${tokens[0]}". Valid skills: ${RELEASE_SKILLS.join(", ")}.`);
+  // An unrecognized kebab-case token in the skill slot — reject rather than guessing.
+  if (slot && SKILL_SHAPED_RE.test(slot)) {
+    stream.markdown(`⛔ Unknown skill "${slot}". Valid skills: ${RELEASE_SKILLS.join(", ")}.`);
     return;
   }
 
-  // A story reference for this project, no skill → preserve today's behaviour, run deploy in ALM mode.
+  // A story reference for this project, no skill → preserve today's behaviour, run deploy.
   if (trimmed && hasStoryRef(trimmed, config)) {
     return dispatch("deploy", root, config, request, stream, token, trimmed);
   }
@@ -108,8 +108,14 @@ async function dispatch(
   const templateKey = skillTemplateKey("release", skill);
 
   if (skill === "deploy") {
+    const inlineKeys = remainder && hasStoryRef(remainder, config) ? remainder : undefined;
+    // A LOCAL project has no PM tool, so ALM mode can't apply — always local mode.
+    if (resolveAlmTool(config) === "LOCAL") {
+      await runLocalMode(root, config, request, stream, token, templateKey, inlineKeys);
+      return templateKey;
+    }
     // An inline PM key bypasses the mode sub-picker — direct ALM invocation.
-    if (remainder && hasStoryRef(remainder, config)) {
+    if (inlineKeys) {
       await runPhaseAgent("release", config, request, stream, token, remainder, {
         defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
         templateKey,
@@ -191,9 +197,10 @@ async function runLocalMode(
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken,
-  templateKey: string
+  templateKey: string,
+  presetKeys?: string
 ): Promise<void> {
-  const keys = await vscode.window.showInputBox({
+  const keys = presetKeys ?? await vscode.window.showInputBox({
     title: "Release Agent — Local Mode",
     prompt: "Enter the story keys to release (comma or space separated)",
     placeHolder: "PROJ-101, PROJ-102",

@@ -44,7 +44,7 @@ For every ticket key in the scope's key list, gather what the ticket says the ch
 - Where a \`refinement-notes.md\` exists for the ticket (\`{{paths.artifacts}}/{KEY}/\`, or the backlog story folder in Local mode), prefer its **Gherkin acceptance criteria and business context** — that is the most reader-oriented statement of the value.
 - Do **not** fetch or infer anything from tickets that are not in the scope's key list.
 
-Then reconcile the **Keys found in the diff** against the **Agreed release scope** (both recorded in \`release-scope.md\`), and **surface every mismatch to the user rather than dropping it**:
+Then reconcile the **Keys found in the diff** against the **Agreed release scope** (both recorded in \`release-scope.md\`), and **surface every mismatch to the user rather than dropping it**. If \`release-scope.md\` already has a **Scope reconciliation** section (the deploy skill settles mismatches before scanning), reuse those resolutions and only raise what it does not cover:
 
 | Situation | Action |
 |---|---|
@@ -85,7 +85,7 @@ Write \`{{paths.artifacts}}/releases/{release-tag}/release-notes.md\`:
 \`\`\`markdown
 # Release notes — {release-tag}
 
-**Release:** {release-tag} · **Date:** {date} · **Environment:** {{salesforce.orgs.sandbox}}
+**Release:** {release-tag} · **Date:** {date} · **Environment:** {production{{#if salesforce.orgs.production}} ({{salesforce.orgs.production}}){{/if}} once it is live there; {{salesforce.orgs.sandbox}} (UAT) if it has not reached production yet — ask if unsure}
 
 ## What's changed
 

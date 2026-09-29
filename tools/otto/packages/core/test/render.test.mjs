@@ -15,6 +15,7 @@ import {
   REFINE_SKILLS,
   RELEASE_SKILLS,
   skillTemplateKey,
+  extractStoryKey,
 } from "../dist/index.js";
 
 const story = {
@@ -470,7 +471,7 @@ test("deploy stops on deleted components until the user decides — never auto-g
 
 test("the SFCA scan discards any stale results file before running", () => {
   const out = renderPrompt("release-deploy", jiraCfg);
-  const rm = out.indexOf("rm -f artifacts/releases/{release-tag}/sfca-results.json");
+  const rm = out.indexOf("rm -f artifacts/releases/{release-tag}/sfca-results*.json");
   const run = out.indexOf("sf code-analyzer run");
   assert.ok(rm !== -1 && rm < run, "stale results must be removed before the scan");
 });
@@ -502,7 +503,7 @@ test("deploy pins the working tree to the scanned snapshot before scanning and b
   assert.ok(pin !== -1 && pin < scan, "pin checks must precede the scan");
   assert.match(out, /git status --porcelain -- force-app\//);
   const uat = out.slice(out.indexOf("## Step 4 — Deploy to UAT"), out.indexOf("## Step 5"));
-  assert.match(uat, /re-run the two pin checks/, "UAT deploy must re-check the pin");
+  assert.match(uat, /re-run the pin checks from Step 2/, "UAT deploy must re-check the pin");
   const prod = out.slice(out.indexOf("## Step 6 — Production deployment"), out.indexOf("## Step 7"));
   assert.match(prod, /re-run the Step 2 pin checks/, "production deploy must re-check the pin");
 });
@@ -798,4 +799,77 @@ test("/init: statusTransitions is asked for JIRA/ADO only and persisted only whe
   assert.equal(buildOttoConfig({ ...answers, pmTool: "LOCAL", statusTransitions: "off" }).workflow, undefined);
   assert.equal(resolveExistingAnswer("statusTransitions", confirmCfg), "confirm");
   assert.equal(resolveExistingAnswer("statusTransitions", jiraCfg), "auto");
+});
+
+test("release scope stops when production has metadata the release branch lacks", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release-release-notes", cfg);
+    assert.match(out, /git log --oneline \{head\}\.\.\{base\} -- force-app\//, "scope must check for production drift");
+    assert.match(out, /hotfix would be silently reverted/);
+    assert.match(out, /never a tag/, "base must be recorded as a branch ref so a hotfix moves it");
+  }
+  const deploy = renderPrompt("release-deploy", jiraCfg);
+  const pin = deploy.slice(deploy.indexOf("### Pin the working tree"), deploy.indexOf("### Scan only the changed files"));
+  assert.match(pin, /git rev-parse \{base\}/, "pin checks must re-resolve the base");
+  assert.match(pin, /git log --oneline HEAD\.\.\{base\}/, "pin checks must re-run the drift check");
+});
+
+test("deploy reconciles the agreed scope against the diff before scanning", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  const rec = out.indexOf("### Reconcile the scope before scanning");
+  const scan = out.indexOf("sf code-analyzer run");
+  assert.ok(rec !== -1 && rec < scan, "reconciliation must precede the scan");
+  assert.match(out, /Never report it as shipped/);
+  assert.match(out, /Do not scan until the agreed scope and the diff agree/);
+  assert.match(renderPrompt("release-release-notes", jiraCfg), /reuse those resolutions/, "notes must reuse deploy's reconciliation");
+});
+
+test("SFCA engine errors are tool failures, never risk-acceptable findings", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  assert.match(out, /UnexpectedEngineError/);
+  assert.match(out, /UninstantiableEngineError/);
+  assert.match(out, /any run exits non-zero/);
+  assert.match(out, /can never be risk-accepted/);
+});
+
+test("SFCA gate blocks only on introduced findings and batches targets", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  assert.match(out, /git diff -U0 \{base\}\.\.\.\{head\} -- <file>/, "must attribute findings to changed hunks");
+  assert.match(out, /\*\*Pre-existing\*\*[\s\S]{0,200}does \*\*not\*\* block/);
+  assert.match(out, /Introduced blocking findings\*\* → ⛔ \*\*Do not proceed to Step 3/);
+  assert.match(out, /at most \*\*50 targets per run\*\*/, "targets must be batched for the Windows command-line limit");
+});
+
+test("the SFCA tier table is followed by a blank line in every gate configuration", () => {
+  for (const qualityGate of [undefined, { sfca: { failOn: "Critical", warnOn: "Critical" } }]) {
+    const out = renderPrompt("release-deploy", { ...jiraCfg, ...(qualityGate ? { qualityGate } : {}) });
+    const i = out.indexOf("| **Blocking** |");
+    const tableEnd = out.indexOf("\n\n", i);
+    assert.ok(!out.slice(i, tableEnd).includes("The gate judges"), "prose must not run into the table");
+  }
+});
+
+test("production deploy never targets the sandbox", () => {
+  const unset = renderPrompt("release-deploy", jiraCfg);
+  const prodUnset = unset.slice(unset.indexOf("## Step 6 — Production deployment"), unset.indexOf("## Step 7"));
+  assert.doesNotMatch(prodUnset, /--target-org uat/, "production must not deploy to the sandbox alias");
+  assert.match(prodUnset, /--target-org <production-org-alias>/);
+  assert.match(prodUnset, /Ask the user for the production org alias/);
+  assert.match(prodUnset, /IsSandbox/, "must verify the target is not a sandbox");
+
+  const cfg = { ...jiraCfg, salesforce: { orgs: { sandbox: "uat", production: "prod" } } };
+  assert.equal(OttoConfigSchema.safeParse(cfg).success, true);
+  const set = renderPrompt("release-deploy", cfg);
+  const prodSet = set.slice(set.indexOf("## Step 6 — Production deployment"), set.indexOf("## Step 7"));
+  assert.match(prodSet, /--target-org prod\b/);
+  assert.match(set, /deployed to production \(prod\)/);
+
+  const notes = renderPrompt("release-release-notes", jiraCfg);
+  assert.doesNotMatch(notes, /\*\*Environment:\*\* uat\s*$/m, "notes must not hardcode the sandbox as the environment");
+});
+
+test("extractStoryKey treats regex metacharacters in the project key literally", () => {
+  assert.equal(extractStoryKey("see A.B-12 today", "A.B"), "A.B-12");
+  assert.equal(extractStoryKey("see AXB-12 today", "A.B"), "");
+  assert.equal(extractStoryKey("fix PROJ-42", "PROJ"), "PROJ-42");
 });

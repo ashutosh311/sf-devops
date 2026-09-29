@@ -71,7 +71,7 @@
           },
           {
             "name": "release",
-            "description": "Release agent — deploy a release  —  usage: /release [skill] [PROJ-42]"
+            "description": "Release agent — quality-gated deploy, release notes, Salesforce seasonal-release impact  —  usage: /release [skill] [PROJ-42]"
           },
           {
             "name": "feedback",
