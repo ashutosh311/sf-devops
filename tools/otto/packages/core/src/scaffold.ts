@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { OttoConfigSchema, type OttoConfig } from "./schema.js";
+import { OttoConfigSchema, DesignDeliverableSchema, resolveAlmTool, resolveDeliverable, type DesignDeliverable, type OttoConfig } from "./schema.js";
 import { getStandards } from "./standards.js";
 import { resolveConfigDir, OTTO_CONFIG_DIR, LEGACY_CONFIG_DIR } from "./projectDir.js";
 
@@ -71,7 +71,8 @@ async function writeConfig(config: OttoConfig, root: string, result: ScaffoldRes
 
 /**
  * Settings with no `/init` question — added to config.json by hand or by a skill on
- * first use. A reconfigure rebuilds the config from the interview answers, so without
+ * first use (`salesforce.orgs.production`, `qualityGate`, `testing`, and the
+ * `design.deliverable` extras below). A reconfigure rebuilds the config from the interview answers, so without
  * this they are silently dropped. Done here, at the one place every front end
  * (VS Code, MCP, CLI) writes the config, rather than in each front end. A value
  * already present in `next` wins; a carried value that no longer validates is dropped.
@@ -92,7 +93,47 @@ export function carryForwardConfigOnlyFields(next: OttoConfig, previous: unknown
   if (!out.salesforce.orgs.production && production.success && production.data) {
     out.salesforce = { ...out.salesforce, orgs: { ...out.salesforce.orgs, production: production.data } };
   }
+
+  const extras = designDeliverableExtras(out, prev);
+  if (Object.keys(extras).length > 0) {
+    out.design = { ...out.design, deliverable: { ...extras, ...out.design?.deliverable } };
+  }
   return out;
+}
+
+/**
+ * The `design.deliverable` fields the interview never asks for (it owns only
+ * `target`, `spaceKey` and `wikiIdentifier`). Each is kept only while it still
+ * means the same thing in the new config:
+ * - `sections`, `granularity` — tool-agnostic, always kept.
+ * - `storyField` — a JIRA field key or an ADO field reference name, so kept only
+ *   when the PM tool is unchanged.
+ * - `parentPageId` — a Confluence page, kept only while the effective target stays
+ *   `confluence` in the same space.
+ * - `wikiPath` — an ADO wiki path, kept only while the effective target stays
+ *   `wiki` on the same wiki.
+ */
+function designDeliverableExtras(next: OttoConfig, prev: Partial<OttoConfig>): DesignDeliverable {
+  const parsed = DesignDeliverableSchema.safeParse(prev.design?.deliverable);
+  if (!parsed.success || !parsed.data) return {};
+  const old = parsed.data;
+
+  const prevTool = resolveAlmTool(prev as OttoConfig);
+  const nextTool = resolveAlmTool(next);
+  const before = resolveDeliverable({ ...prev, design: { deliverable: old } } as OttoConfig, prevTool);
+  const after = resolveDeliverable(next, nextTool);
+
+  const extras: DesignDeliverable = {};
+  if (old.sections) extras.sections = old.sections;
+  if (old.granularity) extras.granularity = old.granularity;
+  if (old.storyField && prevTool === nextTool) extras.storyField = old.storyField;
+  if (old.parentPageId && before.target === "confluence" && after.target === "confluence" && before.spaceKey === after.spaceKey) {
+    extras.parentPageId = old.parentPageId;
+  }
+  if (old.wikiPath && before.target === "wiki" && after.target === "wiki" && before.wikiIdentifier === after.wikiIdentifier) {
+    extras.wikiPath = old.wikiPath;
+  }
+  return extras;
 }
 
 async function readJson(file: string): Promise<unknown> {

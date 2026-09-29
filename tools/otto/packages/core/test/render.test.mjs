@@ -905,3 +905,47 @@ test("impact-assessment saves browser output to full workspace-relative paths", 
   assert.match(out, /artifacts\/06 - Reference\/sf-release-notes\/\{season-yy\}\/sections\/\{article-id\}\.md/);
   assert.match(out, /rejects `filename`/, "must fall back when the MCP version lacks filename");
 });
+
+test("reconfigure keeps design.deliverable extras only while they still apply", () => {
+  const jiraExtras = { spaceKey: "ARCH", parentPageId: "123", sections: ["Overview", "Risks"], storyField: "customfield_10050", granularity: "epic" };
+  const prevJira = { ...jiraCfg, design: { deliverable: jiraExtras } };
+  const withDesign = (cfg, deliverable) => ({ ...cfg, design: { deliverable } });
+
+  // Same tool, same space: everything carries; interview-owned fields still come from the new config.
+  const same = carryForwardConfigOnlyFields(withDesign(jiraCfg, { spaceKey: "ARCH" }), prevJira);
+  assert.deepEqual(same.design.deliverable, jiraExtras);
+  assert.equal(OttoConfigSchema.safeParse(same).success, true);
+
+  // Interview chose defaults (no design block): the extras still survive.
+  const defaults = carryForwardConfigOnlyFields(jiraCfg, { ...jiraCfg, design: { deliverable: { sections: ["A"], parentPageId: "123" } } });
+  assert.deepEqual(defaults.design.deliverable, { sections: ["A"], parentPageId: "123" });
+
+  // Space changed: the old parent page belongs to the old space, so it is dropped.
+  const moved = carryForwardConfigOnlyFields(withDesign(jiraCfg, { spaceKey: "NEW" }), prevJira);
+  assert.equal(moved.design.deliverable.parentPageId, undefined);
+  assert.equal(moved.design.deliverable.spaceKey, "NEW", "interview answer wins");
+  assert.deepEqual(moved.design.deliverable.sections, jiraExtras.sections);
+
+  // JIRA → ADO: a JIRA field key and a Confluence page mean nothing on ADO; sections still apply.
+  const toAdo = carryForwardConfigOnlyFields(adoCfg, prevJira);
+  assert.equal(toAdo.design.deliverable.storyField, undefined);
+  assert.equal(toAdo.design.deliverable.parentPageId, undefined);
+  assert.deepEqual(toAdo.design.deliverable.sections, jiraExtras.sections);
+  assert.equal(toAdo.design.deliverable.granularity, "epic");
+
+  // ADO wiki path survives only on the same wiki.
+  const prevAdo = withDesign(adoCfg, { wikiIdentifier: "Arch.wiki", wikiPath: "/Architecture", storyField: "Custom.Solution" });
+  const sameWiki = carryForwardConfigOnlyFields(withDesign(adoCfg, { wikiIdentifier: "Arch.wiki" }), prevAdo);
+  assert.equal(sameWiki.design.deliverable.wikiPath, "/Architecture");
+  assert.equal(sameWiki.design.deliverable.storyField, "Custom.Solution");
+  const otherWiki = carryForwardConfigOnlyFields(withDesign(adoCfg, { wikiIdentifier: "Other.wiki" }), prevAdo);
+  assert.equal(otherWiki.design.deliverable.wikiPath, undefined);
+
+  // Switching the target away from Confluence drops the parent page.
+  const toLocalTarget = carryForwardConfigOnlyFields(withDesign(jiraCfg, { target: "local" }), prevJira);
+  assert.equal(toLocalTarget.design.deliverable.parentPageId, undefined);
+
+  // An invalid carried block is ignored rather than written.
+  const invalid = carryForwardConfigOnlyFields(jiraCfg, { ...jiraCfg, design: { deliverable: { granularity: "sprint" } } });
+  assert.equal(invalid.design, undefined);
+});
