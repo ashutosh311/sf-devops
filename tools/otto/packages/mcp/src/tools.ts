@@ -92,10 +92,10 @@ type ScaffoldArgs = z.infer<typeof SCAFFOLD_SCHEMA>;
 
 const PROMPT_SCHEMA = z.object({
   command:     z.enum(COMMANDS).describe("SDLC command to activate"),
-  storyKey:    z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test. For refine and design, may also be an epic key or sprint to process every eligible child story; for refine's generate-stories skill it is the epic new stories are drafted under."),
+  storyKey:    z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test/release. For refine and design, may also be an epic key or sprint to process every eligible child story; for refine's generate-stories skill it is the epic new stories are drafted under."),
   projectRoot: PROJECT_ROOT_FIELD,
   skill:       z.string().optional().describe(
-    "Optional sub-skill. For `refine`: story | generate-stories | gap-analysis | data-dictionary (omit to show the menu, or with a storyKey but no skill, run `story`). For `test`: execute | write-cases | apex-unit | apex-perf | pw-setup | pw-write (omit to show the menu, or with a storyKey but no skill, run `execute`). For `discover`: synthesize | analyze | conflict-check | compose-deliverable | prep-workshop | hub-audit | whats-next | registers-to-stories (omit to show the menu)."
+    "Optional sub-skill. For `refine`: story | generate-stories | gap-analysis | data-dictionary (omit to show the menu, or with a storyKey but no skill, run `story`). For `test`: execute | write-cases | apex-unit | apex-perf | pw-setup | pw-write (omit to show the menu, or with a storyKey but no skill, run `execute`). For `release`: deploy (omit to show the menu, or with a storyKey but no skill, run `deploy`). For `discover`: synthesize | analyze | conflict-check | compose-deliverable | prep-workshop | hub-audit | whats-next | registers-to-stories (omit to show the menu)."
   ),
 });
 

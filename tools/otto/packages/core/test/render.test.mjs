@@ -13,6 +13,7 @@ import {
   PHASE_TEMPLATES,
   TEST_SKILLS,
   REFINE_SKILLS,
+  RELEASE_SKILLS,
   skillTemplateKey,
 } from "../dist/index.js";
 
@@ -303,6 +304,36 @@ test("REFINE_SKILLS all compose to a registered PHASE_TEMPLATES key", () => {
   for (const skill of REFINE_SKILLS) {
     const key = skillTemplateKey("refine", skill);
     assert.ok(PHASE_TEMPLATES[key], `no template registered for composed key "${key}"`);
+  }
+});
+
+test("RELEASE_SKILLS all compose to a registered PHASE_TEMPLATES key", () => {
+  for (const skill of RELEASE_SKILLS) {
+    const key = skillTemplateKey("release", skill);
+    assert.ok(PHASE_TEMPLATES[key], `no template registered for composed key "${key}"`);
+  }
+});
+
+test("the release menu routes to skill instructions rather than describing them inline", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release", cfg);
+    assert.match(out, /otto_prompt/, "menu must name the tool that loads a skill's instructions");
+    assert.match(out, /skill: "<chosen-skill>"/, "menu must show how to request a specific skill");
+    for (const skill of RELEASE_SKILLS) {
+      assert.ok(out.includes(`\`${skill}\``), `menu is missing the "${skill}" skill`);
+    }
+    // The menu is an index only — the deploy procedure must not leak into it.
+    assert.ok(!out.includes("sf project deploy start"), "menu must not embed the deploy procedure");
+  }
+});
+
+test("release-deploy carries the full deploy procedure and never transitions a story", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release-deploy", cfg);
+    assert.match(out, /sf project deploy start/, "deploy skill must contain the deploy command");
+    assert.match(out, /UAT sign-off/, "deploy skill must keep the sign-off gate");
+    assert.match(out, /release-notes\.md/, "deploy skill must write release notes");
+    assert.doesNotMatch(out, transitionsToDone, "release-deploy must not transition a story to Done");
   }
 });
 

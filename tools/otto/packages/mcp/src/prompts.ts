@@ -31,46 +31,42 @@ const REFINE_ARGS_SCHEMA = z.object({
 });
 type RefineArgs = z.infer<typeof REFINE_ARGS_SCHEMA>;
 
+const RELEASE_ARGS_SCHEMA = z.object({
+  storyKey: z.string().optional().describe("Story key(s) to release, e.g. PROJ-42"),
+  skill:    z.string().optional().describe(
+    "Sub-skill: deploy. Omit to show the menu (or, with a storyKey but no skill, run deploy)."
+  ),
+});
+type ReleaseArgs = z.infer<typeof RELEASE_ARGS_SCHEMA>;
+
 const PHASE_DESCRIPTIONS: Record<string, string> = {
   discover: "Discovery agent — maps requirements, identifies unknowns, drafts epics and stories",
   refine:   "Refinement agent — menu-driven: refine a story (AC, open questions) for a JIRA story/epic/sprint, generate new candidate stories under an epic from transcripts/files, run a gap analysis reporting missing stories under an epic, or build the shared data dictionary",
   design:   "Technical design agent — solution approach, data model, component breakdown, sub-tasks for a JIRA story, epic, or sprint (epic/sprint ⇒ designs every eligible child story + publishes an epic synthesis design)",
   build:    "Build agent — scaffolds Apex, LWC, config metadata; reviews with you; deploys to sandbox",
   test:     "Test agent — menu-driven: execute AC in the sandbox, author test cases in Xray/Zephyr/ADO Test Plans, extend Apex unit + performance tests, or set up and write Playwright E2E tests",
-  release:  "Release agent — deployment notes, checklist, JIRA transitions",
+  release:  "Release agent — menu-driven: deploy a release (UAT, sign-off, production, release notes)",
 };
 
 // Phases that take an optional storyKey argument (refine + test move out — they also take a skill)
 const PHASES_WITH_KEY = ["design", "build"] as const;
 
-// Phases with no arguments beyond the discover skill menu (discover) or none at all (release)
-const PHASES_STORYLESS = ["release"] as const;
-
 export function registerPrompts(server: McpServer, mcpVersion: string): void {
   registerStatic(server, "about", "What is this tool, how to use it, and all available commands", mcpVersion);
   registerStatic(server, "init", "Set up and scaffold the SDLC for this Salesforce project", mcpVersion);
 
-  for (const phase of PHASES_STORYLESS) {
-    registerStoryless(server, phase, mcpVersion);
-  }
   registerDiscover(server, mcpVersion);
   for (const phase of PHASES_WITH_KEY) {
     registerWithStoryKey(server, phase, mcpVersion);
   }
   registerRefine(server, mcpVersion);
   registerTest(server, mcpVersion);
+  registerRelease(server, mcpVersion);
 }
 
 function registerStatic(server: McpServer, command: string, description: string, mcpVersion: string): void {
   server.prompt(command, description, async () => {
     const { text } = await renderCommand(command, mcpVersion);
-    return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
-  });
-}
-
-function registerStoryless(server: McpServer, phase: string, mcpVersion: string): void {
-  server.prompt(phase, PHASE_DESCRIPTIONS[phase], async () => {
-    const { text } = await renderCommand(phase, mcpVersion);
     return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
   });
 }
@@ -118,6 +114,18 @@ function registerTest(server: McpServer, mcpVersion: string): void {
     TEST_ARGS_SCHEMA.shape,
     async ({ storyKey, skill }: TestArgs) => {
       const { text } = await renderCommand("test", mcpVersion, storyKey, undefined, skill);
+      return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
+    }
+  );
+}
+
+function registerRelease(server: McpServer, mcpVersion: string): void {
+  server.prompt(
+    "release",
+    PHASE_DESCRIPTIONS.release,
+    RELEASE_ARGS_SCHEMA.shape,
+    async ({ storyKey, skill }: ReleaseArgs) => {
+      const { text } = await renderCommand("release", mcpVersion, storyKey, undefined, skill);
       return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
     }
   );

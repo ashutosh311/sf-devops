@@ -11,6 +11,7 @@ import { designTemplate } from "./templates/design.js";
 import { buildTemplate } from "./templates/build.js";
 import { testTemplate } from "./templates/test.js";
 import { releaseTemplate } from "./templates/release.js";
+import { releaseDeployTemplate } from "./templates/release-deploy.js";
 import { dataDictionaryTemplate } from "./templates/data-dictionary.js";
 import { discoverAdvisoryTemplate } from "./templates/discover-advisory.js";
 import { testExecuteTemplate } from "./templates/test-execute.js";
@@ -51,6 +52,8 @@ export const PHASE_TEMPLATES: Record<string, string> = {
   "refine-story": refineStoryTemplate,
   "refine-generate-stories": refineGenerateStoriesTemplate,
   "refine-gap-analysis": refineGapAnalysisTemplate,
+  // Release sub-skills. Same hyphenated-key rule as the test-* keys below.
+  "release-deploy": releaseDeployTemplate,
   // Test sub-skills. Hyphenated (never `:`) — these keys become filenames in
   // instructions.zip via scripts/package-instructions.mjs, and `:` is illegal
   // on Windows. Composed with skillTemplateKey() below; never write one of
@@ -75,6 +78,12 @@ export type TestSkill = (typeof TEST_SKILLS)[number];
  *  Exported so every front end validates against the same list. */
 export const REFINE_SKILLS = ["story", "generate-stories", "gap-analysis"] as const;
 export type RefineSkill = (typeof REFINE_SKILLS)[number];
+
+/** Sub-skills the `release` phase exposes as a menu. `deploy` is the implicit
+ *  default (a bare `#otto/release PROJ-42` runs it), preserving pre-menu behaviour.
+ *  Exported so every front end validates against the same list. */
+export const RELEASE_SKILLS = ["deploy"] as const;
+export type ReleaseSkill = (typeof RELEASE_SKILLS)[number];
 
 /** Composes a sub-skill registry key. Hyphen separator is required — see the
  *  Windows-filename note on PHASE_TEMPLATES above. */

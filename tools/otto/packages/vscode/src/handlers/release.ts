@@ -1,25 +1,40 @@
 import * as vscode from "vscode";
-import { resolveAlmTool, resolveProjectKey, type OttoConfig } from "@otto/core";
+import { resolveAlmTool, resolveProjectKey, skillTemplateKey, RELEASE_SKILLS, type OttoConfig, type ReleaseSkill } from "@otto/core";
 import { getWorkspaceRoot, loadConfig } from "../config";
 import { runPhaseAgent } from "./run-phase-agent";
 import { mcpDisplayName } from "./agent-defer";
 
 /**
- * Release agent — menu-first, mirroring Build/Design/Refine: an explicit
- * Local/ALM mode gate up front. Every release deploys via the Salesforce DX
- * MCP and (in ALM mode) queries/transitions the PM tool — a bare
+ * Release agent — skill-first, mirroring Test/Refine: an explicit skill picker
+ * up front. `deploy` keeps the Local/ALM mode gate it always had. Every skill
+ * deploys via the Salesforce DX MCP and/or queries the PM tool — a bare
  * `model.sendRequest` has no tool access, so this always defers to a Copilot
  * Chat agent-mode session, unlike the generic fallback handler it replaces.
  */
 
 const INLINE_KEY_RE = /[A-Za-z][A-Za-z0-9]+-\d+/;
 
+// A lowercase, kebab-case token that looks like an attempted skill id but isn't
+// a real one — rejected explicitly so a typo can't fall through to the
+// ticket-only shortcut below and silently run `deploy`.
+const SKILL_SHAPED_RE = /^[a-z]+(-[a-z]+)+$/;
+
+interface SkillMenuItem extends vscode.QuickPickItem {
+  skill: ReleaseSkill;
+}
+
+const MENU: SkillMenuItem[] = [
+  { skill: "deploy", label: "$(rocket) Deploy a release", description: "UAT deploy, sign-off, production deploy, release notes" },
+];
+
+const SKILL_IDS = new Set<string>(RELEASE_SKILLS);
+
 export async function handleRelease(
   request: vscode.ChatRequest,
   _context: vscode.ChatContext,
   stream: vscode.ChatResponseStream,
   token: vscode.CancellationToken
-): Promise<void> {
+): Promise<string | undefined> {
   const root = getWorkspaceRoot();
   if (!root) {
     stream.markdown("⛔ No workspace folder open. Open your project folder in VS Code first.");
@@ -32,13 +47,69 @@ export async function handleRelease(
     return;
   }
 
-  // Inline PM key(s) → skip the mode menu, direct ALM invocation.
-  if (INLINE_KEY_RE.test(request.prompt)) {
-    return runPhaseAgent("release", config, request, stream, token, request.prompt.trim(), {
-      defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
-    });
+  const trimmed = request.prompt.trim();
+  const [firstToken, ...rest] = trimmed.split(/\s+/);
+
+  // Leading skill token (e.g. "/release deploy PROJ-42") → use it, strip it from the message.
+  if (firstToken && SKILL_IDS.has(firstToken)) {
+    return dispatch(firstToken as ReleaseSkill, root, config, request, stream, token, rest.join(" ").trim());
   }
 
+  if (firstToken && SKILL_SHAPED_RE.test(firstToken)) {
+    stream.markdown(`⛔ Unknown skill "${firstToken}". Valid skills: ${RELEASE_SKILLS.join(", ")}.`);
+    return;
+  }
+
+  // Inline PM key(s), no skill → preserve today's behaviour, run deploy in ALM mode.
+  if (trimmed && INLINE_KEY_RE.test(trimmed)) {
+    return dispatch("deploy", root, config, request, stream, token, trimmed);
+  }
+
+  const pick = await vscode.window.showQuickPick(MENU, {
+    title: "Release Agent",
+    placeHolder: "What would you like to do?",
+    ignoreFocusOut: true,
+  });
+  if (!pick) { stream.markdown("Release cancelled."); return; }
+
+  return dispatch(pick.skill, root, config, request, stream, token, "");
+}
+
+/** Routes to the right skill flow and returns the composed usage-tracking key. */
+async function dispatch(
+  skill: ReleaseSkill,
+  root: string,
+  config: OttoConfig,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken,
+  remainder: string
+): Promise<string> {
+  const templateKey = skillTemplateKey("release", skill);
+
+  // An inline PM key bypasses the mode sub-picker — direct ALM invocation.
+  if (remainder && INLINE_KEY_RE.test(remainder)) {
+    await runPhaseAgent("release", config, request, stream, token, remainder, {
+      defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
+      templateKey,
+    });
+    return templateKey;
+  }
+
+  await runDeployModePicker(root, config, request, stream, token, templateKey);
+  return templateKey;
+}
+
+// ── Deploy skill — Local / ALM mode sub-picker ────────────────────────────────
+
+async function runDeployModePicker(
+  root: string,
+  config: OttoConfig,
+  request: vscode.ChatRequest,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken,
+  templateKey: string
+): Promise<void> {
   const modePick = await vscode.window.showQuickPick(
     [
       { label: "$(folder) Local mode", description: "release notes from local artifacts — no PM tool required", value: "local" as const },
@@ -49,9 +120,9 @@ export async function handleRelease(
   if (!modePick) { stream.markdown("Release cancelled."); return; }
 
   if (modePick.value === "local") {
-    return runLocalMode(root, config, request, stream, token);
+    return runLocalMode(root, config, request, stream, token, templateKey);
   }
-  return runAlmMode(root, config, request, stream, token);
+  return runAlmMode(root, config, request, stream, token, templateKey);
 }
 
 // ── Local mode ────────────────────────────────────────────────────────────────
@@ -61,7 +132,8 @@ async function runLocalMode(
   config: OttoConfig,
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  templateKey: string
 ): Promise<void> {
   const keys = await vscode.window.showInputBox({
     title: "Release Agent — Local Mode",
@@ -78,6 +150,7 @@ async function runLocalMode(
 
   return runPhaseAgent("release", config, request, stream, token, userMessage, {
     defer: { root, phaseLabel: "Release", mode: "local", mcpName: "Salesforce DX" },
+    templateKey,
   });
 }
 
@@ -88,7 +161,8 @@ async function runAlmMode(
   config: OttoConfig,
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  templateKey: string
 ): Promise<void> {
   const almTool = resolveAlmTool(config);
   const projectKey = resolveProjectKey(config);
@@ -120,5 +194,6 @@ async function runAlmMode(
 
   return runPhaseAgent("release", config, request, stream, token, userMessage, {
     defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(almTool) },
+    templateKey,
   });
 }

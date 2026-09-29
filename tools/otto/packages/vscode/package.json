@@ -71,7 +71,7 @@
           },
           {
             "name": "release",
-            "description": "Run the release agent for a set of stories"
+            "description": "Release agent — deploy a release  —  usage: /release [skill] [PROJ-42]"
           },
           {
             "name": "feedback",

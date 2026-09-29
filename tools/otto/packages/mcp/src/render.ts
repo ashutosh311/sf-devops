@@ -3,6 +3,7 @@ import {
   CACHE_CURRENT_DIR,
   TEST_SKILLS,
   REFINE_SKILLS,
+  RELEASE_SKILLS,
   skillTemplateKey,
   renderDiscoverAdvisoryPrompt,
   DISCOVER_ADVISORY_SKILLS,
@@ -26,6 +27,7 @@ export const COMMAND_SKILLS: Record<string, readonly string[]> = {
   test: TEST_SKILLS,
   refine: [...REFINE_SKILLS, "data-dictionary"],
   discover: DISCOVER_ADVISORY_SKILLS,
+  release: RELEASE_SKILLS,
 };
 
 function isDiscoverAdvisorySkill(skill: string): skill is DiscoverAdvisorySkill {
@@ -43,6 +45,7 @@ export function resolveSkill(command: string, storyKey?: string, skill?: string)
   if (skill) return skill;
   if (command === "test" && storyKey) return "execute";
   if (command === "refine" && storyKey) return "story";
+  if (command === "release" && storyKey) return "deploy";
   return undefined;
 }
 

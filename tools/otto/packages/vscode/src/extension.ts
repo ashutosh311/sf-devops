@@ -63,7 +63,7 @@ export function activate(context: vscode.ExtensionContext): void {
       stream: vscode.ChatResponseStream,
       token: vscode.CancellationToken
     ) => {
-      // Set only by handleTest, when it resolves a sub-skill — lets
+      // Set only by handleTest/handleRefine/handleRelease, when they resolve a sub-skill — lets
       // recordCommandUsage report "test-apex-unit"-style granularity instead
       // of every Test skill collapsing into a single "test" row.
       let usageCommandOverride: string | undefined;
@@ -86,7 +86,7 @@ export function activate(context: vscode.ExtensionContext): void {
         } else if (request.command === "test") {
           usageCommandOverride = await handleTest(request, chatContext, stream, token);
         } else if (request.command === "release") {
-          await handleRelease(request, chatContext, stream, token);
+          usageCommandOverride = await handleRelease(request, chatContext, stream, token);
         } else {
           await handleAgent(request, chatContext, stream, token);
         }
