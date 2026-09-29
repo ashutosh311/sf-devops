@@ -19,8 +19,9 @@ The release scope is the authoritative list of what changed — every later step
    - **Either SHA differs, or the file records no SHAs** → the branch has moved (for example, a fix pushed after a blocked gate). The file is **stale**: regenerate it from step 3, carrying over its **Agreed release scope** section. Never reuse a stale file — files added since it was written would skip the quality gate.
 3. Otherwise determine the two refs and **confirm them with the user before diffing**:
    - **Head** — the release branch (default: the current branch).
-   - **Base** — default \`develop\`. If the diff against \`develop\` is empty, or the user prefers a tag-based scope, offer \`main\` (what production has) or the previous release tag instead (\`git describe --tags --abbrev=0 <head>\`, or ask for the tag).
-   > "I'll diff **{head}** against **{base}**. Is that the right scope for this release?"
+   - **Base** — default: **what production has**, i.e. \`origin/main\` (or \`main\` if there is no remote). Run \`git describe --tags --abbrev=0 origin/main\`: if the latest release tag points at the tip of \`main\`, name the base by that tag (same commit, easier to read); if \`main\` has moved past the tag (e.g. a hotfix), use \`main\`; if there are no tags, use \`main\`.
+   - Do **not** default to \`develop\`. A \`release/*\` branch is cut from \`develop\`, so \`develop...{head}\` holds only the fixes made after the cut — the feature work that makes up the release would be neither scanned nor in the notes, yet still deployed. Offer \`develop\` only if the user explicitly wants a narrower, feature-only scope, and say what it leaves out.
+   > "I'll diff **{head}** against **{base}** (what production has). Is that the right scope for this release?"
 4. Run, and keep the output:
    \`\`\`bash
    git fetch --all --prune

@@ -388,7 +388,7 @@ test("release-notes builds from the git diff + tickets, in the agreed shape, and
     assert.match(out, /Fixed/);
     assert.match(out, /Improved/);
     assert.match(out, /Technical appendix/, "must include the technical appendix");
-    assert.match(out, /never transitions a ticket/i, "must disclaim ticket transitions");
+    assert.match(out, /never transitions or edits a ticket/i, "must disclaim ticket transitions");
     assert.doesNotMatch(out, transitionsToDone, "release-notes must not transition a story");
   }
   assert.match(renderPrompt("release-release-notes", jiraCfg), /searchJiraIssuesUsingJql/);
@@ -526,6 +526,24 @@ test("ADO accepts bare #123 only on Azure Repos; LOCAL matches second-level stor
   const local = renderPrompt("release-release-notes", localCfg);
   assert.match(local, /stories\/\{EPIC-ID\}\/\{STORY-ID\}\//, "story IDs are the second folder level");
   assert.doesNotMatch(local, /stories\/\*\/`/, "must not list the epic level as stories");
+});
+
+test("release scope defaults the base to what production has, not develop", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release-release-notes", cfg);
+    assert.match(out, /default: \*\*what production has\*\*, i\.e\. `origin\/main`/);
+    assert.match(out, /Do \*\*not\*\* default to `develop`/);
+    assert.doesNotMatch(out, /Base\*\* — default `develop`/);
+  }
+});
+
+test("release-notes boundary permits the shared scope file it must write", () => {
+  const out = renderPrompt("release-release-notes", jiraCfg);
+  const boundary = out.slice(out.indexOf("⛔ **Boundary.**"), out.indexOf("## Environment Check"));
+  assert.match(boundary, /release-scope\.md/, "boundary must allow writing release-scope.md");
+  assert.match(boundary, /release-notes\.md/);
+  assert.match(boundary, /git fetch/);
+  assert.match(boundary, /never touches `force-app\/`/);
 });
 
 test("the environment check lists the Release skills' extra prerequisites", () => {

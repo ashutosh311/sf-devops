@@ -123,7 +123,7 @@ async function dispatch(
   const userMessage = remainder || describeSkill(skill);
 
   if (skill === "release-notes") {
-    // Reads git and (in ALM mode) the PM tool; writes only the release-notes artifact.
+    // Reads git and (in ALM mode) the PM tool; writes only release-scope.md and release-notes.md.
     // A LOCAL project has no PM tool, so it runs in local mode with no MCP to verify.
     const almTool = resolveAlmTool(config);
     await runPhaseAgent("release", config, request, stream, token, userMessage, {
