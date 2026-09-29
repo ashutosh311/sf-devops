@@ -16,6 +16,7 @@ import {
   RELEASE_SKILLS,
   skillTemplateKey,
   extractStoryKey,
+  carryForwardConfigOnlyFields,
 } from "../dist/index.js";
 
 const story = {
@@ -834,8 +835,12 @@ test("SFCA engine errors are tool failures, never risk-acceptable findings", () 
 
 test("SFCA gate blocks only on introduced findings and batches targets", () => {
   const out = renderPrompt("release-deploy", jiraCfg);
-  assert.match(out, /git diff -U0 \{base\}\.\.\.\{head\} -- <file>/, "must attribute findings to changed hunks");
-  assert.match(out, /\*\*Pre-existing\*\*[\s\S]{0,200}does \*\*not\*\* block/);
+  assert.match(out, /git worktree add --detach <tmp>\/otto-sfca-base \{base\}/, "must baseline-scan the base revision");
+  assert.match(out, /git worktree remove --force <tmp>\/otto-sfca-base/);
+  assert.match(out, /engine, rule, file and message/, "must match findings on identity, not line");
+  assert.match(out, /Do not decide from line numbers/);
+  assert.match(out, /\*\*pre-existing\*\*[\s\S]{0,200}does \*\*not\*\* block/);
+  assert.doesNotMatch(out, /git diff -U0/, "hunk membership must not decide provenance");
   assert.match(out, /Introduced blocking findings\*\* → ⛔ \*\*Do not proceed to Step 3/);
   assert.match(out, /at most \*\*50 targets per run\*\*/, "targets must be batched for the Windows command-line limit");
 });
@@ -872,4 +877,31 @@ test("extractStoryKey treats regex metacharacters in the project key literally",
   assert.equal(extractStoryKey("see A.B-12 today", "A.B"), "A.B-12");
   assert.equal(extractStoryKey("see AXB-12 today", "A.B"), "");
   assert.equal(extractStoryKey("fix PROJ-42", "PROJ"), "PROJ-42");
+});
+
+test("reconfigure keeps config-file-only settings that the interview never asks for", () => {
+  const previous = {
+    ...jiraCfg,
+    salesforce: { orgs: { sandbox: "uat", production: "prod" } },
+    qualityGate: { sfca: { failOn: "Critical" } },
+    testing: { playwright: { enabled: true, targetOrg: "e2e" } },
+  };
+  const rebuilt = { ...jiraCfg, salesforce: { orgs: { sandbox: "uat2" } } };
+  const out = carryForwardConfigOnlyFields(rebuilt, previous);
+  assert.equal(out.salesforce.orgs.production, "prod");
+  assert.equal(out.salesforce.orgs.sandbox, "uat2", "interview answers still win");
+  assert.deepEqual(out.qualityGate, previous.qualityGate);
+  assert.deepEqual(out.testing, previous.testing);
+  assert.equal(OttoConfigSchema.safeParse(out).success, true);
+
+  const invalid = carryForwardConfigOnlyFields(rebuilt, { qualityGate: { sfca: { failOn: "Severe" } } });
+  assert.equal(invalid.qualityGate, undefined, "an invalid carried value is dropped, not written");
+  assert.deepEqual(carryForwardConfigOnlyFields(rebuilt, undefined), rebuilt);
+});
+
+test("impact-assessment saves browser output to full workspace-relative paths", () => {
+  const out = renderPrompt("release-impact-assessment", jiraCfg);
+  assert.match(out, /artifacts\/06 - Reference\/sf-release-notes\/\{season-yy\}\/_toc\.md/);
+  assert.match(out, /artifacts\/06 - Reference\/sf-release-notes\/\{season-yy\}\/sections\/\{article-id\}\.md/);
+  assert.match(out, /rejects `filename`/, "must fall back when the MCP version lacks filename");
 });

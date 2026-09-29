@@ -87,7 +87,7 @@ Do not scan or deploy an unpinned tree.
 1. From \`release-scope.md\`, take the changed files with status **A** or **M** under \`{{paths.forceApp}}/\` (status **D** files are deleted and can't be scanned; a renamed file appears as **D** for the old path plus **A** for the new one, so the new path is scanned). If there are none, record "no scannable changes" in the report and go to Step 3.
 2. Scan them. The whole source directory is the *workspace* (so rules that need surrounding code still resolve) and only the changed files are the *targets*. Pass at most **50 targets per run**: a single command line listing hundreds of paths exceeds the Windows command-line limit. For more files, run one batch per 50 and number the results files (\`sfca-results-1.json\`, \`sfca-results-2.json\`, …):
    \`\`\`bash
-   rm -f {{paths.artifacts}}/releases/{release-tag}/sfca-results*.json   # never read a stale result from an earlier run
+   rm -f {{paths.artifacts}}/releases/{release-tag}/sfca-results*.json {{paths.artifacts}}/releases/{release-tag}/sfca-baseline*.json   # never read a stale result from an earlier run
    sf code-analyzer run --workspace {{paths.forceApp}} --target <changed-file-1> --target <changed-file-2> ... \\
      --output-file {{paths.artifacts}}/releases/{release-tag}/sfca-results-1.json --view table
    \`\`\`
@@ -106,10 +106,21 @@ Combine every results file. Each has \`violationCounts\` (\`sev1\` Critical, \`s
 {{#if qualityGate.sfca.warnOn}}| **Warning** | after {{qualityGate.sfca.failOnLevel}} through {{qualityGate.sfca.warnOnLevel}} ({{qualityGate.sfca.warnOn}} and above, but below {{qualityGate.sfca.failOn}}) | \`qualityGate.sfca.warnOn\` (default Moderate) | ⚠️ Report; do not block |
 {{/if}}
 
-The gate judges **what this release introduces**, not the legacy code it happens to touch. A modified file is scanned whole, so for every violation at a blocking severity decide whether the release introduced it:
+The gate judges **what this release introduces**, not the legacy code it happens to touch. A modified file is scanned whole, so a blocking-severity finding in one may already be in production. Decide by comparing against a **baseline scan of the same files at \`{base}\`**. Do not decide from line numbers: many rules (complexity, method length, parameter count) report on the method or class declaration, so a violation caused by lines added inside an unchanged method is reported on an unchanged line.
 
-- **Introduced** — the file has status **A**, or the violation's line falls inside a changed hunk of the file. Get the hunks with \`git diff -U0 {base}...{head} -- <file>\`: each \`@@ -a,b +c,d @@\` header covers new-file lines \`c\` to \`c+d-1\`. Introduced findings **block**.
-- **Pre-existing** — the violation's line is outside every changed hunk. It was already in production. Report it in its own section so the team can see the debt. It does **not** block.
+1. Findings in files with status **A** are **introduced** (a renamed file is listed as **A**, so its findings count as introduced too).
+2. List the **M** files that have at least one blocking-severity finding. If there are none, skip to the decision.
+3. Scan those files as they are at \`{base}\`, in a temporary worktree outside the repository. Run from the repository root, as for the main scan, so the same \`code-analyzer.yml\` applies. Use the same 50-target batching:
+   \`\`\`bash
+   git worktree add --detach <tmp>/otto-sfca-base {base}
+   sf code-analyzer run --workspace <tmp>/otto-sfca-base/{{paths.forceApp}} --target <tmp>/otto-sfca-base/<modified-file-1> ... \\
+     --output-file {{paths.artifacts}}/releases/{release-tag}/sfca-baseline-1.json
+   git worktree remove --force <tmp>/otto-sfca-base
+   \`\`\`
+   The tool-failure rules above apply to this run too. Always remove the worktree, including after a failure.
+4. Match each blocking-severity finding in the release scan against the baseline by **engine, rule, file and message**. Compare files by their path relative to the repository (strip the \`<tmp>/otto-sfca-base/\` prefix) and ignore line numbers, which shift. Each baseline finding cancels at most one matching release finding.
+   - **Unmatched** → **introduced**. It **blocks**. Messages usually carry the measured value (e.g. a complexity score), so a finding that got worse does not match its baseline and counts as introduced.
+   - **Matched** → **pre-existing**. It was already in production. Report it in its own section so the team can see the debt. It does **not** block.
 
 Write \`{{paths.artifacts}}/releases/{release-tag}/quality-gate.md\` with: the refs scanned, the files targeted, the counts per severity, every **blocking** finding (rule, \`file:line\`, message), the **pre-existing** blocking-severity findings (same fields){{#if qualityGate.sfca.warnOn}}, every **warning** finding (same fields){{/if}}, and the decision — **PASS**{{#if qualityGate.sfca.warnOn}}, **PASS WITH WARNINGS**{{/if}}, **BLOCKED**, or **RISK-ACCEPTED**.
 

@@ -48,7 +48,7 @@ Everything is stored under \`{{paths.artifacts}}/06 - Reference/sf-release-notes
 
 - **If a browser tool is available** (e.g. the Playwright MCP — tools named \`browser_*\`): use it. \`help.salesforce.com\` is a JavaScript application that renders inside shadow DOM, so a plain HTTP fetch returns an empty shell — that is why a browser is needed.
   1. Navigate to the URL, then wait until the page title stops being the placeholder \`Salesforce Help | Article\` (it takes a few seconds to become e.g. \`Salesforce Winter '27 Release Notes | Salesforce Help\`). Confirm the title names the expected release.
-  2. **Table of contents** — run this with \`browser_evaluate\` on the root notes page and save the result to \`_toc.md\` (use the tool's \`filename\` option so it does not flood context). It returns unique \`[title, article id]\` pairs:
+  2. **Table of contents** — run this with \`browser_evaluate\` on the root notes page and save the result to \`{{paths.artifacts}}/06 - Reference/sf-release-notes/{season-yy}/_toc.md\`. Use the tool's \`filename\` option, giving that full path (it resolves relative paths against the workspace root, not the materials folder), so the result does not flood context. If your Playwright MCP version rejects \`filename\`, take the returned text and write the file with your file-writing tool. The function returns unique \`[title, article id]\` pairs:
      \`\`\`js
      () => {
        const seen = new Map();
@@ -64,7 +64,7 @@ Everything is stored under \`{{paths.artifacts}}/06 - Reference/sf-release-notes
        return [...seen].map(([id, t]) => '- ' + t + ' — ' + id).join('\\n');
      }
      \`\`\`
-  3. **A section** (used in Step 4) — navigate to \`https://help.salesforce.com/s/articleView?id={article-id}&release={NNN}&type=5\`, wait for the title as above, then run this and save with \`filename\` to \`sections/{article-id}.md\`. It extracts only the article body (the page chrome is ~90% of the raw text):
+  3. **A section** (used in Step 4) — navigate to \`https://help.salesforce.com/s/articleView?id={article-id}&release={NNN}&type=5\`, wait for the title as above, then run this and save it the same way to \`{{paths.artifacts}}/06 - Reference/sf-release-notes/{season-yy}/sections/{article-id}.md\` (the full path in \`filename\`, or the file-writing fallback). It extracts only the article body (the page chrome is ~90% of the raw text):
      \`\`\`js
      () => {
        const find = (root) => {

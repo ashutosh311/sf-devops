@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import type { OttoConfig } from "./schema.js";
+import { OttoConfigSchema, type OttoConfig } from "./schema.js";
 import { getStandards } from "./standards.js";
 import { resolveConfigDir, OTTO_CONFIG_DIR, LEGACY_CONFIG_DIR } from "./projectDir.js";
 
@@ -63,9 +63,44 @@ async function writeConfig(config: OttoConfig, root: string, result: ScaffoldRes
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, "config.json");
   const existed = await fileExists(file);
-  await fs.writeFile(file, JSON.stringify(config, null, 2), "utf-8");
+  const toWrite = existed ? carryForwardConfigOnlyFields(config, await readJson(file)) : config;
+  await fs.writeFile(file, JSON.stringify(toWrite, null, 2), "utf-8");
   const label = path.basename(dir) === LEGACY_CONFIG_DIR ? ".sdlc/config.json" : ".otto/config.json";
   (existed ? result.updated : result.created).push(label);
+}
+
+/**
+ * Settings with no `/init` question — added to config.json by hand or by a skill on
+ * first use. A reconfigure rebuilds the config from the interview answers, so without
+ * this they are silently dropped. Done here, at the one place every front end
+ * (VS Code, MCP, CLI) writes the config, rather than in each front end. A value
+ * already present in `next` wins; a carried value that no longer validates is dropped.
+ */
+export function carryForwardConfigOnlyFields(next: OttoConfig, previous: unknown): OttoConfig {
+  if (!previous || typeof previous !== "object") return next;
+  const prev = previous as Partial<OttoConfig>;
+  const shape = OttoConfigSchema.shape;
+  const out: OttoConfig = { ...next };
+
+  const testing = shape.testing.safeParse(prev.testing);
+  if (out.testing === undefined && testing.success && testing.data) out.testing = testing.data;
+
+  const qualityGate = shape.qualityGate.safeParse(prev.qualityGate);
+  if (out.qualityGate === undefined && qualityGate.success && qualityGate.data) out.qualityGate = qualityGate.data;
+
+  const production = shape.salesforce.shape.orgs.shape.production.safeParse(prev.salesforce?.orgs?.production);
+  if (!out.salesforce.orgs.production && production.success && production.data) {
+    out.salesforce = { ...out.salesforce, orgs: { ...out.salesforce.orgs, production: production.data } };
+  }
+  return out;
+}
+
+async function readJson(file: string): Promise<unknown> {
+  try {
+    return JSON.parse(await fs.readFile(file, "utf-8"));
+  } catch {
+    return undefined;
+  }
 }
 
 async function writeArtifactDirs(config: OttoConfig, root: string, result: ScaffoldResult): Promise<void> {
