@@ -52,6 +52,17 @@ Confirm all listed stories have their PRs merged to \`develop\`. If any are outs
 Run Salesforce Code Analyzer (SFCA) against **what is actually in this release** before anything is deployed. This is a gate, not a report: findings at or above the configured severity block the deploy.
 
 ${releaseScopeDiffFragment}
+### Pin the working tree to the scanned snapshot
+
+The deploys in Steps 4 and 6 send the **working tree** of \`{{paths.forceApp}}/\`, not a git ref. The gate only means something if what is deployed is exactly what was scanned, so before scanning:
+
+\`\`\`bash
+git rev-parse HEAD                              # must equal the head SHA recorded in release-scope.md
+git status --porcelain -- {{paths.forceApp}}/   # must print nothing
+\`\`\`
+
+If \`HEAD\` is not the recorded head SHA, or there are uncommitted changes under \`{{paths.forceApp}}/\`, stop — ask the user to check out the head ref (or commit/stash the local changes), then regenerate the scope. Do not scan or deploy an unpinned tree.
+
 ### Scan only the changed files
 
 1. From \`release-scope.md\`, take the changed files with status **A** or **M** under \`{{paths.forceApp}}/\` (status **D** files are deleted and can't be scanned; a renamed file appears as **D** for the old path plus **A** for the new one, so the new path is scanned). If there are none, record "no scannable changes" in the report and go to Step 3.
@@ -102,7 +113,9 @@ Write \`{{paths.artifacts}}/releases/{release-tag}/quality-gate.md\` with: the r
 sf project deploy start --source-dir {{paths.forceApp}}/ --target-org {{salesforce.orgs.sandbox}}
 \`\`\`
 
-If the Step 3 decision was a destructive-changes manifest, append its \`--pre-destructive-changes\` / \`--post-destructive-changes\` flag(s) to this command. If deployment fails, diagnose and fix. Do not proceed with a failed UAT deployment.
+**Before running it**, re-run the two pin checks from Step 2. If \`HEAD\` has moved or \`{{paths.forceApp}}/\` has uncommitted changes, the gate no longer covers what would be deployed — ⛔ go back to Step 2 (the scope will be regenerated and re-scanned).
+
+If the Step 3 decision was a destructive-changes manifest, append its \`--pre-destructive-changes\` / \`--post-destructive-changes\` flag(s) to this command. If deployment fails, diagnose it. A fix that changes metadata is a code change — commit it and ⛔ go back to Step 2 so the fix is scoped and gated too. Do not proceed with a failed UAT deployment.
 
 ---
 
@@ -116,7 +129,7 @@ Request business sign-off on the deployed changes in {{salesforce.orgs.sandbox}}
 
 ## Step 6 — Production deployment
 
-Once UAT sign-off is confirmed (add the same destructive-changes flag(s) if Step 3 chose a manifest; if it chose manual removal, remind the user the production removals are still theirs to do):
+Once UAT sign-off is confirmed, re-run the Step 2 pin checks — production must receive exactly what was gated and signed off in UAT; if anything moved, ⛔ stop and go back to Step 2. Then (add the same destructive-changes flag(s) if Step 3 chose a manifest; if it chose manual removal, remind the user the production removals are still theirs to do):
 
 \`\`\`bash
 sf project deploy start --source-dir {{paths.forceApp}}/ --target-org {{salesforce.orgs.sandbox}}

@@ -37,11 +37,11 @@ For every ticket key in the scope's key list, gather what the ticket says the ch
 {{#eq almTool "ADO"}}
 - Call \`get_work_item\` (Azure DevOps MCP) for each work item ID. Read the title, work item type, description, acceptance criteria, and parent.
 {{else}}{{#eq almTool "LOCAL"}}
-- **Local mode (no PM tool).** Read the local artifacts instead: \`{{paths.artifacts}}/04 - Backlog/stories/\` and \`{{paths.artifacts}}/{KEY}/\`. If the PM MCP happens to be connected, you may use it as well.
+- **Local mode (no PM tool).** Read the local artifacts instead — each story's folder \`{{paths.artifacts}}/04 - Backlog/stories/{EPIC-ID}/{STORY-ID}/\` (its story file and \`refinement-notes.md\`). If the PM MCP happens to be connected, you may use it as well.
 {{else}}
 - Call \`searchJiraIssuesUsingJql\` (Atlassian MCP) with \`key in ({KEY-1}, {KEY-2}, ...)\`, requesting summary, description, issuetype, labels and parent — then \`getJiraIssue\` for any ticket whose acceptance criteria are not in the description.
 {{/eq}}{{/eq}}
-- Where \`{{paths.artifacts}}/{KEY}/refinement-notes.md\` exists, prefer its **Gherkin acceptance criteria and business context** — that is the most reader-oriented statement of the value.
+- Where a \`refinement-notes.md\` exists for the ticket (\`{{paths.artifacts}}/{KEY}/\`, or the backlog story folder in Local mode), prefer its **Gherkin acceptance criteria and business context** — that is the most reader-oriented statement of the value.
 - Do **not** fetch or infer anything from tickets that are not in the scope's key list.
 
 Then reconcile the **Keys found in the diff** against the **Agreed release scope** (both recorded in \`release-scope.md\`), and **surface every mismatch to the user rather than dropping it**:

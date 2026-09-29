@@ -487,6 +487,47 @@ test("release scope keeps merge commits for key extraction and records the agree
   assert.match(renderPrompt("release-deploy", jiraCfg), /recorded as the \*\*Agreed release scope\*\*/);
 });
 
+test("release scope is only reused when base and head SHAs are unchanged", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  assert.match(out, /git rev-parse \{base\} \{head\}/, "scope must record both SHAs");
+  assert.match(out, /identical snapshot/);
+  assert.match(out, /Never reuse a stale file/);
+  assert.match(out, /their SHAs\*\* \(base SHA, head SHA\)/, "scope file must store the SHAs");
+});
+
+test("deploy pins the working tree to the scanned snapshot before scanning and before each deploy", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  const pin = out.indexOf("### Pin the working tree to the scanned snapshot");
+  const scan = out.indexOf("sf code-analyzer run");
+  assert.ok(pin !== -1 && pin < scan, "pin checks must precede the scan");
+  assert.match(out, /git status --porcelain -- force-app\//);
+  const uat = out.slice(out.indexOf("## Step 4 — Deploy to UAT"), out.indexOf("## Step 5"));
+  assert.match(uat, /re-run the two pin checks/, "UAT deploy must re-check the pin");
+  const prod = out.slice(out.indexOf("## Step 6 — Production deployment"), out.indexOf("## Step 7"));
+  assert.match(prod, /re-run the Step 2 pin checks/, "production deploy must re-check the pin");
+});
+
+test("PR metadata comes only from PRs inside the range, and PR numbers are never tickets", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release-release-notes", cfg);
+    assert.doesNotMatch(out, /gh pr list/, "must not list PRs by target branch / date");
+    assert.match(out, /gh pr view N/);
+    assert.match(out, /from this log only/);
+    assert.match(out, /pull-request number is \*\*never\*\* a ticket reference/);
+  }
+});
+
+test("ADO accepts bare #123 only on Azure Repos; LOCAL matches second-level story folders", () => {
+  const ado = renderPrompt("release-release-notes", adoCfg);
+  assert.match(ado, /AB#123/);
+  assert.match(ado, /Bare `#123` — a work item \*\*only\*\* when the remote is Azure Repos/);
+  assert.match(ado, /On GitHub \(or any other host\) a bare `#123` is a PR or issue number/);
+
+  const local = renderPrompt("release-release-notes", localCfg);
+  assert.match(local, /stories\/\{EPIC-ID\}\/\{STORY-ID\}\//, "story IDs are the second folder level");
+  assert.doesNotMatch(local, /stories\/\*\/`/, "must not list the epic level as stories");
+});
+
 test("the environment check lists the Release skills' extra prerequisites", () => {
   const out = renderPrompt("release-deploy", jiraCfg);
   assert.match(out, /sf code-analyzer --help/);
