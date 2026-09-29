@@ -341,7 +341,7 @@ test("release-deploy carries the full deploy procedure and never transitions a s
 test("release-deploy gates the UAT deploy behind the SFCA scan, scoped to changed files", () => {
   const out = renderPrompt("release-deploy", jiraCfg);
   const gate = out.indexOf("sf code-analyzer run");
-  const deploy = out.indexOf("## Step 3 — Deploy to UAT");
+  const deploy = out.indexOf("## Step 4 — Deploy to UAT");
   assert.ok(gate !== -1, "deploy skill must run SFCA");
   assert.ok(deploy !== -1, "deploy skill must still have its UAT deploy step");
   assert.ok(gate < deploy, "the SFCA scan must come before the UAT deploy step");
@@ -452,6 +452,39 @@ test("each release skill scopes the shared environment check to what it actually
     assert.match(ia, /Scope of this check — impact-assessment skill/);
     assert.match(ia, /nothing in it is mandatory/, "impact-assessment must not stop for shared prerequisites");
   }
+});
+
+test("deploy stops on deleted components until the user decides — never auto-generates a destructive manifest", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  const del = out.indexOf("## Step 3 — Deleted and renamed components");
+  const deploy = out.indexOf("## Step 4 — Deploy to UAT");
+  assert.ok(del !== -1 && del < deploy, "deletion check must come before the UAT deploy");
+  assert.match(out, /never removes anything from the org/, "must explain why a plain deploy leaves deletions behind");
+  assert.match(out, /deleted-components\.md/);
+  assert.match(out, /--pre-destructive-changes/);
+  assert.match(out, /--post-destructive-changes/);
+  assert.match(out, /Do not deploy until the user makes an explicit decision/);
+  assert.match(out, /Never generate or deploy a destructive manifest on your own/);
+  assert.match(out, /Acknowledge manual removal/);
+});
+
+test("the SFCA scan discards any stale results file before running", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  const rm = out.indexOf("rm -f artifacts/releases/{release-tag}/sfca-results.json");
+  const run = out.indexOf("sf code-analyzer run");
+  assert.ok(rm !== -1 && rm < run, "stale results must be removed before the scan");
+});
+
+test("release scope keeps merge commits for key extraction and records the agreed scope separately", () => {
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const out = renderPrompt("release-release-notes", cfg);
+    assert.doesNotMatch(out, /--no-merges/, "merge commits carry the PR title/branch and must not be dropped");
+    assert.match(out, /parents=\[/, "log format must expose parent count so merges can be identified");
+    assert.match(out, /Keys found in the diff/);
+    assert.match(out, /Agreed release scope/);
+    assert.match(out, /Which stories are in this release\?/, "standalone release-notes must collect the agreed scope");
+  }
+  assert.match(renderPrompt("release-deploy", jiraCfg), /recorded as the \*\*Agreed release scope\*\*/);
 });
 
 test("the environment check lists the Release skills' extra prerequisites", () => {

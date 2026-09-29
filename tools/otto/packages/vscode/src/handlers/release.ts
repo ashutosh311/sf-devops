@@ -12,7 +12,20 @@ import { mcpDisplayName } from "./agent-defer";
  * Chat agent-mode session, unlike the generic fallback handler it replaces.
  */
 
-const INLINE_KEY_RE = /[A-Za-z][A-Za-z0-9]+-\d+/;
+/**
+ * Does `text` contain a story reference for THIS project? Deliberately not a
+ * generic "letters-dash-digits" match — that would treat `Winter-27` as a ticket.
+ * JIRA/LOCAL: `<key>-<n>` (plus LOCAL backlog IDs like `STORY-001`); ADO work
+ * items are referenced by number: `#123` / `AB#123`.
+ */
+function hasStoryRef(text: string, config: OttoConfig): boolean {
+  const almTool = resolveAlmTool(config);
+  if (almTool === "ADO") return /(?:^|\s)(?:AB)?#\d+\b/i.test(text);
+  const key = resolveProjectKey(config).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [new RegExp(`\\b${key}-\\d+\\b`, "i")];
+  if (almTool === "LOCAL") patterns.push(/\bSTORY-\d+\b/i);
+  return patterns.some((re) => re.test(text));
+}
 
 // A lowercase, kebab-case token that looks like an attempted skill id but isn't
 // a real one — rejected explicitly so a typo can't fall through to the
@@ -50,20 +63,25 @@ export async function handleRelease(
   }
 
   const trimmed = request.prompt.trim();
-  const [firstToken, ...rest] = trimmed.split(/\s+/);
+  const tokens = trimmed ? trimmed.split(/\s+/) : [];
 
-  // Leading skill token (e.g. "/release deploy PROJ-42") → use it, strip it from the message.
-  if (firstToken && SKILL_IDS.has(firstToken)) {
-    return dispatch(firstToken as ReleaseSkill, root, config, request, stream, token, rest.join(" ").trim());
+  // A skill token anywhere in the prompt (e.g. "/release deploy PROJ-42" or
+  // "/release PROJ-42 release-notes") wins over the ticket-only shortcut; strip it
+  // from the message.
+  const skillIdx = tokens.findIndex((t) => SKILL_IDS.has(t));
+  if (skillIdx !== -1) {
+    const remainder = tokens.filter((_, i) => i !== skillIdx).join(" ");
+    return dispatch(tokens[skillIdx] as ReleaseSkill, root, config, request, stream, token, remainder);
   }
 
-  if (firstToken && SKILL_SHAPED_RE.test(firstToken)) {
-    stream.markdown(`⛔ Unknown skill "${firstToken}". Valid skills: ${RELEASE_SKILLS.join(", ")}.`);
+  // An unrecognized kebab-case leading token — reject rather than guessing.
+  if (tokens[0] && SKILL_SHAPED_RE.test(tokens[0])) {
+    stream.markdown(`⛔ Unknown skill "${tokens[0]}". Valid skills: ${RELEASE_SKILLS.join(", ")}.`);
     return;
   }
 
-  // Inline PM key(s), no skill → preserve today's behaviour, run deploy in ALM mode.
-  if (trimmed && INLINE_KEY_RE.test(trimmed)) {
+  // A story reference for this project, no skill → preserve today's behaviour, run deploy in ALM mode.
+  if (trimmed && hasStoryRef(trimmed, config)) {
     return dispatch("deploy", root, config, request, stream, token, trimmed);
   }
 
@@ -91,7 +109,7 @@ async function dispatch(
 
   if (skill === "deploy") {
     // An inline PM key bypasses the mode sub-picker — direct ALM invocation.
-    if (remainder && INLINE_KEY_RE.test(remainder)) {
+    if (remainder && hasStoryRef(remainder, config)) {
       await runPhaseAgent("release", config, request, stream, token, remainder, {
         defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
         templateKey,

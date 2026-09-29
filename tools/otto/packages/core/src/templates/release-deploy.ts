@@ -37,6 +37,8 @@ Present the release scope:
 
 > "Does this release scope look correct? Confirm to proceed."
 
+Keep the confirmed story list — it is recorded as the **Agreed release scope** in \`release-scope.md\` in Step 2, and the release-notes skill reconciles the git diff against it.
+
 ---
 
 ## Step 1 — Validate all PRs merged
@@ -55,13 +57,14 @@ ${releaseScopeDiffFragment}
 1. From \`release-scope.md\`, take the changed files with status **A** or **M** under \`{{paths.forceApp}}/\` (status **D** files are deleted and can't be scanned; a renamed file appears as **D** for the old path plus **A** for the new one, so the new path is scanned). If there are none, record "no scannable changes" in the report and go to Step 3.
 2. Run one scan — the whole source directory is the *workspace* (so rules that need surrounding code still resolve) and only the changed files are the *targets*:
    \`\`\`bash
+   rm -f {{paths.artifacts}}/releases/{release-tag}/sfca-results.json   # never read a stale result from an earlier run
    sf code-analyzer run --workspace {{paths.forceApp}} --target <changed-file-1> --target <changed-file-2> ... \\
      --output-file {{paths.artifacts}}/releases/{release-tag}/sfca-results.json --view table
    \`\`\`
    - Do **not** scan the full org or the full source tree.
    - Use the default rule selector. If the project root has a \`code-analyzer.yml\`, the CLI applies it automatically — do not override it.
    - Do **not** pass \`--severity-threshold\`: the gate is evaluated from the results file below so warnings can be reported alongside blockers.
-3. If the command fails **and** no results file was written, that is a tool failure, **not** a pass. Stop, diagnose (most often Java 11+ missing, or the plugin not installed — see the environment check), fix, and re-run.
+3. If the command fails **and** no fresh results file was written (you removed any old one first), that is a tool failure, **not** a pass. Stop, diagnose (most often Java 11+ missing, or the plugin not installed — see the environment check), fix, and re-run.
 
 ### Apply the gate
 
@@ -79,17 +82,31 @@ Write \`{{paths.artifacts}}/releases/{release-tag}/quality-gate.md\` with: the r
 
 ---
 
-## Step 3 — Deploy to UAT
+## Step 3 — Deleted and renamed components
+
+\`sf project deploy start --source-dir\` **never removes anything from the org**. Deleting or renaming a component in git only removes the local file — the old component stays in {{salesforce.orgs.sandbox}} and production unless a *destructive changes* manifest is deployed. So a release with deletions can look complete and still leave the old components live.
+
+1. From \`release-scope.md\`, list every entry with status **D** under \`{{paths.forceApp}}/\`. A rename appears as **D** (old path) plus **A** (new path) — flag those pairs, since the old name will linger.
+2. If there are **none**, say so in one line and go to Step 4.
+3. Otherwise, map each path to its metadata type and name (e.g. \`classes/Foo.cls\` → \`ApexClass: Foo\`; \`objects/Account/fields/Bar__c.field-meta.xml\` → \`CustomField: Account.Bar__c\`), write them to \`{{paths.artifacts}}/releases/{release-tag}/deleted-components.md\`, and present them.
+4. ⛔ **Do not deploy until the user makes an explicit decision.** Never generate or deploy a destructive manifest on your own — removing components can break dependants and cannot always be undone. Offer:
+   - **Supply a destructive-changes manifest** — the user provides (or approves a draft of) \`destructiveChangesPre.xml\` / \`destructiveChangesPost.xml\`. The Step 4 and Step 6 deploys then add \`--pre-destructive-changes <file>\` and/or \`--post-destructive-changes <file>\`.
+   - **Acknowledge manual removal** — the user confirms the components will be removed by hand (or are intentionally being left in the org). Record who confirmed and when in \`deleted-components.md\`.
+5. Record the decision in \`deleted-components.md\`, and carry it through to the production deployment.
+
+---
+
+## Step 4 — Deploy to UAT
 
 \`\`\`bash
 sf project deploy start --source-dir {{paths.forceApp}}/ --target-org {{salesforce.orgs.sandbox}}
 \`\`\`
 
-If deployment fails, diagnose and fix. Do not proceed with a failed UAT deployment.
+If the Step 3 decision was a destructive-changes manifest, append its \`--pre-destructive-changes\` / \`--post-destructive-changes\` flag(s) to this command. If deployment fails, diagnose and fix. Do not proceed with a failed UAT deployment.
 
 ---
 
-## Step 4 — UAT sign-off
+## Step 5 — UAT sign-off
 
 Request business sign-off on the deployed changes in {{salesforce.orgs.sandbox}}. Do not proceed to production without explicit confirmation.
 
@@ -97,9 +114,9 @@ Request business sign-off on the deployed changes in {{salesforce.orgs.sandbox}}
 
 ---
 
-## Step 5 — Production deployment
+## Step 6 — Production deployment
 
-Once UAT sign-off is confirmed:
+Once UAT sign-off is confirmed (add the same destructive-changes flag(s) if Step 3 chose a manifest; if it chose manual removal, remind the user the production removals are still theirs to do):
 
 \`\`\`bash
 sf project deploy start --source-dir {{paths.forceApp}}/ --target-org {{salesforce.orgs.sandbox}}
@@ -107,7 +124,7 @@ sf project deploy start --source-dir {{paths.forceApp}}/ --target-org {{salesfor
 
 ---
 
-## Step 6 — Write release notes
+## Step 7 — Write release notes
 
 Load the **release-notes** skill and follow it — it builds the notes from the same \`release-scope.md\` this run established, correlates commits to tickets, and writes \`{{paths.artifacts}}/releases/{release-tag}/release-notes.md\`:
 

@@ -44,7 +44,7 @@ For every ticket key in the scope's key list, gather what the ticket says the ch
 - Where \`{{paths.artifacts}}/{KEY}/refinement-notes.md\` exists, prefer its **Gherkin acceptance criteria and business context** — that is the most reader-oriented statement of the value.
 - Do **not** fetch or infer anything from tickets that are not in the scope's key list.
 
-Then reconcile, and **surface every mismatch to the user rather than dropping it**:
+Then reconcile the **Keys found in the diff** against the **Agreed release scope** (both recorded in \`release-scope.md\`), and **surface every mismatch to the user rather than dropping it**:
 
 | Situation | Action |
 |---|---|
