@@ -106,22 +106,26 @@ async function dispatch(
 
   if (skill === "release-notes") {
     // Reads git and (in ALM mode) the PM tool; writes only the release-notes artifact.
+    // A LOCAL project has no PM tool, so it runs in local mode with no MCP to verify.
+    const almTool = resolveAlmTool(config);
     await runPhaseAgent("release", config, request, stream, token, userMessage, {
-      defer: { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(resolveAlmTool(config)) },
+      defer: almTool === "LOCAL"
+        ? { root, phaseLabel: "Release", mode: "local" }
+        : { root, phaseLabel: "Release", mode: "alm", mcpName: mcpDisplayName(almTool) },
       templateKey,
     });
     return templateKey;
   }
 
-  // impact-assessment: repo-first; the Salesforce DX MCP (optional live-org queries)
-  // and a browser tool (optional live release-note fetch) are both nice-to-haves.
+  // impact-assessment: repo-first, so no MCP is required. The Salesforce DX MCP
+  // (optional live-org queries) and a browser tool (optional live release-note
+  // fetch) are nice-to-haves, mentioned in the banner rather than verified.
   await runPhaseAgent("release", config, request, stream, token, userMessage, {
     defer: {
       root,
       phaseLabel: "Release",
       mode: "local",
-      mcpName: "Salesforce DX",
-      extraToolsNote: "Optional: a browser tool (e.g. the **Playwright MCP**) lets the agent read Salesforce's live release notes; without one it will ask you to save them into the project folder.",
+      extraToolsNote: "Optional: a browser tool (e.g. the **Playwright MCP**) lets the agent read Salesforce's live release notes, and the **Salesforce DX MCP** enables opt-in live-org queries. Without them it works from the repo and asks you to save the notes into the project folder.",
     },
     templateKey,
   });

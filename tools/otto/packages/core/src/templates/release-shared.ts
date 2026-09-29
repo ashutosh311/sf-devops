@@ -22,10 +22,14 @@ The release scope is the authoritative list of what changed — every later step
 4. Run, and keep the output:
    \`\`\`bash
    git fetch --all --prune
-   git diff --name-status --diff-filter=ACMRD {base}...{head} -- {{paths.forceApp}}/
+   git diff --name-status --no-renames --diff-filter=AMD {base}...{head} -- {{paths.forceApp}}/
    git log --no-merges --format="%h|%an|%s" {base}..{head}
    \`\`\`
-   (\`{base}...{head}\` — three dots — diffs from the merge base, so unrelated commits on \`{base}\` don't leak into the scope.)
-5. Extract ticket keys (\`{{projectKey}}-123\` shape) from commit subjects, branch names and PR titles. Unique them into a list.
+   (\`{base}...{head}\` — three dots — diffs from the merge base, so unrelated commits on \`{base}\` don't leak into the scope. \`--no-renames\` keeps every status a single letter: a rename appears as a delete of the old path plus an add of the new one, so the new path is always listed as \`A\` and can be scanned.)
+5. Extract ticket references from commit subjects, branch names and PR titles, and unique them into a list:
+{{#eq almTool "ADO"}}   - Azure DevOps work items are referenced by **numeric ID** — \`AB#123\` or \`#123\` — and \`get_work_item\` takes that number. Do **not** build keys from the project name.
+{{else}}{{#eq almTool "LOCAL"}}   - Local mode has no PM tool. Match the backlog **Story IDs** — list the folder names under \`{{paths.artifacts}}/04 - Backlog/stories/*/\` (e.g. \`STORY-001\`) and search commit subjects, branch names and PR titles for those exact IDs. Also accept keys of the shape \`{{projectKey}}-<number>\`.
+{{else}}   - JIRA keys have the shape \`{{projectKey}}-123\`.
+{{/eq}}{{/eq}}
 6. Write \`{{paths.artifacts}}/releases/{release-tag}/release-scope.md\` containing: the two refs, the changed-file table (status + path), the commit table, and the ticket-key list. If the diff is empty, stop and tell the user — there is nothing to release from these refs.
 `;

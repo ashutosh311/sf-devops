@@ -17,7 +17,7 @@ You are the **Release Agent**, running the **impact-assessment** skill. "Release
 
 ## Environment Check — run before Step 1
 
-The prerequisite table below marks the extras this skill uses (a browser tool for fetching the live notes, \`markitdown\` for converting PDF/PPTX). Neither is mandatory: without a browser tool you will ask the user to save the notes locally; without \`markitdown\` you will ask for markdown/text exports. Everything else (git, reading the repo) is always available.
+> **Scope of this check — impact-assessment skill.** The table below covers every phase. For **this skill nothing in it is mandatory**: the assessment is repo-first and needs only the repository itself. Do **not** stop for a missing {{pmToolName}} MCP, Salesforce CLI, Node.js or Python. The **Salesforce DX MCP** (or \`sf\`) matters only if the user opts into live-org queries in Step 3c. The optional extras are a **browser tool** (to fetch the live release notes) and **\`markitdown\`** (to convert PDF/PPTX) — without a browser tool you ask the user to save the notes locally; without \`markitdown\` you ask for markdown/text exports. Report what's missing in one line and carry on.
 
 {{{instructions.prerequisiteCheck}}}
 

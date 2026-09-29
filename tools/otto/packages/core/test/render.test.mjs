@@ -415,6 +415,45 @@ test("impact-assessment confirms sources, is read-only/advisory, and never asser
   }
 });
 
+test("release scope diff yields single-letter statuses, so renames are scanned at their new path", () => {
+  const out = renderPrompt("release-deploy", jiraCfg);
+  assert.match(out, /--no-renames/, "diff must disable rename detection");
+  assert.doesNotMatch(out, /diff-filter=[A-Z]*[CR]/, "diff filter must not rely on C/R statuses");
+  assert.doesNotMatch(out, /A \/ C \/ M \/ R/, "scan step must not key off C/R statuses");
+  assert.match(out, /status \*\*A\*\* or \*\*M\*\*/, "scan step must target A and M files");
+});
+
+test("release ticket-key extraction matches the active PM tool, not just JIRA", () => {
+  const jira = renderPrompt("release-release-notes", jiraCfg);
+  assert.match(jira, /JIRA keys have the shape `PROJ-123`/);
+  assert.doesNotMatch(jira, /AB#123/);
+
+  const ado = renderPrompt("release-release-notes", adoCfg);
+  assert.match(ado, /AB#123/, "ADO work items are referenced by numeric ID");
+  assert.match(ado, /Do \*\*not\*\* build keys from the project name/);
+  assert.doesNotMatch(ado, /`P-123`/);
+
+  const local = renderPrompt("release-release-notes", localCfg);
+  assert.match(local, /04 - Backlog\/stories/, "local mode matches backlog Story IDs");
+  assert.match(local, /STORY-001/);
+});
+
+test("each release skill scopes the shared environment check to what it actually needs", () => {
+  const deploy = renderPrompt("release-deploy", jiraCfg);
+  assert.match(deploy, /Scope of this check — deploy skill/);
+  assert.match(deploy, /Code Analyzer plugin/);
+
+  for (const cfg of [jiraCfg, adoCfg, localCfg]) {
+    const notes = renderPrompt("release-release-notes", cfg);
+    assert.match(notes, /Scope of this check — release-notes skill/);
+    assert.match(notes, /Salesforce CLI[\s\S]{0,200}\*\*not\*\* needed/, "release-notes must not require the Salesforce CLI");
+
+    const ia = renderPrompt("release-impact-assessment", cfg);
+    assert.match(ia, /Scope of this check — impact-assessment skill/);
+    assert.match(ia, /nothing in it is mandatory/, "impact-assessment must not stop for shared prerequisites");
+  }
+});
+
 test("the environment check lists the Release skills' extra prerequisites", () => {
   const out = renderPrompt("release-deploy", jiraCfg);
   assert.match(out, /sf code-analyzer --help/);

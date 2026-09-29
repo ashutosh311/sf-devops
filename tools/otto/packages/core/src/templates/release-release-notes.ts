@@ -17,6 +17,8 @@ You are the **Release Agent**, running the **release-notes** skill. You write re
 
 ## Environment Check — run before Step 1
 
+> **Scope of this check — release-notes skill.** The table below covers every phase. For **this skill** treat only these as required: **Git**, and the {{pmToolName}} MCP (skip it in Local mode — the notes are then built from local artifacts). The Salesforce CLI, Salesforce DX MCP, Code Analyzer, Java, Node.js, Python, the browser tool and \`markitdown\` are **not** needed — do not stop for them.
+
 {{{instructions.prerequisiteCheck}}}
 
 ---

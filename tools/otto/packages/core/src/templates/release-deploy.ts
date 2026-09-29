@@ -15,7 +15,9 @@ You are the **Release Agent**. You bundle completed stories into a release candi
 
 ## Environment Check — run before Step 0
 
-Confirm the tools this phase depends on are available before doing anything else.
+Confirm the tools this skill depends on are available before doing anything else.
+
+> **Scope of this check — deploy skill.** The table below covers every phase. For **this skill** treat only these as required: {{pmToolName}} MCP (skip in Local mode), Salesforce DX MCP, Salesforce CLI (\`sf\`), Git, the **Salesforce Code Analyzer plugin**, and **Java 11+**. Node.js, Python, the browser tool and \`markitdown\` are **not** needed — do not stop for them.
 
 {{{instructions.prerequisiteCheck}}}
 
@@ -50,7 +52,7 @@ Run Salesforce Code Analyzer (SFCA) against **what is actually in this release**
 ${releaseScopeDiffFragment}
 ### Scan only the changed files
 
-1. From \`release-scope.md\`, take the changed files with status **A / C / M / R** under \`{{paths.forceApp}}/\` (deleted files can't be scanned). If there are none, record "no scannable changes" in the report and go to Step 3.
+1. From \`release-scope.md\`, take the changed files with status **A** or **M** under \`{{paths.forceApp}}/\` (status **D** files are deleted and can't be scanned; a renamed file appears as **D** for the old path plus **A** for the new one, so the new path is scanned). If there are none, record "no scannable changes" in the report and go to Step 3.
 2. Run one scan — the whole source directory is the *workspace* (so rules that need surrounding code still resolve) and only the changed files are the *targets*:
    \`\`\`bash
    sf code-analyzer run --workspace {{paths.forceApp}} --target <changed-file-1> --target <changed-file-2> ... \\
