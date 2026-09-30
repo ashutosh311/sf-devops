@@ -861,12 +861,15 @@ test("production deploy never targets the sandbox", () => {
   assert.match(prodUnset, /--target-org <production-org-alias>/);
   assert.match(prodUnset, /Ask the user for the production org alias/);
   assert.match(prodUnset, /IsSandbox/, "must verify the target is not a sandbox");
+  assert.match(prodUnset, /sf data query [^\n]*--target-org <production-org-alias>/, "the check must query the alias it deploys to");
+  assert.match(prodUnset, /usernameOrAlias/, "the MCP check must be scoped to the alias too");
 
   const cfg = { ...jiraCfg, salesforce: { orgs: { sandbox: "uat", production: "prod" } } };
   assert.equal(OttoConfigSchema.safeParse(cfg).success, true);
   const set = renderPrompt("release-deploy", cfg);
   const prodSet = set.slice(set.indexOf("## Step 6 — Production deployment"), set.indexOf("## Step 7"));
   assert.match(prodSet, /--target-org prod\b/);
+  assert.match(prodSet, /sf data query [^\n]*--target-org prod\b/, "the check and the deploy must use the same alias");
   assert.match(set, /deployed to production \(prod\)/);
 
   const notes = renderPrompt("release-release-notes", jiraCfg);

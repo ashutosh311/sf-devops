@@ -167,7 +167,13 @@ Request business sign-off on the deployed changes in {{salesforce.orgs.sandbox}}
 
 Once UAT sign-off is confirmed, re-run the Step 2 pin checks — production must receive exactly what was gated and signed off in UAT, and must not have moved since; if anything moved, ⛔ stop and go back to Step 2.
 
-**Confirm the target is production.** {{#if salesforce.orgs.production}}The configured production org is **{{salesforce.orgs.production}}** (\`salesforce.orgs.production\` in the Otto config).{{else}}No production org is configured (\`salesforce.orgs.production\` in the Otto config is empty). Ask the user for the production org alias; never assume it.{{/if}} Before deploying, query it: \`SELECT IsSandbox, OrganizationType FROM Organization\` (Salesforce DX MCP \`run_soql_query\`, or \`sf data query\`). ⛔ If \`IsSandbox\` is true, or the alias is {{salesforce.orgs.sandbox}}, stop — that is not production. Then ask the user to confirm the production deploy by name.
+**Confirm the target is production.** {{#if salesforce.orgs.production}}The configured production org is **{{salesforce.orgs.production}}** (\`salesforce.orgs.production\` in the Otto config).{{else}}No production org is configured (\`salesforce.orgs.production\` in the Otto config is empty). Ask the user for the production org alias; never assume it.{{/if}} Before deploying, query that exact alias — never the default org — using the same alias the deploy below targets: Salesforce DX MCP \`run_soql_query\` with \`usernameOrAlias\` set to it, or:
+
+\`\`\`bash
+sf data query --query "SELECT IsSandbox, OrganizationType FROM Organization" --target-org {{#if salesforce.orgs.production}}{{salesforce.orgs.production}}{{else}}<production-org-alias>{{/if}}
+\`\`\`
+
+⛔ If \`IsSandbox\` is true, or the alias is {{salesforce.orgs.sandbox}}, stop — that is not production. Then ask the user to confirm the production deploy by name.
 
 Then deploy (add the same destructive-changes flag(s) if Step 3 chose a manifest; if it chose manual removal, remind the user the production removals are still theirs to do):
 
