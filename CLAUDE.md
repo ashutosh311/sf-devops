@@ -33,6 +33,10 @@ There is no jest/vitest suite in `tools/otto`, but `packages/core` has a real re
 
 To run the MCP server locally against a Claude Code session: `cd tools/otto/packages/mcp && ./setup.sh`.
 
+### Developing Otto — spec-driven workflow (Spec Kit)
+
+Otto features and bug fixes are developed with GitHub Spec Kit, not ad-hoc prompting. The Spec Kit project is rooted at `tools/otto/` (launch the agent from there so the `/speckit-*` skills load). Before changing `tools/otto/`, read `tools/otto/.specify/memory/constitution.md` (Otto's architecture and quality rules) and follow [tools/otto/CONTRIBUTING.md](tools/otto/CONTRIBUTING.md): features run `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement` → `/speckit-converge` with artifacts in `tools/otto/specs/NNN-name/`; bugs run `/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test` with reports in `tools/otto/.specify/bugs/<slug>/`. The backlog is GitHub Issues; branches are `{type}/GH-{issue}-{description}`. Spec Kit applies to Otto only — Salesforce delivery work under `force-app/` still follows `AGENTS.md`.
+
 ### Root repo (Salesforce delivery content)
 
 ```bash

@@ -10,3 +10,14 @@ packages/cli/binaries/
 
 # VS Code extension package
 packages/vscode/*.vsix
+
+# Spec Kit (see CONTRIBUTING.md) — track only the shared speckit-* Claude skills;
+# personal Claude Code state stays ignored (the repo-root .gitignore ignores .claude/).
+!/.claude/
+/.claude/*
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/speckit-*/
+
+# Spec Kit extension catalog download cache
+/.specify/extensions/.cache/

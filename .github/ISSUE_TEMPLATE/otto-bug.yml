@@ -1,0 +1,72 @@
+name: Otto — bug report
+description: Report something in Otto that is broken or behaving incorrectly.
+title: "fix(otto): "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Otto bugs are triaged with Spec Kit's bug workflow (`/speckit-bug-assess` → `/speckit-bug-fix` → `/speckit-bug-test`).
+        A clear reproduction makes assessment much faster. Do not paste client-confidential data or credentials.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `/init` with ...
+        2. Run `/refine PROJ-123` ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      multiple: true
+      options:
+        - VS Code extension (`@otto`)
+        - Claude Code plugin
+        - GitHub Copilot CLI / desktop app
+        - CLI
+    validations:
+      required: true
+  - type: dropdown
+    id: pm-mode
+    attributes:
+      label: PM mode
+      options:
+        - JIRA
+        - Azure DevOps
+        - LOCAL
+        - Not applicable
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Otto version
+      description: From `/about`, the VSIX name, or `claude plugin list` / `copilot plugin list`.
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: AI model used
+      placeholder: e.g. Claude Sonnet 4.6
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      render: text

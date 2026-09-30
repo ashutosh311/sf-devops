@@ -553,6 +553,10 @@ Don't cut `v1.0.0` by accident. Do it deliberately, once `.otto/config.json`'s s
 
 ## Development
 
+Otto is developed spec-first with GitHub Spec Kit. Before starting a feature or bug fix, read
+[CONTRIBUTING.md](./CONTRIBUTING.md) — it covers the backlog, the `/speckit-*` workflow, and the
+quality gates defined in the constitution (`.specify/memory/constitution.md`).
+
 ### Prerequisites
 
 - Node.js 20+

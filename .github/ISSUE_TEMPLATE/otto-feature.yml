@@ -1,0 +1,68 @@
+name: Otto — feature / enhancement
+description: Propose a new Otto capability or an improvement to an existing one.
+title: "feat(otto): "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Otto features are delivered with Spec Kit (see `tools/otto/CONTRIBUTING.md`).
+        Describe **what** and **why** here — the technical **how** is decided later in `/speckit-plan`.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / opportunity
+      description: What is painful or missing today, and for whom (consultant, BA, TA, developer, tester)?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should a user be able to do once this is delivered?
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Otto command / phase affected
+      multiple: true
+      options:
+        - init
+        - discover
+        - refine
+        - design
+        - build
+        - test
+        - release
+        - about
+        - cross-cutting / infrastructure
+    validations:
+      required: true
+  - type: checkboxes
+    id: surfaces
+    attributes:
+      label: Surfaces expected to support this
+      options:
+        - label: VS Code extension (`@otto`)
+        - label: Claude Code plugin
+        - label: GitHub Copilot pack / plugin
+        - label: CLI
+  - type: checkboxes
+    id: pm-modes
+    attributes:
+      label: PM modes expected to support this
+      options:
+        - label: JIRA
+        - label: Azure DevOps
+        - label: LOCAL
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance hints
+      description: Any known acceptance criteria, examples, or constraints (optional — refined in `/speckit-specify` and `/speckit-clarify`).
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, screenshots, client/project context (no client-confidential data).
