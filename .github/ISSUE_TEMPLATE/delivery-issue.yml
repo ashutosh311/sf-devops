@@ -1,0 +1,50 @@
+name: Salesforce delivery assets — issue / improvement
+description: Report a problem or propose an improvement to the shared delivery assets (standards, framework classes, pipelines, manifests, tooling).
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for the **reusable delivery content** in this repo — not for Otto (use the Otto forms) and not for
+        client story work (that belongs in the client's JIRA/ADO backlog). Do not paste client-confidential data or credentials.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options:
+        - Bug / incorrect guidance
+        - Improvement / new asset
+        - Question
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Development standards (`devops/standards/`)
+        - Apex / LWC framework (`force-app/`)
+        - CI pipelines (`pipeline-scripts/`, `.bitbucket/`)
+        - Manifests / scratch org config (`manifests/`, `config/`)
+        - Scripts / utilities (`devops/scripts/`, `utilities/`)
+        - Agent instructions (`AGENTS.md`, `.github/copilot-instructions.md`, `.github/instructions/`)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What is the problem or proposal?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected behaviour / desired outcome
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Files, links, screenshots, org/API version (no client-confidential data).
