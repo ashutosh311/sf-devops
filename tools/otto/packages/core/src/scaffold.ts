@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { OttoConfigSchema, DesignDeliverableSchema, resolveAlmTool, resolveDeliverable, type DesignDeliverable, type OttoConfig } from "./schema.js";
+import { OttoConfigSchema, DesignDeliverableSchema, AlmSchema, resolveAlmTool, resolveDeliverable, type DesignDeliverable, type OttoConfig } from "./schema.js";
 import { getStandards } from "./standards.js";
 import { resolveConfigDir, OTTO_CONFIG_DIR, LEGACY_CONFIG_DIR } from "./projectDir.js";
 
@@ -94,7 +94,14 @@ export function carryForwardConfigOnlyFields(next: OttoConfig, previous: unknown
     out.salesforce = { ...out.salesforce, orgs: { ...out.salesforce.orgs, production: production.data } };
   }
 
-  const extras = designDeliverableExtras(out, prev);
+  // A reconfigure must never throw on a hand-edited prior file — at worst the
+  // extras are dropped.
+  let extras: DesignDeliverable = {};
+  try {
+    extras = designDeliverableExtras(out, prev);
+  } catch {
+    extras = {};
+  }
   if (Object.keys(extras).length > 0) {
     out.design = { ...out.design, deliverable: { ...extras, ...out.design?.deliverable } };
   }
@@ -112,20 +119,29 @@ export function carryForwardConfigOnlyFields(next: OttoConfig, previous: unknown
  *   `confluence` in the same space.
  * - `wikiPath` — an ADO wiki path, kept only while the effective target stays
  *   `wiki` on the same wiki.
+ * The PM-tool-dependent fields are kept only when the prior `alm` block validates:
+ * if the old tool can't be established, "same tool / same space / same wiki" can't be either.
  */
 function designDeliverableExtras(next: OttoConfig, prev: Partial<OttoConfig>): DesignDeliverable {
   const parsed = DesignDeliverableSchema.safeParse(prev.design?.deliverable);
   if (!parsed.success || !parsed.data) return {};
   const old = parsed.data;
 
-  const prevTool = resolveAlmTool(prev as OttoConfig);
-  const nextTool = resolveAlmTool(next);
-  const before = resolveDeliverable({ ...prev, design: { deliverable: old } } as OttoConfig, prevTool);
-  const after = resolveDeliverable(next, nextTool);
-
   const extras: DesignDeliverable = {};
   if (old.sections) extras.sections = old.sections;
   if (old.granularity) extras.granularity = old.granularity;
+
+  const prevAlm = AlmSchema.optional().safeParse(prev.alm);
+  if (!prevAlm.success) return extras;
+
+  // Resolve from validated parts only — never the raw prior file cast to OttoConfig.
+  // resolveAlmTool / resolveDeliverable read nothing beyond `alm` and `design.deliverable`.
+  const prevResolvable = { alm: prevAlm.data, design: { deliverable: old } } as OttoConfig;
+  const prevTool = resolveAlmTool(prevResolvable);
+  const nextTool = resolveAlmTool(next);
+  const before = resolveDeliverable(prevResolvable, prevTool);
+  const after = resolveDeliverable(next, nextTool);
+
   if (old.storyField && prevTool === nextTool) extras.storyField = old.storyField;
   if (old.parentPageId && before.target === "confluence" && after.target === "confluence" && before.spaceKey === after.spaceKey) {
     extras.parentPageId = old.parentPageId;

@@ -949,3 +949,30 @@ test("reconfigure keeps design.deliverable extras only while they still apply", 
   const invalid = carryForwardConfigOnlyFields(jiraCfg, { ...jiraCfg, design: { deliverable: { granularity: "sprint" } } });
   assert.equal(invalid.design, undefined);
 });
+
+test("reconfigure never throws on a malformed prior config and never trusts an invalid prior alm block", () => {
+  const withDesign = (cfg, d) => ({ ...cfg, design: { deliverable: d } });
+  const deliverable = { target: "confluence", spaceKey: "ARCH", sections: ["A"], parentPageId: "123", storyField: "customfield_1" };
+  const next = withDesign(jiraCfg, { spaceKey: "ARCH" });
+  const malformed = [
+    null, [], "x", 42, {},
+    { design: null }, { design: { deliverable: null } }, { design: { deliverable } , alm: null },
+    { design: { deliverable }, alm: "JIRA" }, { design: { deliverable }, alm: { tool: {} } },
+    { design: { deliverable }, alm: [1] }, { design: { deliverable }, salesforce: { orgs: "x" } },
+    { design: { deliverable }, project: null }, { design: { deliverable }, qualityGate: 7, testing: "x" },
+  ];
+  for (const prev of malformed) {
+    assert.doesNotThrow(() => carryForwardConfigOnlyFields(next, prev), `threw on ${JSON.stringify(prev)}`);
+  }
+
+  // Invalid prior alm → the old tool is unknown, so only tool-agnostic extras survive.
+  const out = carryForwardConfigOnlyFields(next, { design: { deliverable }, alm: { tool: {} } });
+  assert.deepEqual(out.design.deliverable.sections, ["A"]);
+  assert.equal(out.design.deliverable.storyField, undefined);
+  assert.equal(out.design.deliverable.parentPageId, undefined);
+
+  // A valid prior alm keeps the tool-dependent extras (regression guard for the fix).
+  const ok = carryForwardConfigOnlyFields(next, { ...jiraCfg, design: { deliverable } });
+  assert.equal(ok.design.deliverable.storyField, "customfield_1");
+  assert.equal(ok.design.deliverable.parentPageId, "123");
+});
