@@ -22,7 +22,7 @@ workspace in `tools/otto/` and everything it ships or generates — `copilot/`, 
 the *repo-root* `devops/instructions/`, `.github/agents/`, `.github/plugin/marketplace.json`,
 `.claude-plugin/marketplace.json`, and `.github/workflows/` release/CI workflows.
 
-It does **not** govern Salesforce delivery work under `force-app/`, `artifacts/`, `manifest/`, or
+It does **not** govern Salesforce delivery work under `force-app/`, `artifacts/`, `manifests/`, or
 `pipeline-scripts/`. Those are governed by `AGENTS.md`, `.github/copilot-instructions.md`, and
 `devops/standards/`. The Salesforce rules there (Apex/LWC/trigger rules, `{type}/{JIRA-KEY}-…`
 branches) apply to Otto only where Otto's prompt templates **encode** them — the content Otto

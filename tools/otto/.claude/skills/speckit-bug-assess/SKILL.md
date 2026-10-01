@@ -112,6 +112,7 @@ Do not attempt to validate the URL by issuing a preflight `HEAD` (or any other) 
    - **Slug**: <BUG_SLUG>
    - **Created**: <ISO 8601 date>
    - **Source**: <URL or "pasted text">
+   - **Issue**: <GitHub issue number or URL — required; ask the user if not supplied>
    - **Verdict**: valid | likely valid, needs reproduction | invalid
    - **Severity**: critical | high | medium | low
 

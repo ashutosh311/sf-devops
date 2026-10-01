@@ -17,8 +17,11 @@ bug fix starts from a written, reviewed specification, not from an open-ended ch
 | Python | 3.11+ | Runs the Spec Kit CLI |
 | [uv](https://docs.astral.sh/uv/) | latest | Installs `specify-cli` |
 | `specify-cli` | **1.0.13** (pinned — see `.specify/init-options.json`) | Spec Kit scaffolding, extensions, upgrades |
-| `gh` CLI | latest, authenticated | Issues, PRs, `/speckit-github-taskstoissues` |
+| `gh` CLI | latest, authenticated | Issues, PRs, and reading issues in this INTERNAL repo |
+| [GitHub MCP server](https://github.com/github/github-mcp-server) | latest | Only for the optional `/speckit-github-taskstoissues` (it creates issues through MCP tools) |
 | AI agent | GitHub Copilot (VS Code / CLI / app) or Claude Code | Runs the `/speckit-*` skills |
+
+The `.specify/scripts/` are POSIX shell. On Windows run the agent from Git Bash or WSL.
 
 One-time install:
 
@@ -62,8 +65,8 @@ appear during Salesforce delivery work.
 the *Otto — feature / enhancement* or *Otto — bug report* issue forms. Every spec and bug report
 links back to its issue, and every PR closes it.
 
-The bug report's `Source` field only records where the report text came from, so put the issue
-number in the bug slug or the report body, and in the PR (`Closes #<issue>`).
+Every bug assessment records its issue in the **Issue** field (`assessment.md`); the PR closes it
+with `Closes #<issue>`. The `Source` field only records where the report text came from.
 
 The stock Spec Kit "Full SDD Cycle" workflow is deliberately not installed: it skips `analyze` and
 `converge`, which the constitution requires. Run the skills one at a time as described below.
@@ -76,15 +79,19 @@ Run each skill in your agent's chat, **one at a time**, and review the output be
 git switch -c feat/GH-<issue>-<short-description>
 
 /speckit-specify <what and why — paste or reference the issue, e.g. "GH #86: ...">
-/speckit-clarify                  # recommended: resolves ambiguities before planning
+/speckit-clarify                  # optional, recommended: resolves ambiguities before planning
 /speckit-plan <technical direction, e.g. "Implement in core; expose via vscode + mcp">
 /speckit-checklist                # optional: extra requirement-quality gate
 /speckit-tasks
-/speckit-analyze                  # recommended: spec ↔ plan ↔ tasks consistency + constitution check
+/speckit-analyze                  # required: spec ↔ plan ↔ tasks consistency + constitution check
 /speckit-github-taskstoissues     # optional: mirror tasks as GitHub issues for larger features
 /speckit-implement
 /speckit-converge                 # repeat implement → converge until it reports "Converged"
 ```
+
+The current feature is tracked in `.specify/feature.json`, which is per-checkout and gitignored. On a
+fresh clone or after switching branches, resume with
+`SPECIFY_FEATURE_DIRECTORY=specs/NNN-short-name` set in your environment.
 
 Then raise a PR containing **both** the `tools/otto/specs/NNN-…/` folder and the code. The PR
 template walks through the constitution's quality gates.
@@ -106,6 +113,10 @@ git switch -c fix/GH-<issue>-<short-description>
 /speckit-bug-fix slug=<slug>
 /speckit-bug-test slug=<slug>     # must end "verified" — "partial" or "failed" is not done
 ```
+
+`Slalom/salesforce-devops` is INTERNAL, so the agent cannot fetch its issue URLs anonymously: paste
+the issue text (or `gh issue view <n>` output) instead of the URL, and pass the issue number so it
+is recorded in the **Issue** field. Strip client-confidential data before pasting.
 
 Commit the `tools/otto/.specify/bugs/<slug>/` reports with the fix. If assessment shows the
 "bug" is really missing behaviour, stop and move to the feature workflow instead.
