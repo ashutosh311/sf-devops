@@ -69,7 +69,7 @@ Before fetching, classify the URL by its host and scheme:
 
 In every case, record in `assessment.md`:
 
-- The verbatim URL the user supplied.
+- The URL the user supplied, **redacted**: strip any user-info (`user:pass@`), query string, and fragment before writing it (keep scheme, host, and path). `assessment.md` is committed, so signed parameters and share tokens must never be persisted.
 - The host parsed from that URL (no redirect following — see the rule above).
 - Which branch of the policy was taken: `allowlisted` / `confirmed-by-user` / `auto-refused: <reason>`.
 
@@ -79,7 +79,7 @@ Do not attempt to validate the URL by issuing a preflight `HEAD` (or any other) 
 
 1. **Ingest the bug report**
    - If a URL is present, first apply the **URL Trust Policy** above to decide whether to fetch, prompt, or refuse. If the policy permits the fetch, retrieve the page and extract the relevant content (title, description, stack traces, reproduction steps, comments).
-   - Capture the verbatim source (URL or pasted block) so it can be quoted in the report.
+   - Capture the source (URL or pasted block) so it can be quoted in the report. Redact the URL as described in the URL Trust Policy, and mask any credentials, tokens, or signed links found in pasted content before writing it to the report.
 
 2. **Summarize the symptom**
    - Reproduce the bug in one or two sentences: what happens, what was expected, under which conditions.

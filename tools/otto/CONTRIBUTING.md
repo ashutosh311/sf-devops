@@ -62,6 +62,12 @@ appear during Salesforce delivery work.
 the *Otto — feature / enhancement* or *Otto — bug report* issue forms. Every spec and bug report
 links back to its issue, and every PR closes it.
 
+The bug report's `Source` field only records where the report text came from, so put the issue
+number in the bug slug or the report body, and in the PR (`Closes #<issue>`).
+
+The stock Spec Kit "Full SDD Cycle" workflow is deliberately not installed: it skips `analyze` and
+`converge`, which the constitution requires. Run the skills one at a time as described below.
+
 ## 3. Feature / enhancement workflow
 
 Run each skill in your agent's chat, **one at a time**, and review the output before moving on.

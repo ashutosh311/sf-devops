@@ -5,7 +5,10 @@
 Closes #
 <!-- Otto: the GitHub issue number. Salesforce delivery: the JIRA/ADO key (e.g. PROJ-123) in the title/branch is enough. -->
 
-**Type of change**: Otto (`tools/otto/`) | Salesforce delivery (`force-app/`, `devops/`, `pipeline-scripts/`, etc.)
+**Type of change**: Otto | Salesforce delivery
+
+- **Otto**: `tools/otto/`, plus the Otto-owned files outside it: the repo-root `devops/instructions/` (compiled into Otto's bundles), `.github/agents/`, `.github/plugin/marketplace.json`, `.claude-plugin/marketplace.json`, and the release/CI workflows in `.github/workflows/`.
+- **Salesforce delivery**: `force-app/`, `manifests/`, `config/`, `pipeline-scripts/`, and the rest of `devops/` (e.g. `devops/standards/`).
 
 <!-- Keep the ONE section below that matches your change and delete the other. -->
 
@@ -17,7 +20,7 @@ Closes #
 - Spec: `tools/otto/specs/NNN-short-name/`
 - Bug report: `tools/otto/.specify/bugs/<slug>/`
 
-**Release impact**: MAJOR | MINOR | PATCH
+**Release impact**: MAJOR | MINOR | PATCH | NONE (exempt changes only)
 
 - [ ] `/speckit-converge` reports **Converged** (feature) or `/speckit-bug-test` reports **verified** (bug)
 - [ ] `pnpm -r build` and `pnpm -r typecheck` pass (from `tools/otto/`)
