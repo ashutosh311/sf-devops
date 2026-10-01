@@ -31,6 +31,8 @@ Resolve `BUG_SLUG` in this order, stopping at the first match:
 
 Once resolved, set `BUG_SLUG` and `BUG_DIR = .specify/bugs/<BUG_SLUG>`, and briefly state in your reply which resolution path was used (explicit / from context / single candidate / asked).
 
+`BUG_SLUG` MUST match `^[a-z0-9][a-z0-9-]*$`. If a path was supplied, take only its directory name under `.specify/bugs/` and validate that. Reject anything else (path separators, `..`, an absolute path, uppercase or other characters) and ask for a new slug, so `BUG_DIR` can never resolve outside `.specify/bugs/`.
+
 ## Prerequisites
 
 - `BUG_DIR/assessment.md` MUST exist.
