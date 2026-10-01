@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   renderPrompt,
   renderAllPrompts,
@@ -17,6 +18,15 @@ import {
   skillTemplateKey,
   extractStoryKey,
   carryForwardConfigOnlyFields,
+  parseSeasonalRelease,
+  upcomingSeasonalReleases,
+  formatImpactAssessmentInputs,
+  validateFindingsRegister,
+  releaseImpactDeckShell,
+  exampleRegister,
+  expectedRating,
+  expectedTier,
+  resolveTypedRelease,
 } from "../dist/index.js";
 
 const story = {
@@ -978,4 +988,327 @@ test("reconfigure never throws on a malformed prior config and never trusts an i
   const ok = carryForwardConfigOnlyFields(next, { ...jiraCfg, design: { deliverable } });
   assert.equal(ok.design.deliverable.storyField, "customfield_1");
   assert.equal(ok.design.deliverable.parentPageId, "123");
+});
+
+test("seasonal release helpers: numbering, parsing, upcoming list and confirmed-inputs block", () => {
+  assert.deepEqual(parseSeasonalRelease("Winter '27"), { label: "Winter '27", release: 264 });
+  assert.equal(parseSeasonalRelease("spring 27")?.release, 266);
+  assert.equal(parseSeasonalRelease("Summer\u201927")?.release, 268);
+  assert.equal(parseSeasonalRelease("Winter '28")?.release, 270);
+  assert.equal(parseSeasonalRelease("Autumn '27"), undefined);
+  assert.equal(parseSeasonalRelease("Winter"), undefined);
+
+  const up = upcomingSeasonalReleases(new Date(2026, 9, 1));
+  assert.deepEqual(up.map((r) => r.label), ["Winter '27", "Spring '27", "Summer '27", "Winter '28"]);
+  // Once Winter '27 has finished shipping it drops off.
+  assert.equal(upcomingSeasonalReleases(new Date(2026, 10, 1))[0].label, "Spring '27");
+
+  const block = formatImpactAssessmentInputs({ release: up[0], extraSources: " https://x.test ", liveOrg: true, sandbox: "dev1" });
+  assert.match(block, /Inputs already confirmed by the user/);
+  assert.match(block, /Winter '27 \(release 264\)/);
+  assert.match(block, /Extra release-note sources: https:\/\/x\.test/);
+  assert.match(block, /Live-org check: yes, against the sandbox dev1/);
+  assert.match(formatImpactAssessmentInputs({ release: up[0], liveOrg: false }), /none — use the official release notes only[\s\S]*no — repository only/);
+
+  const withPdf = formatImpactAssessmentInputs({ release: up[0], releaseNotesPdf: "artifacts/06 - Reference/w27.pdf", liveOrg: false });
+  assert.match(withPdf, /Release-notes PDF: artifacts\/06 - Reference\/w27\.pdf — use this as the primary source/);
+  assert.match(block, /Release-notes PDF: none — fetch the official release notes/);
+
+  // The template must key off the exact phrase the helper emits.
+  const tpl = renderPrompt("release-impact-assessment", jiraCfg);
+  assert.ok(tpl.includes("Inputs already confirmed by the user"));
+  assert.match(tpl, /Step 2 — PDF supplied/);
+  assert.match(tpl, /Skip 2a entirely/);
+});
+
+// ── Findings register (GH-90) ───────────────────────────────────────────────────
+
+const sampleRegister = () => JSON.parse(readFileSync(new URL("./fixtures/sample-findings.json", import.meta.url), "utf8"));
+const errorsOf = (mutate) => { const r = sampleRegister(); mutate(r); return validateFindingsRegister(r); };
+
+test("findings register: the sample fixture is valid", () => {
+  assert.deepEqual(validateFindingsRegister(sampleRegister()), []);
+});
+
+test("findings register: each cross-field rule fails with its own message", () => {
+  // Critical/High needs every cited source read in full.
+  assert.match(errorsOf((r) => { r.findings[1].rating = "high"; }).join("\n"), /Critical\/High requires every cited source read in full/);
+  // A partial source needs the provisional caveat and the confirm-first action.
+  assert.match(errorsOf((r) => { r.findings[1].caveat = "none"; }).join("\n"), /partial source requires caveat `provisional`/);
+  assert.match(errorsOf((r) => { r.findings[1].action = "Review integration call frequency."; }).join("\n"), /must begin "Read the full source to confirm"/);
+  // An index-only source needs the unverified caveat.
+  assert.match(errorsOf((r) => { r.sources[1].completeness = "index-only"; }).join("\n"), /index-only source requires caveat `unverified`/);
+  // Confirmed exposure needs a search with a hit.
+  assert.match(errorsOf((r) => { delete r.findings[2].search; }).join("\n"), /confirmed exposure needs a search/);
+  assert.match(errorsOf((r) => { r.findings[2].search.matchCount = 0; }).join("\n"), /confirmed exposure needs a search/);
+  // Not-applicable, na and exposure none go together.
+  assert.match(errorsOf((r) => { r.findings[4].tier = "opportunity"; }).join("\n"), /go together/);
+  assert.match(errorsOf((r) => { r.findings[3].rating = "na"; }).join("\n"), /go together/);
+  // A partial source needs unreadPart.
+  assert.match(errorsOf((r) => { delete r.sources[1].unreadPart; }).join("\n"), /partial and needs unreadPart/);
+  // Duplicate ids and unknown references.
+  assert.match(errorsOf((r) => { r.findings[1].id = "F-01"; }).join("\n"), /duplicate finding id F-01/);
+  assert.match(errorsOf((r) => { r.findings[0].sourceIds = ["S-99"]; }).join("\n"), /unknown source S-99/);
+  assert.match(errorsOf((r) => { r.blindSpots[0].affects = ["F-99"]; }).join("\n"), /unknown finding F-99/);
+  // Field length limits.
+  assert.ok(errorsOf((r) => { r.findings[0].summary = "x".repeat(241); }).length > 0, "summary over 240 chars");
+  assert.ok(errorsOf((r) => { r.findings[0].area = "x".repeat(61); }).length > 0, "area over 60 chars");
+  // A recommendation other than go needs a condition.
+  assert.match(errorsOf((r) => { r.conditions = []; }).join("\n"), /needs at least one condition/);
+});
+
+test("findings register: featured cap, Critical-first and overflow", () => {
+  // 9 featured findings is over the cap.
+  const nine = errorsOf((r) => {
+    const base = r.findings[3];
+    for (let n = 6; n <= 11; n++) r.findings.push({ ...base, id: `F-${String(n).padStart(2, "0")}`, featured: true });
+    r.findings.forEach((f) => { f.featured = true; });
+  }).join("\n");
+  assert.match(nine, /at most 8 findings may be featured/);
+
+  // Ten Critical findings: eight earliest featured, overflow of 2 recorded.
+  const crit = (n, date, featured) => ({
+    id: `F-${String(n).padStart(2, "0")}`, area: `Critical ${n}`, tier: "act-before-date", rating: "critical",
+    ratingBasis: { exposure: "confirmed", impact: "breaks", deadline: "now" }, exposure: "confirmed",
+    search: { command: "grep -rl x force-app", matchCount: 3 }, summary: "s", evidence: "e", action: "a",
+    date, sourceIds: ["S-01"], caveat: "none", confidence: "high", featured,
+  });
+  const ten = (overflow, mutate) => {
+    const r = sampleRegister();
+    r.findings = Array.from({ length: 10 }, (_, i) => crit(i + 1, `2026-10-${String(10 + i).padStart(2, "0")}`, i < 8));
+    r.blindSpots = []; r.ownerQuestions = [];
+    r.featuredOverflow = overflow;
+    if (mutate) mutate(r);
+    return validateFindingsRegister(r);
+  };
+  assert.deepEqual(ten(2), []);
+  assert.match(ten(0).join("\n"), /featuredOverflow must equal/);
+  assert.match(ten(2, (r) => { r.findings[0].featured = false; r.findings[9].featured = true; }).join("\n"), /earliest dates/);
+});
+
+test("release inputs: PDF line, trimming, sandbox only when live, past releases, malformed input", () => {
+  const r = parseSeasonalRelease("Winter '27");
+  const none = formatImpactAssessmentInputs({ release: r, liveOrg: false, sandbox: "dev1" });
+  assert.match(none, /Release-notes PDF: none — fetch the official release notes/);
+  assert.doesNotMatch(none, /dev1/, "sandbox is named only when a live check was chosen");
+  const pdf = formatImpactAssessmentInputs({ release: r, releaseNotesPdf: "  a/b.pdf  ", extraSources: "  https://x.test  ", liveOrg: true, sandbox: "dev1" });
+  assert.match(pdf, /Release-notes PDF: a\/b\.pdf — use this as the primary source/);
+  assert.match(pdf, /Extra release-note sources: https:\/\/x\.test\n/);
+  assert.match(pdf, /yes, against the sandbox dev1/);
+  // Past releases keep the same cadence.
+  assert.deepEqual(parseSeasonalRelease("Summer '26"), { label: "Summer '26", release: 262 });
+  assert.deepEqual(parseSeasonalRelease("Winter '26"), { label: "Winter '26", release: 258 });
+  for (const bad of ["", "Winter", "Fall '27", "Winter '2027", "27 Winter", "Winter '7"]) {
+    assert.equal(parseSeasonalRelease(bad), undefined, `rejects ${JSON.stringify(bad)}`);
+  }
+});
+
+// ── impact-assessment template: quality rules, register, deck (GH-90) ───────────────
+
+const iaPrompts = () => [jiraCfg, adoCfg, localCfg].map((cfg) => renderPrompt("release-impact-assessment", cfg));
+
+test("impact-assessment: inputs are asked once, a PDF is the primary source, and the URL is not fetched with a PDF", () => {
+  for (const out of iaPrompts()) {
+    assert.match(out, /Ask once, in one message/);
+    assert.match(out, /release-notes PDF/);
+    assert.match(out, /Inputs already confirmed by the user/);
+    assert.match(out, /Step 2 — PDF supplied/);
+    assert.match(out, /Skip 2a entirely/);
+    assert.match(out, /not fetched\*\* to check a page title|do not fetch the URL/i, "no page-title fetch with a PDF");
+    assert.match(out, /ask for the correct path/);
+    assert.match(out, /names the expected release[^\n]*If it names a different release, stop/);
+    assert.match(out, /unreadable[^\n]*text export|empty or unreadable/);
+    assert.match(out, /Never load the whole converted file into context/);
+    assert.match(out, /`pdf`/, "PDF is a recorded way a source was obtained");
+  }
+});
+
+test("impact-assessment: completeness check, exposure vocabulary, caps and enforced-soon reading", () => {
+  for (const out of iaPrompts()) {
+    assert.match(out, /2d — Completeness check/);
+    assert.match(out, /exactly 4096 bytes/);
+    assert.match(out, /mid-sentence or mid-row/);
+    assert.match(out, /only its header row/);
+    assert.match(out, /second route/);
+    for (const label of ["Confirmed", "Possible", "Unknown", "None"]) assert.match(out, new RegExp(`\\*\\*${label}\\*\\* —`));
+    assert.match(out, /command and the match count/);
+    assert.match(out, /Generic project counts[^\n]*not\*\* exposure evidence/);
+    assert.match(out, /Provisional/); assert.match(out, /Unverified/);
+    assert.match(out, /limited to \*\*Medium\*\*/);
+    assert.match(out, /Read the full source to confirm/);
+    assert.match(out, /Critical and High require every cited source read in full/);
+    assert.match(out, /every \*\*Release Update\*\* that is enforced in this release or the next/);
+    assert.match(out, /Visualforce pages \(count, and how many render as PDF\)/);
+    assert.match(out, /5d — Self-check before writing/);
+    assert.match(out, /Critical\/High finding cites only sources read in full/);
+  }
+});
+
+test("impact-assessment: blind spots, chat re-offer, verification pack, tiers, rubric and dates", () => {
+  for (const out of iaPrompts()) {
+    assert.match(out, /3d — Retrieval scope and blind spots/);
+    assert.match(out, /connected-app, external-client-app, named-credential/);
+    assert.match(out, /unknown\*\*, not that nothing exists/);
+    assert.match(out, /ask \*\*once, in chat, as a short yes\/no/);
+    assert.match(out, /verification pack/);
+    assert.match(out, /Do not write org object or field names into the pack from memory/);
+    for (const tier of ["Act before a date", "Test in the preview", "Opportunities", "Not applicable"]) assert.ok(out.includes(tier), tier);
+    assert.match(out, /\| breaks \| Confirmed \| Critical \| High \| Medium \|/);
+    assert.match(out, /\| improvement \| any \| Low \| Low \| Low \|/);
+    assert.match(out, /Caps always win/);
+    assert.match(out, /"in N days \(date\)"/);
+  }
+});
+
+test("impact-assessment: writes four files in order, from one register; the old repeated tables are gone", () => {
+  for (const out of iaPrompts()) {
+    const at = (needle) => { const i = out.indexOf(needle, out.indexOf("5e — Write the four files")); assert.ok(i > 0, needle); return i; };
+    assert.ok(at("impact-assessment.findings.json") < at("impact-assessment.md"));
+    assert.ok(at("impact-assessment.md") < at("impact-assessment.html"));
+    assert.ok(at("impact-assessment.html") < at("impact-assessment.pdf"));
+    assert.match(out, /--print-to-pdf/);
+    assert.match(out, /Print → Save as PDF/);
+    assert.match(out, /The deck is still produced in every case/);
+    assert.match(out, /authoritative human-readable record/);
+    assert.match(out, /regenerates the register, the markdown, the deck and the PDF together/);
+    assert.match(out, /ask which to keep \*\*before\*\* overwriting/);
+    assert.match(out, /## What the repository cannot show/);
+    assert.doesNotMatch(out, /### Priority summary/);
+    assert.doesNotMatch(out, /## Confirmed release traceability/);
+    assert.match(out, /Write only there/);
+    assert.match(out, /Do not create tickets or change any project source/);
+    assert.doesNotMatch(out, transitionsToDone);
+  }
+});
+
+test("impact-assessment: the deck shell is shipped verbatim and the example register is valid", () => {
+  for (const out of iaPrompts()) assert.ok(out.includes(releaseImpactDeckShell), "shell appears verbatim in the prompt");
+  assert.deepEqual(validateFindingsRegister(exampleRegister), []);
+  for (const out of iaPrompts()) assert.ok(out.includes(JSON.stringify(exampleRegister)), "example register appears in the prompt");
+});
+
+test("deck shell: self-contained presentation markup only", () => {
+  const shell = releaseImpactDeckShell;
+  assert.ok(!shell.includes("{{"), "no Handlebars open braces");
+  assert.ok(!shell.includes("`") && !shell.includes("${"), "safe inside a String.raw template literal");
+  assert.doesNotMatch(shell, /https?:\/\//, "no network URLs or external resources");
+  assert.equal(shell.split("__FINDINGS_JSON__").length - 1, 1, "exactly one data marker");
+  assert.equal((shell.match(/--brand-blue:/g) ?? []).length, 1, "one brand-token block");
+  assert.match(shell, /--brand-navy:#0b1437/);
+  assert.match(shell, /size:1280px 720px/);
+  for (const rating of ["critical", "high", "medium", "low"]) {
+    const m = new RegExp(`--${rating}:(#[0-9a-f]{6})`).exec(shell);
+    assert.ok(m, `${rating} colour defined`);
+    assert.notEqual(m[1].toLowerCase(), "#0c62fb", `${rating} must not be the brand blue`);
+  }
+  assert.match(shell, /RATING_LABEL/, "ratings are also shown as text");
+  assert.match(shell, /Provisional/); assert.match(shell, /Unverified/);
+  // The inline application script parses.
+  const scripts = [...shell.matchAll(/<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  assert.equal(scripts.length, 1);
+  assert.doesNotThrow(() => new Function(scripts[0]));
+  // Constitution III (v1.1.0): no line of 40+ characters shared with any phase template.
+  const templateLines = new Set();
+  for (const [key, t] of Object.entries(PHASE_TEMPLATES)) if (key !== "release-impact-assessment") for (const l of t.split("\n")) if (l.trim().length >= 40) templateLines.add(l.trim());
+  const shared = shell.split("\n").map((l) => l.trim()).filter((l) => l.length >= 40 && templateLines.has(l));
+  assert.deepEqual(shared, [], "deck shell must carry no procedure text");
+});
+
+test("impact-assessment: rendered prompt stays within the size budget", () => {
+  // 15K leaves 1K under the 16K size warning in the VS Code agent-defer handler.
+  for (const out of iaPrompts()) assert.ok(out.length / 4 <= 15000, `~${Math.round(out.length / 4)} tokens exceeds the 15K budget`);
+});
+
+test("rubric: every cell of the rating table and the tier rule", () => {
+  const rows = [
+    // impact, exposure, [now, soon, later]
+    ["breaks", "confirmed", ["critical", "high", "medium"]],
+    ["breaks", "possible", ["high", "medium", "low"]],
+    ["breaks", "unknown", ["high", "medium", "low"]],
+    ["action", "confirmed", ["high", "medium", "low"]],
+    ["action", "possible", ["medium", "low", "low"]],
+    ["action", "unknown", ["medium", "low", "low"]],
+    ["improvement", "confirmed", ["low", "low", "low"]],
+    ["improvement", "possible", ["low", "low", "low"]],
+  ];
+  for (const [impact, exposure, expected] of rows) {
+    ["now", "soon", "later"].forEach((deadline, i) => {
+      assert.equal(expectedRating({ exposure, impact, deadline }), expected[i], `${impact}/${exposure}/${deadline}`);
+    });
+  }
+  for (const impact of ["breaks", "action", "improvement"]) assert.equal(expectedRating({ exposure: "none", impact, deadline: "now" }), "na");
+  assert.equal(expectedTier({ exposure: "none", impact: "breaks", deadline: "now" }), "not-applicable");
+  assert.equal(expectedTier({ exposure: "possible", impact: "improvement", deadline: "now" }), "opportunity");
+  assert.equal(expectedTier({ exposure: "confirmed", impact: "action", deadline: "soon" }), "act-before-date");
+  assert.equal(expectedTier({ exposure: "possible", impact: "breaks", deadline: "later" }), "test-in-preview");
+});
+
+test("findings register: rating and tier must follow the rubric; caveats may only cap lower", () => {
+  // F-01 basis is possible/breaks/now => High, act-before-date.
+  assert.match(errorsOf((r) => { r.findings[0].rating = "low"; }).join("\n"), /does not follow the rubric/);
+  assert.match(errorsOf((r) => { r.findings[0].rating = "critical"; }).join("\n"), /does not follow the rubric|Critical\/High requires/);
+  assert.match(errorsOf((r) => { r.findings[0].tier = "test-in-preview"; }).join("\n"), /does not follow the tier rule/);
+  // A caveat may cap below the rubric (here: Medium or lower)...
+  assert.deepEqual(errorsOf((r) => { Object.assign(r.findings[1], { rating: "low" }); }), []);
+  // ...but never above it, and never above Medium.
+  assert.match(errorsOf((r) => { r.findings[1].ratingBasis.deadline = "later"; r.findings[1].tier = "test-in-preview"; r.findings[1].date = "2028-01-01"; r.findings[1].rating = "medium"; }).join("\n"), /capped at Medium and may not exceed the rubric rating/);
+});
+
+test("release inputs: a typed release resolves identically for every surface", () => {
+  const now = new Date(2026, 9, 1);
+  assert.equal(resolveTypedRelease("", now), undefined);
+  assert.equal(resolveTypedRelease("not a release", now), undefined);
+  assert.deepEqual(resolveTypedRelease("spring 27", now), { release: { label: "Spring '27", release: 266 }, inList: true });
+  assert.equal(resolveTypedRelease("Summer '26", now).inList, false, "a past release belongs under Other");
+  assert.equal(resolveTypedRelease("Summer '28", now).inList, false, "a far-future release belongs under Other");
+});
+
+test("deck shell: register values used as class names are whitelisted, not concatenated raw", () => {
+  const shell = releaseImpactDeckShell;
+  assert.match(shell, /function cls\(v\)/);
+  assert.doesNotMatch(shell, /class="chip ' \+ f\.rating/);
+  assert.doesNotMatch(shell, /class="exp ' \+ f\.exposure/);
+  assert.doesNotMatch(shell, /rec-' \+ data\.recommendation/);
+  assert.doesNotMatch(shell, /class="card ' \+ f\.rating/);
+  // Run the shell's helper against a hostile value.
+  const m = /function cls\(v\) \{[^}]*\}/.exec(shell);
+  const cls = new Function(`${m[0]}; return cls;`)();
+  assert.equal(cls('high" onmouseover="x'), "invalid");
+  assert.equal(cls("high"), "high");
+  assert.equal(cls("go-with-conditions"), "go-with-conditions");
+});
+
+test("findings register: a partial source caps a finding unless the deciding part is recorded", () => {
+  // F-02 cites S-02 (partial). Recording the deciding part lifts the cap: the rubric rating stands.
+  assert.deepEqual(errorsOf((r) => {
+    Object.assign(r.findings[1], { decidingPartRead: "The enforcement paragraph and date table were read in full.", caveat: "none", action: "Review integration call frequency." });
+  }), []);
+  // ...and even permits High when the rubric says High.
+  assert.deepEqual(errorsOf((r) => {
+    Object.assign(r.findings[1], { decidingPartRead: "The enforcement paragraph was read in full.", caveat: "none", action: "Review integration call frequency.", ratingBasis: { exposure: "possible", impact: "breaks", deadline: "now" }, rating: "high", date: "2026-10-15" });
+  }), []);
+  // Without it, High on a partial source is still rejected.
+  assert.match(errorsOf((r) => { Object.assign(r.findings[1], { ratingBasis: { exposure: "possible", impact: "breaks", deadline: "now" }, rating: "high", date: "2026-10-15" }); }).join("\n"), /Critical\/High requires/);
+  // decidingPartRead never applies to a finding with no partial source.
+  assert.match(errorsOf((r) => { r.findings[0].decidingPartRead = "x"; }).join("\n"), /only applies to a finding that cites a partial source/);
+  // It never lifts an index-only source.
+  assert.match(errorsOf((r) => { r.sources[1].completeness = "index-only"; r.findings[1].decidingPartRead = "x"; r.findings[1].caveat = "none"; r.findings[1].action = "Review."; }).join("\n"), /index-only source requires caveat `unverified`/);
+  // The length limit is part of the contract.
+  assert.ok(errorsOf((r) => { r.findings[1].decidingPartRead = "x".repeat(201); }).length > 0);
+});
+
+test("impact-assessment: deciding-part rule, soft limits and the unknown-exposure callout are specified", () => {
+  for (const out of iaPrompts()) {
+    assert.match(out, /decidingPartRead/);
+    assert.match(out, /which part of the partial source you read and why that part decides who is affected/);
+    assert.match(out, /every text field is within its limit — shorten it, never exceed it/);
+    assert.match(out, /impact `breaks` and exposure Unknown/);
+    assert.match(out, /the deck shows the same count/);
+  }
+  const shell = releaseImpactDeckShell;
+  assert.match(shell, /could break existing behaviour but cannot be ruled out from the repository/);
+  assert.match(shell, /f\.exposure === "unknown" && f\.ratingBasis\.impact === "breaks"/);
+  // Long text is clipped on the slide, never allowed to overflow.
+  assert.match(shell, /\.clip5\{-webkit-line-clamp:5\}/);
+  assert.match(shell, /class="area clip2"/);
 });

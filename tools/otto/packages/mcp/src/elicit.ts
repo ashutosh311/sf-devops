@@ -14,6 +14,10 @@ import {
   type OttoConfig,
   type StatusMapTriple,
   type JiraStatus,
+  upcomingSeasonalReleases,
+  parseSeasonalRelease,
+  resolveTypedRelease,
+  formatImpactAssessmentInputs,
 } from "@otto/core";
 
 /**
@@ -334,4 +338,90 @@ async function tryFetchJiraStatuses(
   } catch {
     return null;
   }
+}
+
+
+// ── Release → impact-assessment inputs ───────────────────────────────────────
+
+const OTHER_RELEASE = "other";
+
+/**
+ * The inputs the impact-assessment skill would otherwise ask for in chat — the
+ * release, extra sources and live-org scope — as one form. Returns the
+ * "already confirmed" block to append to the rendered instructions, or ABORTED
+ * if the user backs out. `presetRelease` (e.g. "Winter '27", from the command
+ * line) pre-selects the release rather than skipping the form, since the other
+ * two answers still need asking.
+ */
+export async function runElicitedImpactAssessmentInputs(
+  server: Server,
+  sandbox: string | undefined,
+  presetRelease?: string
+): Promise<string | Aborted> {
+  const upcoming = upcomingSeasonalReleases();
+  const typed = resolveTypedRelease(presetRelease);
+  const preset = typed?.release;
+  const presetListed = typed?.inList ? preset : undefined;
+
+  let message = "Release impact assessment — which Salesforce release, and what should it look at?";
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const content = await askForm(
+      server,
+      message,
+      {
+        release: {
+          type: "string",
+          title: "Salesforce release",
+          oneOf: [
+            ...upcoming.map((r) => ({ const: r.label, title: `${r.label} (release ${r.release})` })),
+            { const: OTHER_RELEASE, title: "Other — type it below" },
+          ],
+          default: presetListed ? presetListed.label : preset ? OTHER_RELEASE : upcoming[0].label,
+        },
+        releaseOther: {
+          type: "string",
+          title: "Other release",
+          description: "Only if you chose Other above, e.g. Summer '28",
+          ...(preset && !presetListed ? { default: preset.label } : {}),
+        },
+        releaseNotesPdf: {
+          type: "string",
+          title: "Release notes PDF (optional, recommended)",
+          description: "Path to Salesforce's release notes as a PDF — faster and more reliable than fetching the live pages. Blank = fetch them.",
+        },
+        extraSources: {
+          type: "string",
+          title: "Extra release-note sources (optional)",
+          description: "URLs or file paths in the project, comma separated. Blank = official release notes only.",
+        },
+        scope: {
+          type: "string",
+          title: "What should it inspect?",
+          oneOf: [
+            { const: "repo", title: "Repository only (recommended)" },
+            { const: "live", title: sandbox ? `Repository + read-only check of sandbox ${sandbox}` : "Repository + read-only check of the sandbox" },
+          ],
+          default: "repo",
+        },
+      } as Record<string, PrimitiveSchema>,
+      ["release", "scope"]
+    );
+    if (content === ABORTED) return ABORTED;
+
+    const chosen = String(content.release);
+    const release = parseSeasonalRelease(chosen === OTHER_RELEASE ? String(content.releaseOther ?? "") : chosen);
+    if (release) {
+      return formatImpactAssessmentInputs({
+        release,
+        releaseNotesPdf: String(content.releaseNotesPdf ?? ""),
+        extraSources: String(content.extraSources ?? ""),
+        liveOrg: content.scope === "live",
+        sandbox,
+      });
+    }
+    message = "Release impact assessment — type the other release in the form Winter '27, Spring '27 or Summer '27.";
+  }
+
+  return ABORTED;
 }

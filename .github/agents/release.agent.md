@@ -21,7 +21,8 @@ Valid skills: `deploy` (bundle completed stories, run the SFCA code-quality gate
 
 Call `otto_prompt` on the `otto` MCP server with `command: "release"`, plus:
 - `skill` — the skill if one was given
-- `storyKey` — the story key(s) if given (`deploy` only; `release-notes` and `impact-assessment` gather what they need — release tag, refs, Salesforce release name — by asking)
+- `storyKey` — the story key(s) if given (`deploy` only; `release-notes` gathers what it needs — release tag, refs — by asking)
+- `release` — for `impact-assessment` only: the Salesforce seasonal release if the user named one (e.g. `Winter '27`). The returned instructions come with the release, extra sources and live-org choice already collected through an input form where the host supports one; do not ask for them again. If the response does not include an "Inputs already confirmed by the user" block, the skill asks for them itself.
 
 If story keys were given but no skill, pass `skill: "deploy"` — this preserves the command's original behaviour.
 

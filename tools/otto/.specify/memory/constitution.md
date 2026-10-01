@@ -1,15 +1,3 @@
-<!--
-Sync Impact Report
-- Version change: template → 1.0.0 (initial ratification)
-- Principles added: I–VII (all new)
-- Sections added: Scope, Technology & Security Constraints, Development Workflow, Governance
-- Templates reviewed: plan-template.md (Constitution Check reads this file — no change needed),
-  spec-template.md (project override added at tools/otto/.specify/templates/overrides/spec-template.md),
-  tasks-template.md (no change needed)
-- Follow-up TODOs: add `packages/core` render tests to CI (.github/workflows/ci.yml) so Principle V
-  is enforced automatically, not only by reviewers.
--->
-
 # Otto Constitution
 
 ## Scope
@@ -62,6 +50,13 @@ Slalom's delivery procedures (phase templates in `packages/core/src/templates/` 
 `devops/instructions/`) MUST be compiled into the shipped bundles.
 
 - Otto MUST NOT write procedure/template text into a client project as plain files.
+- **Generated deliverables are not procedure.** Output files that an Otto agent produces for the
+  user's own project — reports, registers, and the presentation markup a deliverable needs to be
+  self-contained (for example the styling and script of an HTML slide deck) — MAY be written to
+  the client project. Such files MUST contain only the deliverable's own content and its
+  presentation markup: no phase-template procedure text, no `devops/instructions/` fragments, no
+  prompts or agent instructions. The presentation markup MUST be limited to rendering that
+  content.
 - New distribution channels MUST preserve both protection layers described in
   `README.md` → *IP Protection* (compiled bundle + private-repo-gated updates).
 - Usage tracking MUST NOT transmit prompt or response text, and its endpoint MUST remain a
@@ -155,4 +150,4 @@ phase commands and their menus, CLI flags, and MCP tool names/signatures.
   for clarifications.
 - Runtime development guidance: *repo-root* `CLAUDE.md`, `README.md`, and `CONTRIBUTING.md`.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-30 | **Last Amended**: 2026-09-30
+**Version**: 1.1.0 | **Ratified**: 2026-09-30 | **Last Amended**: 2026-10-01

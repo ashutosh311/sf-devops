@@ -22,6 +22,7 @@ import {
   supportsElicitation,
   runElicitedInterview,
   runElicitedStatusMap,
+  runElicitedImpactAssessmentInputs,
 } from "./elicit.js";
 
 const PM_TOOLS = ["JIRA", "ADO", "LOCAL"] as const;
@@ -94,6 +95,7 @@ const PROMPT_SCHEMA = z.object({
   command:     z.enum(COMMANDS).describe("SDLC command to activate"),
   storyKey:    z.string().optional().describe("Ticket key, e.g. PROJ-42 — used by refine/design/build/test/release. For refine and design, may also be an epic key or sprint to process every eligible child story; for refine's generate-stories skill it is the epic new stories are drafted under."),
   projectRoot: PROJECT_ROOT_FIELD,
+  release:     z.string().optional().describe("Only for `release` + `impact-assessment`: the Salesforce seasonal release the user named, e.g. \"Winter '27\". Pre-selects the release in the input form; omit if they didn't name one."),
   skill:       z.string().optional().describe(
     "Optional sub-skill. For `refine`: story | generate-stories | gap-analysis | data-dictionary (omit to show the menu, or with a storyKey but no skill, run `story`). For `test`: execute | write-cases | apex-unit | apex-perf | pw-setup | pw-write (omit to show the menu, or with a storyKey but no skill, run `execute`). For `release`: deploy | release-notes | impact-assessment (omit to show the menu, or with a storyKey but no skill, run `deploy`). For `discover`: synthesize | analyze | conflict-check | compose-deliverable | prep-workshop | hub-audit | whats-next | registers-to-stories (omit to show the menu)."
   ),
@@ -399,10 +401,28 @@ function registerPromptTool(server: McpServer, mcpVersion: string): void {
         .catch(() => undefined);
       const { ok, text } = await renderCommand(args.command, mcpVersion, args.storyKey, args.projectRoot, args.skill);
       void trackPromptUsage(args).catch(() => undefined);
-      return {
-        content: [{ type: "text" as const, text }],
-        ...(ok ? {} : { isError: true }),
-      };
+      if (!ok) return { content: [{ type: "text" as const, text }], isError: true };
+
+      // impact-assessment's inputs (release, sources, live org) are collected as a
+      // native form where the host supports it, like /init — the same questions the
+      // VS Code extension asks with pickers. Without elicitation the template asks in chat.
+      let confirmed = "";
+      if (args.command === "release" && args.skill === "impact-assessment" && supportsElicitation(server.server)) {
+        const config = await requireConfig(args.projectRoot).then((r) => r.config).catch(() => undefined);
+        // A user cancel ends the run; a form that FAILS (client error, timeout) falls back to the
+        // chat questions rather than being reported as a cancel.
+        let inputs: string | typeof ABORTED | undefined;
+        try {
+          inputs = await runElicitedImpactAssessmentInputs(server.server, config?.salesforce?.orgs?.sandbox, args.release);
+        } catch {
+          inputs = undefined;
+        }
+        if (inputs === ABORTED) {
+          return { content: [{ type: "text" as const, text: "Impact assessment cancelled — no release was chosen. Nothing was written." }] };
+        }
+        if (typeof inputs === "string") confirmed = `\n\n---\n\n## Request\n\n${inputs}\n`;
+      }
+      return { content: [{ type: "text" as const, text: text + confirmed }] };
     }
   );
 }
